@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, Button, Alert, Platform, Modal, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  Button,
+  Alert,
+  Platform,
+  Modal,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  StyleSheet,
+} from 'react-native';
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { useNavigation } from '@react-navigation/native';
 import { addRecording, addTag, getTodayRecordingCount } from '../db';
@@ -15,7 +26,7 @@ export default function RecordScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
   const [filePath, setFilePath] = useState<string | null>(null);
-  const [liveTags, setLiveTags] = useState<{ timestampMs: Number, label: string }[]>([]);
+  const [liveTags, setLiveTags] = useState<{ timestampMs: Number; label: string }[]>([]);
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [customTag, setCustomTag] = useState('');
   const [volumeHistory, setVolumeHistory] = useState<number[]>([]);
@@ -30,22 +41,22 @@ export default function RecordScreen() {
           android: undefined,
         }),
         {
-            meteringEnabled: true,
+          meteringEnabled: true,
         }
       );
       setFilePath(result);
+
       audioRecorderPlayer.addRecordBackListener((e) => {
         if (typeof e?.currentPosition === 'number') {
           setRecordSecs(e.currentPosition);
         }
-
         if (typeof e?.currentMetering === 'number') {
-            const normalized = Math.max(0, Math.min(1, (e.currentMetering + 160) / 160));
-            setVolumeHistory((prev) => [...prev, normalized]);
+          const normalized = Math.max(0, (e.currentMetering + 160) / 160);
+          setVolumeHistory((prev) => [...prev.slice(-299), normalized]);
         }
-
         return;
       });
+
       setRecording(true);
       setIsPaused(false);
     } catch (err) {
@@ -149,11 +160,11 @@ export default function RecordScreen() {
         title={'New Recording'}
         durationLabel={`Duration: ${(recordSecs / 1000).toFixed(1)}s`}
         waveform={
-            <Waveform
-                peaks={volumeHistory}
-                durationMs={recordSecs}
-                progressMs={recordSecs}
-            />
+          <Waveform
+            peaks={volumeHistory}
+            durationMs={recordSecs}
+            progressMs={recordSecs}
+          />
         }
         controls={
           <>
