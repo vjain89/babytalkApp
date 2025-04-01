@@ -17,24 +17,35 @@ export default function Waveform({
     tagTimestamps = [],
     onSeek,
 }: Props) {
-    const progressRatio = durationMs > 0 ? progressMs / durationMs : 0;
+    const visibleWindowMs = 30_000;
+    const totalBars = peaks.length;
+    const barDurationMs = durationMs / totalBars;
+    const barsPerWindow = Math.floor(visibleWindowMs / barDurationMs);
+
+    const currentBarIndex = Math.floor(progressMs / barDurationMs);
+    const startBarIndex = Math.max(0, currentBarIndex - barsPerWindow);
+    const visiblePeaks = peaks.slice(startBarIndex, currentBarIndex + 1);
+
+    const progressRatioInWindow =
+        (progressMs - startBarIndex * barDurationMs) / (visibleWindowMs || 1);
+
+    const scrubLeft = `${Math.min(progressRatioInWindow * 100, 100)}%`;
 
     return (
         <View style={styles.waveformWrapper}>
             {/* Waveform Bars */}
             <View style={styles.waveformContainer}>
-                {peaks.map((height, index) => {
-                    const barTimestamp = durationMs > 0
-                        ? (index / peaks.length) * durationMs
-                        : 0;
+                {visiblePeaks.map((height, i) => {
+                    const globalIndex = startBarIndex + i;
+                    const barTimestamp = globalIndex * barDurationMs;
 
                     const isTagTick = tagTimestamps.some(
-                        (t) => Math.abs(t - barTimestamp) < durationMs / peaks.length
+                        (t) => Math.abs(t - barTimestamp) < barDurationMs
                     );
 
                     return (
                         <TouchableOpacity
-                            key={index}
+                            key={globalIndex}
                             onPress={() => onSeek?.(Math.floor(barTimestamp))}
                         >
                             <View
@@ -50,13 +61,9 @@ export default function Waveform({
                     );
                 })}
             </View>
+
             {/* Playback progress overlay */}
-            <View
-                style={[
-                    styles.playbackProgress,
-                    { left: `${progressRatio * 100}%` },
-                ]}
-            />
+            <View style={[styles.playbackProgress, { left: scrubLeft }]} />
         </View>
     );
 }

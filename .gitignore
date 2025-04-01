@@ -73,3 +73,6 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Added 25-03-27
+react-native-audio-recorder-player/react-native-audio-recorder-player/

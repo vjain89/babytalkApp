@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, Button, Alert, Platform, Modal, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { useNavigation } from '@react-navigation/native';
 import { addRecording, addTag, getTodayRecordingCount } from '../db';
 import CircularRecordButton from '../components/CircularRecordButton';
 import RecordingLayout from '../components/RecordingLayout';
+import Waveform from '../components/Waveform';
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 const TAG_SUGGESTIONS = ['hungry', 'tired', 'frustrated', 'playful', 'bored'];
@@ -17,6 +18,7 @@ export default function RecordScreen() {
   const [liveTags, setLiveTags] = useState<{ timestampMs: Number, label: string }[]>([]);
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [customTag, setCustomTag] = useState('');
+  const [volumeHistory, setVolumeHistory] = useState<number[]>([]);
 
   const navigation = useNavigation();
 
@@ -26,13 +28,22 @@ export default function RecordScreen() {
         Platform.select({
           ios: 'recording.m4a',
           android: undefined,
-        })
+        }),
+        {
+            meteringEnabled: true,
+        }
       );
       setFilePath(result);
       audioRecorderPlayer.addRecordBackListener((e) => {
         if (typeof e?.currentPosition === 'number') {
           setRecordSecs(e.currentPosition);
         }
+
+        if (typeof e?.currentMetering === 'number') {
+            const normalized = Math.max(0, Math.min(1, (e.currentMetering + 160) / 160));
+            setVolumeHistory((prev) => [...prev, normalized]);
+        }
+
         return;
       });
       setRecording(true);
@@ -137,7 +148,13 @@ export default function RecordScreen() {
       <RecordingLayout
         title={'New Recording'}
         durationLabel={`Duration: ${(recordSecs / 1000).toFixed(1)}s`}
-        waveform={<View style={{ height: 60 }} />} // placeholder for alignment
+        waveform={
+            <Waveform
+                peaks={volumeHistory}
+                durationMs={recordSecs}
+                progressMs={recordSecs}
+            />
+        }
         controls={
           <>
             <View style={{ alignItems: 'center' }}>

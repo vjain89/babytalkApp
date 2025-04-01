@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, FlatList, Alert, Platform, TouchableOpacity } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { addTag, getTagsForRecording, getDb, updateTagLabel } from '../db';
 import RNFS from 'react-native-fs';
@@ -8,8 +8,6 @@ import Share from 'react-native-share';
 import Waveform from '../components/Waveform';
 import RecordingLayout from '../components/RecordingLayout';
 import CircularPlayButton from '../components/CircularPlayButton';
-
-const mockPeaks = Array.from({ length: 100 }, () => Math.random());
 
 const audioPlayer = new AudioRecorderPlayer();
 
@@ -31,9 +29,18 @@ export default function PlaybackScreen() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
   const [durationMs, setDurationMs] = useState(1);
+  const [peaks, setPeaks] = useState<number[]>([]);
 
   useEffect(() => {
     loadTags();
+  }, []);
+
+  useEffect(() => {
+    // Simulate fake peaks for now if you haven't implemented actual storage
+    const fakePeaks = Array.from({ length: 300 }, (_, i) =>
+        Math.max(0, Math.sin(i / 10) * 0.5 + 0.5)
+    );
+    setPeaks(fakePeaks);
   }, []);
 
   const loadTags = async () => {
@@ -55,6 +62,10 @@ export default function PlaybackScreen() {
         if (typeof e.currentPosition === 'number') setPlaybackSecs(e.currentPosition);
         if (typeof e.duration === 'number' && e.duration > 0 && e.duration !== durationMs) {
           setDurationMs(e.duration);
+        }
+        if (typeof e.currentMetering === 'number') {
+            const normalized = Math.max(0, Math.min(1, (e.currentMetering + 160) / 160));
+            setVolumeHistory(prev => [...prev, normalized]);
         }
         if (e.currentPosition >= e.duration) stopPlaying();
         return;
@@ -132,24 +143,24 @@ export default function PlaybackScreen() {
       title={filename}
       durationLabel={`⏱️ ${(playbackSecs / 1000).toFixed(1)}s`}
       waveform={
-        durationMs > 0 && mockPeaks.length > 0 ? (
-          <Waveform
-            peaks={mockPeaks}
-            durationMs={durationMs}
-            progressMs={playbackSecs}
-            tagTimestamps={tags.map(t => t.timestamp_ms)}
-            onSeek={(ms) => {
-              audioPlayer.seekToPlayer(ms);
-              setPlaybackSecs(ms);
-              const matchedTag = tags.find(
-                (t) => Math.abs(t.timestamp_ms - ms) < durationMs / mockPeaks.length
-              );
-              setHighlightedTagId(matchedTag?.id ?? null);
-            }}
-            highlightedTagId={highlightedTagId}
-          />
+        durationMs > 0 && peaks.length > 0 ? (
+            <Waveform
+                peaks={peaks}
+                durationMs={durationMs}
+                progressMs={playbackSecs}
+                tagTimestamps={tags.map(t => t.timestamp_ms)}
+                onSeek={(ms) => {
+                    audioPlayer.seekToPlayer(ms);
+                    setPlaybackSecs(ms);
+                    const matchedTag = tags.find(
+                        (t) => Math.abs(t.timestamp_ms - ms) < durationMs / peaks.length
+                    );
+                    setHighlightedTagId(matchedTag?.id ?? null);
+                }}
+                highlightedTagId={highlightedTagId}
+            />
         ) : null
-      }
+    }
       controls={
             <View style={{ alignItems: 'center', gap: 12 }}>
                 <CircularPlayButton isPlaying={isPlaying} onPress={handlePlayPause} />
