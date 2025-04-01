@@ -31,6 +31,14 @@ export const initDb = async () => {
         );
     `);
 
+    try {
+        await db.executeSql(`ALTER TABLE recordings ADD COLUMN peaks_json TEXT`);
+    } catch (e) {
+        if (!e.message.includes('duplicate column name')) {
+            console.error('❌ Failed to alter recordings table:', e);
+        }
+    }
+
     console.log('✅ Database initialized');
     };
 
@@ -39,18 +47,20 @@ export const addRecording = async ({
     filename,
     sessionName,
     durationMs,
+    peaksJson,
 }: {
     filename: string;
     sessionName?: string;
     durationMs: number;
+    peaksJson: string
 }): Promise<number> => {
     const db = await getDb();
     const createdAt = Date.now();
 
     const [result] = await db.executeSql(
-        `INSERT INTO recordings (filename, session_name, created_at, duration_ms)
-         VALUES (?, ?, ?, ?)`,
-        [filename, sessionName || null, createdAt, durationMs]
+        `INSERT INTO recordings (filename, session_name, created_at, duration_ms, peaks_json)
+         VALUES (?, ?, ?, ?, ?)`,
+        [filename, sessionName || null, createdAt, durationMs, peaksJson]
     );
 
     return result.insertId!;

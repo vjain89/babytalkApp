@@ -124,6 +124,7 @@ export default function RecordScreen() {
           filename,
           sessionName: finalSessionName,
           durationMs,
+          peaksJson: JSON.stringify(volumeHistory)
         });
 
         for (const tag of liveTags) {

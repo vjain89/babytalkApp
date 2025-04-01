@@ -21,10 +21,6 @@ export default function PlaybackScreen() {
   const [highlightedTagId, setHighlightedTagId] = useState(null);
   const [peaks, setPeaks] = useState<number[]>([]);
 
-  useEffect(() => {
-    loadTags();
-  }, []);
-
   const loadTags = async () => {
     try {
       const tagList = await getTagsForRecording(recordingId);
@@ -33,6 +29,37 @@ export default function PlaybackScreen() {
       console.error('❌ Failed to load tags:', err);
     }
   };
+
+  const loadPeaks = async () => {
+    try {
+        const db = await getDb();
+        const result = await db.executeSql('SELECT peaks_json FROM recordings WHERE id = ?', [recordingId]);
+        const json = result[0].rows.item(0).peaks_json;
+        if (json) {
+            const parsed = JSON.parse(json);
+            console.log('📈 Loaded peaks:', parsed.length, parsed.slice(0, 10));
+            setPeaks(parsed);
+        }
+    } catch (err) {
+        console.error('❌ Failed to load waveform peaks:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadTags();
+    loadPeaks();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+        const db = await getDb();
+        const result = await db.executeSql('SELECT * FROM recordings');
+        const rows = result[0].rows;
+        for (let i = 0; i < rows.length; i++) {
+            console.log('📄 Recording:', rows.item(i));
+        }
+    })();
+  }, []);
 
   const startPlaying = async () => {
     try {
@@ -43,11 +70,6 @@ export default function PlaybackScreen() {
         }
         if (typeof e.duration === 'number' && e.duration > 0) {
           setDurationMs(e.duration);
-        }
-        if (typeof e.currentMetering === 'number') {
-            const normalized = (e.currentMetering + 160) / 160;
-            console.log('📈 Metering:', e.currentMetering, '->', normalized);
-            setPeaks(prev => [...prev.slice(-299), normalized]);
         }
         if (e.currentPosition >= e.duration) stopPlaying();
         return;
@@ -128,23 +150,24 @@ export default function PlaybackScreen() {
       durationLabel={`⏱️ ${(playbackSecs / 1000).toFixed(1)}s`}
       waveform={
         <Waveform
-          peaks={new Array(300).fill(0).map(() => Math.random())} //peaks}
-          durationMs={30000} //durationMs}
-          progressMs={playbackSecs}
-          tagTimestamps={tags.map(t => t.timestamp_ms)}
-          onSeek={(ms) => {
-            audioPlayer.seekToPlayer(ms);
-            setPlaybackSecs(ms);
-            const matchedTag = tags.find(t => Math.abs(t.timestamp_ms - ms) < durationMs / peaks.length);
-            setHighlightedTagId(matchedTag?.id ?? null);
+            peaks={peaks}
+            durationMs={durationMs}
+            progressMs={playbackSecs}
+            tagTimestamps={tags.map(t => t.timestamp_ms)}
+            onSeek={(ms) => {
+                audioPlayer.seekToPlayer(ms);
+                setPlaybackSecs(ms);
+                const matchedTag = tags.find(t => Math.abs(t.timestamp_ms - ms) < durationMs / peaks.length);
+                setHighlightedTagId(matchedTag?.id ?? null);
 
-            if (!isPlaying) {
+                if (!isPlaying) {
                 audioPlayer.resumePlayer();
                 setIsPlaying(true);
-            }
-          }}
-          highlightedTagId={highlightedTagId}
+                }
+            }}
+            highlightedTagId={highlightedTagId}
         />
+
       }
       controls={
         <>
