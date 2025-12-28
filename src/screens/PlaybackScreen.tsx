@@ -30,6 +30,7 @@ export default function PlaybackScreen() {
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
   const [durationMs, setDurationMs] = useState(1);
   const [peaks, setPeaks] = useState<number[]>([]);
+  const [volumeHistory, setVolumeHistory] = useState<number[]>([]);
 
   useEffect(() => {
     loadTags();
@@ -65,7 +66,11 @@ export default function PlaybackScreen() {
         }
         if (typeof e.currentMetering === 'number') {
             const normalized = Math.max(0, Math.min(1, (e.currentMetering + 160) / 160));
-            setVolumeHistory(prev => [...prev, normalized]);
+            setVolumeHistory(prev => {
+              const updated = [...prev, normalized];
+              // Keep only last 300 samples to prevent memory issues
+              return updated.slice(-300);
+            });
         }
         if (e.currentPosition >= e.duration) stopPlaying();
         return;

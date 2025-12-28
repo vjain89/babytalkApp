@@ -15,10 +15,23 @@ if linkage != nil
 end
 
 target 'babytalkApp' do
-  config = use_native_modules!
+  begin
+    config = use_native_modules!
+    react_native_path = config ? config[:reactNativePath] : nil
+  rescue => e
+    puts "Warning: use_native_modules! failed: #{e.message}"
+    puts "Using fallback React Native path"
+    react_native_path = nil
+  end
+  
+  # Fallback if use_native_modules returns nil or failed
+  if react_native_path.nil?
+    # Use relative path from Podfile location
+    react_native_path = '../node_modules/react-native'
+  end
 
   use_react_native!(
-    :path => config[:reactNativePath],
+    :path => react_native_path,
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
@@ -27,7 +40,7 @@ target 'babytalkApp' do
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
-      config[:reactNativePath],
+      react_native_path,
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
