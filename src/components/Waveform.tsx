@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     top: 0,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   overlay: {
     position: 'absolute',
