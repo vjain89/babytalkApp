@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, FlatList, Alert, Platform, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  Button,
+  StyleSheet,
+  FlatList,
+  Alert,
+  Platform,
+  TouchableOpacity,
+} from 'react-native';
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { addTag, getTagsForRecording, getDb, updateTagLabel } from '../db';
@@ -10,6 +19,9 @@ import RecordingLayout from '../components/RecordingLayout';
 import CircularPlayButton from '../components/CircularPlayButton';
 
 const audioPlayer = new AudioRecorderPlayer();
+
+const BAR_MS = 50;
+const WINDOW_MS = 30_000;
 
 type PlaybackScreenProps = {
   route: RouteProp<{ params: { recordingId: number; filePath: string; filename: string } }, 'params'>;
@@ -25,23 +37,22 @@ export default function PlaybackScreen() {
   const { recordingId, filePath, filename } = useRoute<PlaybackScreenProps['route']>().params;
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSecs, setPlaybackSecs] = useState(0);
+  const [playbackMs, setPlaybackMs] = useState(0);
+  const [durationMs, setDurationMs] = useState(1);
+
   const [tags, setTags] = useState<Tag[]>([]);
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
-  const [durationMs, setDurationMs] = useState(1);
-  const [peaks, setPeaks] = useState<number[]>([]);
-  const [volumeHistory, setVolumeHistory] = useState<number[]>([]);
+
+  const [storedWaveform, setStoredWaveform] = useState<number[]>([]);
+  const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('full');
 
   useEffect(() => {
     loadTags();
-  }, []);
-
-  useEffect(() => {
-    // Simulate fake peaks for now if you haven't implemented actual storage
-    const fakePeaks = Array.from({ length: 300 }, (_, i) =>
-        Math.max(0, Math.sin(i / 10) * 0.5 + 0.5)
-    );
-    setPeaks(fakePeaks);
+    loadRecordingWaveform();
+    return () => {
+      audioPlayer.removePlayBackListener();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadTags = async () => {
@@ -53,28 +64,47 @@ export default function PlaybackScreen() {
     }
   };
 
+  const loadRecordingWaveform = async () => {
+    try {
+      const db = await getDb();
+      const [res] = await db.executeSql(
+        `SELECT duration_ms, waveform_data FROM recordings WHERE id = ? LIMIT 1`,
+        [recordingId]
+      );
+      if (res.rows.length > 0) {
+        const row = res.rows.item(0);
+        if (typeof row.duration_ms === 'number') setDurationMs(row.duration_ms);
+        if (row.waveform_data) {
+          try {
+            const parsed = JSON.parse(row.waveform_data);
+            if (Array.isArray(parsed)) setStoredWaveform(parsed.map((x: any) => Number(x) || 0));
+          } catch {
+            setStoredWaveform([]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('❌ Failed to load waveform_data:', err);
+    }
+  };
+
   const startPlaying = async () => {
     try {
       await audioPlayer.startPlayer(filePath);
-      if (playbackSecs > 0) {
-        await audioPlayer.seekToPlayer(playbackSecs);
+
+      if (playbackMs > 0) {
+        await audioPlayer.seekToPlayer(playbackMs);
       }
+
       audioPlayer.addPlayBackListener((e) => {
-        if (typeof e.currentPosition === 'number') setPlaybackSecs(e.currentPosition);
+        if (typeof e.currentPosition === 'number') setPlaybackMs(e.currentPosition);
         if (typeof e.duration === 'number' && e.duration > 0 && e.duration !== durationMs) {
           setDurationMs(e.duration);
-        }
-        if (typeof e.currentMetering === 'number') {
-            const normalized = Math.max(0, Math.min(1, (e.currentMetering + 160) / 160));
-            setVolumeHistory(prev => {
-              const updated = [...prev, normalized];
-              // Keep only last 300 samples to prevent memory issues
-              return updated.slice(-300);
-            });
         }
         if (e.currentPosition >= e.duration) stopPlaying();
         return;
       });
+
       setIsPlaying(true);
     } catch (err) {
       console.error('❌ Failed to play audio:', err);
@@ -97,27 +127,31 @@ export default function PlaybackScreen() {
   };
 
   const handleTag = async () => {
-    const currentTimestamp = Math.floor(playbackSecs);
+    const ts = Math.floor(playbackMs);
     let wasPlaying = false;
+
     if (isPlaying) {
       await audioPlayer.pausePlayer();
       setIsPlaying(false);
       wasPlaying = true;
     }
+
     const promptForLabel = async (label: string) => {
       try {
-        await addTag({ recordingId, timestampMs: currentTimestamp, label: label.trim() || 'Untitled tag' });
+        await addTag({ recordingId, timestampMs: ts, label: label.trim() || 'Untitled tag' });
         await loadTags();
       } catch (err) {
         console.error('❌ Failed to save tag:', err);
       }
+
       if (wasPlaying) {
         await audioPlayer.resumePlayer();
         setIsPlaying(true);
       }
     };
+
     if (Platform.OS === 'ios') {
-      Alert.prompt('Add Tag', `Timestamp: ${(currentTimestamp / 1000).toFixed(1)}s`, promptForLabel);
+      Alert.prompt('Add Tag', `Timestamp: ${(ts / 1000).toFixed(1)}s`, promptForLabel);
     } else {
       const label = prompt('Enter tag label');
       if (label !== null) promptForLabel(label);
@@ -130,8 +164,10 @@ export default function PlaybackScreen() {
       const exportJson = JSON.stringify(exportData, null, 2);
       const exportPath = `${RNFS.CachesDirectoryPath}/${filename.replace(/\s/g, '_')}_tags.json`;
       await RNFS.writeFile(exportPath, exportJson, 'utf8');
+
       const audioPath = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
       const tagPath = `file://${exportPath}`;
+
       await Share.open({
         title: 'Export Recording & Tags',
         message: 'Sharing the recording and associated tags',
@@ -146,35 +182,48 @@ export default function PlaybackScreen() {
   return (
     <RecordingLayout
       title={filename}
-      durationLabel={`⏱️ ${(playbackSecs / 1000).toFixed(1)}s`}
+      durationLabel={`⏱️ ${(playbackMs / 1000).toFixed(1)}s`}
       waveform={
-        durationMs > 0 && peaks.length > 0 ? (
-            <Waveform
-                peaks={peaks}
-                durationMs={durationMs}
-                progressMs={playbackSecs}
-                tagTimestamps={tags.map(t => t.timestamp_ms)}
-                onSeek={(ms) => {
-                    audioPlayer.seekToPlayer(ms);
-                    setPlaybackSecs(ms);
-                    const matchedTag = tags.find(
-                        (t) => Math.abs(t.timestamp_ms - ms) < durationMs / peaks.length
-                    );
-                    setHighlightedTagId(matchedTag?.id ?? null);
-                }}
-                highlightedTagId={highlightedTagId}
-            />
-        ) : null
-    }
+        storedWaveform.length > 0 ? (
+          <Waveform
+            peaks={storedWaveform}
+            barDurationMs={BAR_MS}
+            progressMs={playbackMs}
+            durationMs={durationMs}
+            windowMs={WINDOW_MS}
+            mode={waveformView}
+            cursorMode="follow"
+            showCursor={true}
+            minBarPx={2}
+            tagTimestamps={tags.map((t) => t.timestamp_ms)}
+            tagWidthMs={500}
+          />
+        ) : (
+          <Text style={{ textAlign: 'center', color: '#888' }}>
+            No waveform data saved for this recording.
+          </Text>
+        )
+      }
       controls={
-            <View style={{ alignItems: 'center', gap: 12 }}>
-                <CircularPlayButton isPlaying={isPlaying} onPress={handlePlayPause} />
-                <Button title="🏷️ Tag This Moment" onPress={handleTag} />
-                <Button title="📤 Export Recording + Tags" onPress={handleExport} />
-            </View>
+        <View style={{ alignItems: 'center', gap: 12 }}>
+          <CircularPlayButton isPlaying={isPlaying} onPress={handlePlayPause} />
+
+          <TouchableOpacity
+            onPress={() => setWaveformView((v) => (v === 'full' ? 'rolling' : 'full'))}
+            style={styles.toggleBtn}
+          >
+            <Text style={styles.toggleText}>
+              {waveformView === 'full' ? '📉 Switch to 30s Scroll View' : '🗺️ Switch to Full Waveform'}
+            </Text>
+          </TouchableOpacity>
+
+          <Button title="🏷️ Tag This Moment" onPress={handleTag} />
+          <Button title="📤 Export Recording + Tags" onPress={handleExport} />
+        </View>
       }
     >
       <Text style={styles.sectionTitle}>Tags</Text>
+
       {tags.length === 0 ? (
         <Text style={styles.empty}>No tags yet.</Text>
       ) : (
@@ -185,7 +234,7 @@ export default function PlaybackScreen() {
             <TouchableOpacity
               onPress={() => {
                 audioPlayer.seekToPlayer(item.timestamp_ms);
-                setPlaybackSecs(item.timestamp_ms);
+                setPlaybackMs(item.timestamp_ms);
                 setHighlightedTagId(item.id);
               }}
               onLongPress={() => {
@@ -200,22 +249,7 @@ export default function PlaybackScreen() {
                             await loadTags();
                           }
                         });
-                      } else {
-                        const newLabel = prompt(`Edit tag "${item.label}"`);
-                        if (newLabel && newLabel.trim()) {
-                          updateTagLabel(item.id, newLabel.trim()).then(loadTags).catch(console.error);
-                        }
                       }
-                    },
-                  },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      const db = await getDb();
-                      await db.executeSql('DELETE FROM tags WHERE id = ?', [item.id]);
-                      await loadTags();
-                      setHighlightedTagId(null);
                     },
                   },
                   { text: 'Cancel', style: 'cancel' },
@@ -245,4 +279,15 @@ const styles = StyleSheet.create({
   },
   tagLabel: { fontSize: 16 },
   tagTime: { color: '#666' },
+
+  toggleBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  toggleText: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
 });

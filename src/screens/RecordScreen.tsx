@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, Button, Alert, Platform, Modal, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  Button,
+  Alert,
+  Platform,
+  Modal,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  StyleSheet,
+} from 'react-native';
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { useNavigation } from '@react-navigation/native';
 import { addRecording, addTag, getTodayRecordingCount } from '../db';
@@ -10,42 +21,67 @@ import Waveform from '../components/Waveform';
 const audioRecorderPlayer = new AudioRecorderPlayer();
 const TAG_SUGGESTIONS = ['hungry', 'tired', 'frustrated', 'playful', 'bored'];
 
+const BAR_MS = 50;
+const WINDOW_MS = 30_000;
+
 export default function RecordScreen() {
   const [recording, setRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [recordSecs, setRecordSecs] = useState(0);
+  const [recordMs, setRecordMs] = useState(0);
   const [filePath, setFilePath] = useState<string | null>(null);
-  const [liveTags, setLiveTags] = useState<{ timestampMs: Number, label: string }[]>([]);
+
+  const [liveTags, setLiveTags] = useState<{ timestampMs: number; label: string }[]>([]);
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [customTag, setCustomTag] = useState('');
-  const [volumeHistory, setVolumeHistory] = useState<number[]>([]);
+
+  // ✅ Fixed-grid waveform for entire session
+  const waveformAllRef = useRef<number[]>([]);
 
   const navigation = useNavigation();
 
   const startRecording = async () => {
     try {
+      waveformAllRef.current = [];
+      setLiveTags([]);
+      setRecordMs(0);
+
       const result = await audioRecorderPlayer.startRecorder(
-        Platform.select({
-          ios: 'recording.m4a',
-          android: undefined,
-        }),
-        {
-            meteringEnabled: true,
-        }
+        Platform.select({ ios: 'recording.m4a', android: undefined }),
+        undefined,
+        true
       );
       setFilePath(result);
+
       audioRecorderPlayer.addRecordBackListener((e) => {
         if (typeof e?.currentPosition === 'number') {
-          setRecordSecs(e.currentPosition);
-        }
+          setRecordMs(e.currentPosition);
 
-        if (typeof e?.currentMetering === 'number') {
-            const normalized = Math.max(0, Math.min(1, (e.currentMetering + 160) / 160));
-            setVolumeHistory((prev) => [...prev, normalized]);
-        }
+          // Fixed-grid index for this time
+          const idx = Math.max(0, Math.round(e.currentPosition / BAR_MS));
 
+          // Normalize metering
+          if (typeof e.currentMetering === 'number') {
+            const minDb = -60;
+            const maxDb = 0;
+            const clamped = Math.max(minDb, Math.min(maxDb, e.currentMetering));
+            let normalized = (clamped - minDb) / (maxDb - minDb); // 0..1
+            normalized = Math.pow(normalized, 1.6);
+
+            const arr = waveformAllRef.current;
+
+            // Fill gaps with 0 so index==time bin
+            while (arr.length < idx) arr.push(0);
+
+            // Set the value at idx (use max to avoid losing peaks if listener fires multiple times per bin)
+            const prev = arr[idx] ?? 0;
+            arr[idx] = Math.max(prev, normalized);
+
+            waveformAllRef.current = arr;
+          }
+        }
         return;
       });
+
       setRecording(true);
       setIsPaused(false);
     } catch (err) {
@@ -89,8 +125,7 @@ export default function RecordScreen() {
   };
 
   const saveTag = (label: string) => {
-    const currentTimestamp = Math.floor(recordSecs);
-    setLiveTags((prev) => [...prev, { timestampMs: currentTimestamp, label }]);
+    setLiveTags((prev) => [...prev, { timestampMs: Math.floor(recordMs), label }]);
     setTagModalVisible(false);
   };
 
@@ -99,7 +134,7 @@ export default function RecordScreen() {
     if (!filePath) return;
 
     const promptAndSave = async (enteredName: string | null) => {
-      const durationMs = recordSecs;
+      const durationMs = recordMs;
       const filename = filePath.split('/').pop() || `recording_${Date.now()}.m4a`;
 
       let finalSessionName = enteredName?.trim();
@@ -113,26 +148,25 @@ export default function RecordScreen() {
           filename,
           sessionName: finalSessionName,
           durationMs,
+          waveformData: waveformAllRef.current, // ✅ fixed-grid waveform
         });
 
         for (const tag of liveTags) {
-          await addTag({
-            recordingId,
-            timestampMs: tag.timestampMs,
-            label: tag.label,
-          });
+          await addTag({ recordingId, timestampMs: tag.timestampMs, label: tag.label });
         }
-        console.log(`✅ Saved recording + ${liveTags.length} tags`);
       } catch (err) {
         console.error('❌ DB insert failed:', err);
       }
 
-      setRecordSecs(0);
+      // reset
+      waveformAllRef.current = [];
+      setRecordMs(0);
       setFilePath(null);
       setLiveTags([]);
       setRecording(false);
       setIsPaused(false);
-      navigation.navigate('RecordingList');
+
+      navigation.navigate('RecordingList' as never);
     };
 
     if (Platform.OS === 'ios') {
@@ -146,14 +180,21 @@ export default function RecordScreen() {
   return (
     <>
       <RecordingLayout
-        title={'New Recording'}
-        durationLabel={`Duration: ${(recordSecs / 1000).toFixed(1)}s`}
+        title="New Recording"
+        durationLabel={`Duration: ${(recordMs / 1000).toFixed(1)}s`}
         waveform={
-            <Waveform
-                peaks={volumeHistory}
-                durationMs={recordSecs}
-                progressMs={recordSecs}
-            />
+          <Waveform
+            peaks={waveformAllRef.current}
+            barDurationMs={BAR_MS}
+            progressMs={recordMs}
+            windowMs={WINDOW_MS}
+            mode="rolling"
+            cursorMode="pinned"
+            showCursor={true}
+            minBarPx={2}
+            tagTimestamps={liveTags.map((t) => Number(t.timestampMs))}
+            tagWidthMs={500}
+          />
         }
         controls={
           <>
@@ -167,6 +208,7 @@ export default function RecordScreen() {
                 onStop={stopRecording}
               />
             </View>
+
             <View style={{ marginTop: 20 }}>
               <Button title="🏷️ Tag Now" onPress={handleTagNow} />
               <View style={{ marginVertical: 6 }} />
@@ -174,7 +216,7 @@ export default function RecordScreen() {
               <View style={{ marginTop: 20 }} />
               <Button
                 title="📄 View All Recordings"
-                onPress={() => navigation.navigate('RecordingList')}
+                onPress={() => navigation.navigate('RecordingList' as never)}
               />
             </View>
           </>
@@ -228,10 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  suggestionsContainer: {
-    gap: 10,
-    paddingBottom: 12,
-  },
+  suggestionsContainer: { gap: 10, paddingBottom: 12 },
   suggestionButton: {
     padding: 10,
     backgroundColor: '#eee',

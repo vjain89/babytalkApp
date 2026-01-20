@@ -17,9 +17,19 @@ export const initDb = async () => {
             filename TEXT NOT NULL,
             session_name TEXT,
             created_at INTEGER NOT NULL,
-            duration_ms INTEGER NOT NULL
+            duration_ms INTEGER NOT NULL,
+            waveform_data TEXT
         );
     `);
+
+    // Migration: Add waveform_data column if it doesn't exist (for existing databases)
+    try {
+      await db.executeSql(`
+        ALTER TABLE recordings ADD COLUMN waveform_data TEXT;
+      `);
+    } catch (err) {
+      // Column already exists, ignore error
+    }
 
     await db.executeSql(`
         CREATE TABLE IF NOT EXISTS tags (
@@ -39,18 +49,21 @@ export const addRecording = async ({
     filename,
     sessionName,
     durationMs,
+    waveformData,
 }: {
     filename: string;
     sessionName?: string;
     durationMs: number;
+    waveformData?: number[]; // Array of normalized 0-1 values
 }): Promise<number> => {
     const db = await getDb();
     const createdAt = Date.now();
+    const waveformJson = waveformData ? JSON.stringify(waveformData) : null;
 
     const [result] = await db.executeSql(
-        `INSERT INTO recordings (filename, session_name, created_at, duration_ms)
-         VALUES (?, ?, ?, ?)`,
-        [filename, sessionName || null, createdAt, durationMs]
+        `INSERT INTO recordings (filename, session_name, created_at, duration_ms, waveform_data)
+         VALUES (?, ?, ?, ?, ?)`,
+        [filename, sessionName || null, createdAt, durationMs, waveformJson]
     );
 
     return result.insertId!;
@@ -70,6 +83,21 @@ export const getAllRecordings = async (sort: 'newest' | 'oldest' | 'longest' | '
     `);
 
     return result.rows.raw(); // returns an array of { id, filename, session_name, ... }
+};
+
+// Get a recording by ID
+export const getRecordingById = async (id: number) => {
+    const db = await getDb();
+
+    const [result] = await db.executeSql(
+        `SELECT * FROM recordings WHERE id = ?`,
+        [id]
+    );
+
+    if (result.rows.length > 0) {
+        return result.rows.item(0);
+    }
+    return null;
 };
 
 // Get the count of recordings created today
