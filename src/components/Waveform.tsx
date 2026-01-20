@@ -23,6 +23,12 @@ type Props = {
   height?: number;
   minBarPx?: number;
   amplitudeBoost?: number;
+  /** Max fraction of height the tallest bars use (0–1). Default 1. */
+  maxHeightFraction?: number;
+  /** Raw values <= this are treated as silence (minimal bar). Reduces noise when not speaking. 0–1, default 0.1. */
+  noiseFloor?: number;
+  /** Autoscale: map the percentile (e.g. 98th) to this fraction of max height (0–1). Default 0.75 = headroom so speech doesn't saturate. */
+  targetPeak?: number;
 
   autoScale?: boolean;
   autoScaleIntervalMs?: number;
@@ -50,6 +56,9 @@ export default function Waveform({
   height = 64,
   minBarPx = 2,
   amplitudeBoost = 1.6,
+  maxHeightFraction = 1,
+  noiseFloor = 0.1,
+  targetPeak = 0.75,
 
   autoScale = true,
   autoScaleIntervalMs = 500,
@@ -92,14 +101,21 @@ export default function Waveform({
     return bars;
   }, [mode, peaks, visibleStartMs, barDurationMs, windowBars]);
 
-  // Downsample to pixel bars
-  const { barsToRender, barPx, barCount } = useMemo(() => {
-    const px = Math.max(1, Math.floor(minBarPx));
-    const count = Math.max(1, Math.floor(width / px));
+  // Map source bars to pixel bars: never pad with zeros; one pixel bar per source bar when they fit
+  const { barsToRender, barPx } = useMemo(() => {
+    const minPx = Math.max(1, Math.floor(minBarPx));
+    const maxCount = Math.max(1, Math.floor(width / minPx));
 
-    const bucketSize = Math.max(1, Math.ceil(baseBars.length / count));
+    if (baseBars.length <= maxCount) {
+      // Show every source bar; spread across full width
+      const barPx = baseBars.length > 0 ? width / baseBars.length : minPx;
+      return { barsToRender: baseBars.map(clamp01), barPx };
+    }
+
+    // Downsample: merge source bars to fit
+    const count = maxCount;
+    const bucketSize = Math.ceil(baseBars.length / count);
     const out: number[] = [];
-
     for (let i = 0; i < baseBars.length; i += bucketSize) {
       let m = 0;
       for (let j = 0; j < bucketSize && i + j < baseBars.length; j++) {
@@ -107,22 +123,18 @@ export default function Waveform({
       }
       out.push(m);
     }
-
-    // exact count via trim/pad
-    let trimmed = out.length > count ? out.slice(0, count) : out;
-    if (trimmed.length < count) trimmed = [...trimmed, ...new Array(count - trimmed.length).fill(0)];
-
-    return { barsToRender: trimmed, barPx: px, barCount: trimmed.length };
+    const barPx = out.length > 0 ? width / out.length : minPx;
+    return { barsToRender: out, barPx };
   }, [baseBars, width, minBarPx]);
 
-  // Autoscale based on percentile of non-zero bars (post-downsample)
+  // Autoscale: use only signal above noiseFloor; map the percentile to targetPeak so the y-axis has room for peaks
   useEffect(() => {
     if (!autoScale) return;
     const now = Date.now();
     if (now - lastScaleUpdateRef.current < autoScaleIntervalMs) return;
     lastScaleUpdateRef.current = now;
 
-    const vals = barsToRender.filter((v) => v > 0).slice();
+    const vals = barsToRender.filter((v) => v > noiseFloor).slice();
     if (vals.length === 0) {
       setYScale(1);
       return;
@@ -130,11 +142,9 @@ export default function Waveform({
     vals.sort((a, b) => a - b);
     const idx = Math.max(0, Math.min(vals.length - 1, Math.floor(vals.length * autoScalePercentile)));
     const p = vals[idx];
-
-    // allow stronger boosting during quiet periods
-    const target = Math.max(0.04, Math.min(1, p));
-    setYScale(target);
-  }, [autoScale, autoScaleIntervalMs, autoScalePercentile, barsToRender]);
+    // Map the 98th-percentile level to targetPeak (e.g. 0.75) so speech peaks have headroom and don't saturate
+    setYScale(Math.max(1e-6, (p * amplitudeBoost) / targetPeak));
+  }, [autoScale, autoScaleIntervalMs, autoScalePercentile, amplitudeBoost, targetPeak, noiseFloor, barsToRender]);
 
   // Cursor position
   const cursorX = useMemo(() => {
@@ -194,8 +204,10 @@ export default function Waveform({
     <View style={[styles.container, { height }]} onLayout={onLayout}>
       <View style={styles.barsRow}>
         {barsToRender.map((p, i) => {
-          const scaled = clamp01((p * amplitudeBoost) / Math.max(1e-6, yScale));
-          const h = Math.max(1, scaled * height);
+          // Treat values at or below noiseFloor as silence (minimal bar)
+          const scaled =
+            p <= noiseFloor ? 0 : clamp01((p * amplitudeBoost) / Math.max(1e-6, yScale));
+          const h = Math.max(1, scaled * height * maxHeightFraction);
           return (
             <View
               key={i}

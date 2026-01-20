@@ -20,8 +20,7 @@ import CircularPlayButton from '../components/CircularPlayButton';
 
 const audioPlayer = new AudioRecorderPlayer();
 
-const BAR_MS = 50;
-const WINDOW_MS = 30_000;
+const WINDOW_MS = 3_000; // 3 second rolling window
 
 type PlaybackScreenProps = {
   route: RouteProp<{ params: { recordingId: number; filePath: string; filename: string } }, 'params'>;
@@ -44,13 +43,14 @@ export default function PlaybackScreen() {
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
 
   const [storedWaveform, setStoredWaveform] = useState<number[]>([]);
-  const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('full');
+  const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('rolling');
 
   useEffect(() => {
     loadTags();
     loadRecordingWaveform();
     return () => {
       audioPlayer.removePlayBackListener();
+      void audioPlayer.stopPlayer().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -187,14 +187,14 @@ export default function PlaybackScreen() {
         storedWaveform.length > 0 ? (
           <Waveform
             peaks={storedWaveform}
-            barDurationMs={BAR_MS}
+            barDurationMs={durationMs / Math.max(1, storedWaveform.length)}
             progressMs={playbackMs}
             durationMs={durationMs}
             windowMs={WINDOW_MS}
             mode={waveformView}
             cursorMode="follow"
             showCursor={true}
-            minBarPx={2}
+            minBarPx={1}
             tagTimestamps={tags.map((t) => t.timestamp_ms)}
             tagWidthMs={500}
           />
@@ -213,7 +213,7 @@ export default function PlaybackScreen() {
             style={styles.toggleBtn}
           >
             <Text style={styles.toggleText}>
-              {waveformView === 'full' ? '📉 Switch to 30s Scroll View' : '🗺️ Switch to Full Waveform'}
+              {waveformView === 'full' ? '📉 Switch to 3s Scroll View' : '🗺️ Switch to Full Waveform'}
             </Text>
           </TouchableOpacity>
 

@@ -21,8 +21,8 @@ import Waveform from '../components/Waveform';
 const audioRecorderPlayer = new AudioRecorderPlayer();
 const TAG_SUGGESTIONS = ['hungry', 'tired', 'frustrated', 'playful', 'bored'];
 
-const BAR_MS = 50;
-const WINDOW_MS = 30_000;
+const BAR_MS = 10;       // 10ms bins -> 300 bars in 3s for fine timesteps
+const WINDOW_MS = 3_000; // 3 second rolling window
 
 export default function RecordScreen() {
   const [recording, setRecording] = useState(false);
@@ -44,6 +44,9 @@ export default function RecordScreen() {
       waveformAllRef.current = [];
       setLiveTags([]);
       setRecordMs(0);
+
+      // Library default is 0.5s; use 50ms so the record-back callback (and thus waveform) updates often.
+      await audioRecorderPlayer.setSubscriptionDuration(0.05);
 
       const result = await audioRecorderPlayer.startRecorder(
         Platform.select({ ios: 'recording.m4a', android: undefined }),
@@ -191,7 +194,7 @@ export default function RecordScreen() {
             mode="rolling"
             cursorMode="pinned"
             showCursor={true}
-            minBarPx={2}
+            minBarPx={1}
             tagTimestamps={liveTags.map((t) => Number(t.timestampMs))}
             tagWidthMs={500}
           />

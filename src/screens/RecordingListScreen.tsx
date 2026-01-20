@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { 
-    View, 
-    Text, 
-    FlatList, 
+import {
+    View,
+    Text,
     SectionList,
-    StyleSheet, 
-    TouchableOpacity, 
-    TextInput, 
-    Button, 
-    Alert, 
-    Platform } from 'react-native';
+    StyleSheet,
+    TouchableOpacity,
+    TextInput,
+    Button,
+    Alert,
+    Platform,
+} from 'react-native';
 import { format } from 'date-fns';
-import { getAllRecordings, updateSessionName, getRecordingsByTagLabel } from '../db';
+import { getAllRecordings, updateSessionName, getRecordingsByTagLabel, getTagsForRecording } from '../db';
 import { useNavigation } from '@react-navigation/native';
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
 
 type Recording = {
     id: number;
@@ -86,7 +88,7 @@ export default function RecordingListScreen() {
         );
 
         console.log('🔍 Applying filters to:', recordings.length);
-    
+
         switch (sortOption) {
             case 'date_asc':
                 filtered = filtered.sort((a, b) => a.created_at - b.created_at);
@@ -101,8 +103,67 @@ export default function RecordingListScreen() {
                 filtered = filtered.sort((a, b) => b.duration_ms - a.duration_ms);
                 break;
         }
-    
+
         setFilteredRecordings(filtered);
+    };
+
+    const [exportingAll, setExportingAll] = useState(false);
+
+    const resolveAudioPath = async (filename: string): Promise<string | null> => {
+        const candidates = [
+            filename,
+            `${RNFS.CachesDirectoryPath}/${filename}`,
+            `${RNFS.DocumentDirectoryPath}/${filename}`,
+        ];
+        for (const c of candidates) {
+            const p = c.replace(/^file:\/\//, '');
+            if (await RNFS.exists(p)) return c.startsWith('file://') ? c : `file://${p}`;
+        }
+        return null;
+    };
+
+    const handleExportAll = async () => {
+        if (filteredRecordings.length === 0) return;
+        setExportingAll(true);
+        try {
+            const exportData: { exportedAt: string; recordings: Array<{ filename: string; recordingId: number; session_name: string | null; duration_ms: number; created_at: number; tags: Array<{ id: number; label: string; timestamp_ms: number }> }> } = {
+                exportedAt: new Date().toISOString(),
+                recordings: [],
+            };
+            const urls: string[] = [];
+
+            for (const r of filteredRecordings) {
+                const tags = await getTagsForRecording(r.id);
+                exportData.recordings.push({
+                    filename: r.filename,
+                    recordingId: r.id,
+                    session_name: r.session_name ?? null,
+                    duration_ms: r.duration_ms,
+                    created_at: r.created_at,
+                    tags,
+                });
+                const audioUrl = await resolveAudioPath(r.filename);
+                if (audioUrl) urls.push(audioUrl);
+            }
+
+            const jsonPath = `${RNFS.CachesDirectoryPath}/babytalk_export_all_${Date.now()}.json`;
+            await RNFS.writeFile(jsonPath, JSON.stringify(exportData, null, 2), 'utf8');
+            urls.push(`file://${jsonPath}`);
+
+            await Share.open({
+                title: 'Export All Recordings & Tags',
+                message: `Exporting ${exportData.recordings.length} recording(s) and tags`,
+                urls,
+                failOnCancel: false,
+            });
+        } catch (err) {
+            console.error('❌ Export all failed:', err);
+            if (Platform.OS === 'ios') {
+                Alert.alert('Export failed', String(err));
+            }
+        } finally {
+            setExportingAll(false);
+        }
     };
 
     const renderItem = ({ item }: { item: Recording }) => (
@@ -156,6 +217,12 @@ export default function RecordingListScreen() {
                 value={tagQuery}
                 onChangeText={setTagQuery}
                 style={styles.searchInput}
+            />
+
+            <Button
+                title={exportingAll ? 'Exporting…' : '📤 Export All Recordings + Tags'}
+                onPress={handleExportAll}
+                disabled={filteredRecordings.length === 0 || exportingAll}
             />
 
             {filteredRecordings.length === 0 ? (
