@@ -54,11 +54,12 @@ export const addRecording = async ({
     filename: string;
     sessionName?: string;
     durationMs: number;
-    waveformData?: number[]; // Array of normalized 0-1 values
+    /** Serialized WaveformPayload JSON (raw dB samples + metadata), or null. */
+    waveformData?: string | null;
 }): Promise<number> => {
     const db = await getDb();
     const createdAt = Date.now();
-    const waveformJson = waveformData ? JSON.stringify(waveformData) : null;
+    const waveformJson = waveformData ?? null;
 
     const [result] = await db.executeSql(
         `INSERT INTO recordings (filename, session_name, created_at, duration_ms, waveform_data)

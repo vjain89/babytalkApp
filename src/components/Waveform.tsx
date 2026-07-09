@@ -1,175 +1,131 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
-
-type WaveformMode = 'rolling' | 'full';
-type CursorMode = 'pinned' | 'follow';
+import { BAR_MS, MIN_BAR_PX, WAVEFORM_HEIGHT } from '../waveform/config';
+import { dbToHeight01, type DbRange } from '../waveform/scale';
 
 type Props = {
-  peaks: number[];          // fixed-grid samples, each bin represents barDurationMs
+  /** Dense peak dB array: one entry per barDurationMs in the visible window. */
+  peaksDb: number[];
   progressMs: number;
   durationMs?: number;
 
-  barDurationMs?: number;  // default 50
-  windowMs?: number;       // default 30s
-  mode?: WaveformMode;
-
-  cursorMode?: CursorMode;
+  barDurationMs?: number;
+  /** Visible time window length (rolling modes). */
+  windowMs: number;
+  mode?: 'rolling' | 'full';
+  cursorMode?: 'pinned' | 'follow';
   showCursor?: boolean;
 
   tagTimestamps?: number[];
   tagWidthMs?: number;
   showTagMarkers?: boolean;
 
+  /** Fixed Y mapping for this session (no live autoscale). */
+  dbRange: DbRange;
+
   height?: number;
   minBarPx?: number;
-  amplitudeBoost?: number;
-  /** Max fraction of height the tallest bars use (0–1). Default 1. */
-  maxHeightFraction?: number;
-  /** Raw values <= this are treated as silence (minimal bar). Reduces noise when not speaking. 0–1, default 0.1. */
-  noiseFloor?: number;
-  /** Autoscale: map the percentile (e.g. 98th) to this fraction of max height (0–1). Default 0.75 = headroom so speech doesn't saturate. */
-  targetPeak?: number;
-
-  autoScale?: boolean;
-  autoScaleIntervalMs?: number;
-  autoScalePercentile?: number;
 };
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
+/**
+ * Display-only waveform. Does not capture or store audio.
+ * Expects peaksDb already densified for the visible window (or full clip).
+ * One bar per sample — no downsampling when bars fit on screen.
+ */
 export default function Waveform({
-  peaks,
+  peaksDb,
   progressMs,
   durationMs,
-
-  barDurationMs = 50,
-  windowMs = 30_000,
+  barDurationMs = BAR_MS,
+  windowMs,
   mode = 'rolling',
-
   cursorMode = 'pinned',
   showCursor = true,
-
   tagTimestamps = [],
   tagWidthMs = 500,
   showTagMarkers = true,
-
-  height = 64,
-  minBarPx = 2,
-  amplitudeBoost = 1.6,
-  maxHeightFraction = 1,
-  noiseFloor = 0.1,
-  targetPeak = 0.75,
-
-  autoScale = true,
-  autoScaleIntervalMs = 500,
-  autoScalePercentile = 0.98,
+  dbRange,
+  height = WAVEFORM_HEIGHT,
+  minBarPx = MIN_BAR_PX,
 }: Props) {
   const [width, setWidth] = useState(1);
-
-  const [yScale, setYScale] = useState(1);
-  const lastScaleUpdateRef = useRef(0);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > 0) setWidth(w);
   };
 
-  const windowBars = Math.max(1, Math.round(windowMs / barDurationMs)); // 600 for 30s@50ms
-
-  // Visible range in ms
+  // For rolling mode, peaksDb is already the densified trailing window ending at progressMs.
+  // visibleStart may be negative early in a session (silence padding on the left).
   const { visibleStartMs, visibleEndMs } = useMemo(() => {
     if (mode === 'full') {
-      const totalMs = Math.max(durationMs ?? 0, peaks.length * barDurationMs);
+      const totalMs = Math.max(durationMs ?? 0, peaksDb.length * barDurationMs);
       return { visibleStartMs: 0, visibleEndMs: totalMs };
     }
-    const end = Math.max(0, progressMs);
-    const start = Math.max(0, end - windowMs);
-    return { visibleStartMs: start, visibleEndMs: start + windowMs };
-  }, [mode, durationMs, peaks.length, barDurationMs, progressMs, windowMs]);
+    const end = progressMs;
+    return { visibleStartMs: end - windowMs, visibleEndMs: end };
+  }, [mode, durationMs, peaksDb.length, barDurationMs, progressMs, windowMs]);
 
-  // Extract fixed-grid window for rolling mode (always windowBars long, padded)
-  const baseBars = useMemo(() => {
-    if (mode === 'full') return peaks.map(clamp01);
-
-    const startIndex = Math.floor(visibleStartMs / barDurationMs);
-    const bars = new Array<number>(windowBars).fill(0);
-
-    for (let i = 0; i < windowBars; i++) {
-      const srcIdx = startIndex + i;
-      bars[i] = srcIdx >= 0 && srcIdx < peaks.length ? clamp01(peaks[srcIdx]) : 0;
-    }
-    return bars;
-  }, [mode, peaks, visibleStartMs, barDurationMs, windowBars]);
-
-  // Map source bars to pixel bars: never pad with zeros; one pixel bar per source bar when they fit
+  // One pixel bar per source bar when they fit; only downsample if screen is too narrow.
   const { barsToRender, barPx } = useMemo(() => {
     const minPx = Math.max(1, Math.floor(minBarPx));
     const maxCount = Math.max(1, Math.floor(width / minPx));
+    const source = peaksDb;
 
-    if (baseBars.length <= maxCount) {
-      // Show every source bar; spread across full width
-      const barPx = baseBars.length > 0 ? width / baseBars.length : minPx;
-      return { barsToRender: baseBars.map(clamp01), barPx };
+    if (source.length === 0) {
+      return { barsToRender: [] as number[], barPx: minPx };
     }
 
-    // Downsample: merge source bars to fit
-    const count = maxCount;
-    const bucketSize = Math.ceil(baseBars.length / count);
+    if (source.length <= maxCount) {
+      return {
+        barsToRender: source.map((db) => dbToHeight01(db, dbRange)),
+        barPx: width / source.length,
+      };
+    }
+
+    // Fallback only: merge adjacent bins (should not hit for 8s @ 50ms on phone).
+    const bucketSize = Math.ceil(source.length / maxCount);
     const out: number[] = [];
-    for (let i = 0; i < baseBars.length; i += bucketSize) {
-      let m = 0;
-      for (let j = 0; j < bucketSize && i + j < baseBars.length; j++) {
-        m = Math.max(m, baseBars[i + j]);
+    for (let i = 0; i < source.length; i += bucketSize) {
+      let m = -160;
+      for (let j = 0; j < bucketSize && i + j < source.length; j++) {
+        m = Math.max(m, source[i + j]);
       }
-      out.push(m);
+      out.push(dbToHeight01(m, dbRange));
     }
-    const barPx = out.length > 0 ? width / out.length : minPx;
-    return { barsToRender: out, barPx };
-  }, [baseBars, width, minBarPx]);
+    return { barsToRender: out, barPx: width / Math.max(1, out.length) };
+  }, [peaksDb, width, minBarPx, dbRange]);
 
-  // Autoscale: use only signal above noiseFloor; map the percentile to targetPeak so the y-axis has room for peaks
-  useEffect(() => {
-    if (!autoScale) return;
-    const now = Date.now();
-    if (now - lastScaleUpdateRef.current < autoScaleIntervalMs) return;
-    lastScaleUpdateRef.current = now;
-
-    const vals = barsToRender.filter((v) => v > noiseFloor).slice();
-    if (vals.length === 0) {
-      setYScale(1);
-      return;
-    }
-    vals.sort((a, b) => a - b);
-    const idx = Math.max(0, Math.min(vals.length - 1, Math.floor(vals.length * autoScalePercentile)));
-    const p = vals[idx];
-    // Map the 98th-percentile level to targetPeak (e.g. 0.75) so speech peaks have headroom and don't saturate
-    setYScale(Math.max(1e-6, (p * amplitudeBoost) / targetPeak));
-  }, [autoScale, autoScaleIntervalMs, autoScalePercentile, amplitudeBoost, targetPeak, noiseFloor, barsToRender]);
-
-  // Cursor position
   const cursorX = useMemo(() => {
     if (!showCursor) return -100;
-
     if (mode === 'full') {
-      const totalMs = Math.max(1, durationMs ?? peaks.length * barDurationMs);
+      const totalMs = Math.max(1, durationMs ?? peaksDb.length * barDurationMs);
       return clamp01(progressMs / totalMs) * width;
     }
-
     if (cursorMode === 'pinned') return width - 1;
+    return clamp01((progressMs - visibleStartMs) / windowMs) * width;
+  }, [
+    showCursor,
+    mode,
+    cursorMode,
+    width,
+    progressMs,
+    durationMs,
+    peaksDb.length,
+    barDurationMs,
+    visibleStartMs,
+    windowMs,
+  ]);
 
-    const within = clamp01((progressMs - visibleStartMs) / windowMs);
-    return within * width;
-  }, [showCursor, mode, cursorMode, width, progressMs, durationMs, peaks.length, barDurationMs, visibleStartMs, windowMs]);
-
-  // Tag overlay rectangles mapped to the same axis
   const tagRects = useMemo(() => {
     if (!showTagMarkers || tagTimestamps.length === 0) return [];
 
     if (mode === 'full') {
-      const totalMs = Math.max(1, durationMs ?? peaks.length * barDurationMs);
+      const totalMs = Math.max(1, durationMs ?? peaksDb.length * barDurationMs);
       const msPerPixel = totalMs / Math.max(1, width);
       const wPx = Math.max(2, Math.round(tagWidthMs / msPerPixel));
-
       return tagTimestamps.map((ts) => {
         const x = (ts / totalMs) * width;
         return { left: Math.max(0, Math.min(width, x - wPx / 2)), width: wPx };
@@ -178,7 +134,6 @@ export default function Waveform({
 
     const msPerPixel = windowMs / Math.max(1, width);
     const wPx = Math.max(2, Math.round(tagWidthMs / msPerPixel));
-
     const rects: { left: number; width: number }[] = [];
     for (const ts of tagTimestamps) {
       if (ts < visibleStartMs || ts > visibleEndMs) continue;
@@ -191,7 +146,7 @@ export default function Waveform({
     tagTimestamps,
     mode,
     durationMs,
-    peaks.length,
+    peaksDb.length,
     barDurationMs,
     visibleStartMs,
     visibleEndMs,
@@ -203,11 +158,8 @@ export default function Waveform({
   return (
     <View style={[styles.container, { height }]} onLayout={onLayout}>
       <View style={styles.barsRow}>
-        {barsToRender.map((p, i) => {
-          // Treat values at or below noiseFloor as silence (minimal bar)
-          const scaled =
-            p <= noiseFloor ? 0 : clamp01((p * amplitudeBoost) / Math.max(1e-6, yScale));
-          const h = Math.max(1, scaled * height * maxHeightFraction);
+        {barsToRender.map((h01, i) => {
+          const h = Math.max(1, h01 * height);
           return (
             <View
               key={i}
@@ -226,10 +178,7 @@ export default function Waveform({
           {tagRects.map((r, idx) => (
             <View
               key={idx}
-              style={[
-                styles.tagMarker,
-                { left: r.left, width: r.width, height },
-              ]}
+              style={[styles.tagMarker, { left: r.left, width: r.width, height }]}
             />
           ))}
         </View>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,12 @@ import Share from 'react-native-share';
 import Waveform from '../components/Waveform';
 import RecordingLayout from '../components/RecordingLayout';
 import CircularPlayButton from '../components/CircularPlayButton';
+import { BAR_MS, PLAYBACK_WINDOW_MS } from '../waveform/config';
+import { computePlaybackDbRange, type DbRange } from '../waveform/scale';
+import { densifyPeaks, parseWaveformData } from '../waveform/storage';
+import type { WaveformSample } from '../waveform/types';
 
 const audioPlayer = new AudioRecorderPlayer();
-
-const WINDOW_MS = 3_000; // 3 second rolling window
 
 type PlaybackScreenProps = {
   route: RouteProp<{ params: { recordingId: number; filePath: string; filename: string } }, 'params'>;
@@ -42,7 +44,9 @@ export default function PlaybackScreen() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
 
-  const [storedWaveform, setStoredWaveform] = useState<number[]>([]);
+  const [samples, setSamples] = useState<WaveformSample[]>([]);
+  const [barDurationMs, setBarDurationMs] = useState(BAR_MS);
+  const [dbRange, setDbRange] = useState<DbRange>(() => computePlaybackDbRange([]));
   const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('rolling');
 
   useEffect(() => {
@@ -74,14 +78,11 @@ export default function PlaybackScreen() {
       if (res.rows.length > 0) {
         const row = res.rows.item(0);
         if (typeof row.duration_ms === 'number') setDurationMs(row.duration_ms);
-        if (row.waveform_data) {
-          try {
-            const parsed = JSON.parse(row.waveform_data);
-            if (Array.isArray(parsed)) setStoredWaveform(parsed.map((x: any) => Number(x) || 0));
-          } catch {
-            setStoredWaveform([]);
-          }
-        }
+
+        const payload = parseWaveformData(row.waveform_data);
+        setSamples(payload.samples);
+        setBarDurationMs(payload.barDurationMs || BAR_MS);
+        setDbRange(computePlaybackDbRange(payload.samples));
       }
     } catch (err) {
       console.error('❌ Failed to load waveform_data:', err);
@@ -179,21 +180,39 @@ export default function PlaybackScreen() {
     }
   };
 
+  const peaksDb = useMemo(() => {
+    if (samples.length === 0) return [];
+
+    if (waveformView === 'full') {
+      const end = Math.max(durationMs, samples[samples.length - 1]?.tMs ?? 0) + barDurationMs;
+      return densifyPeaks(samples, 0, end, barDurationMs);
+    }
+
+    // Trailing window ending at playhead (left-pad if near start).
+    return densifyPeaks(
+      samples,
+      playbackMs - PLAYBACK_WINDOW_MS,
+      playbackMs,
+      barDurationMs
+    );
+  }, [samples, waveformView, durationMs, playbackMs, barDurationMs]);
+
   return (
     <RecordingLayout
       title={filename}
       durationLabel={`⏱️ ${(playbackMs / 1000).toFixed(1)}s`}
       waveform={
-        storedWaveform.length > 0 ? (
+        samples.length > 0 ? (
           <Waveform
-            peaks={storedWaveform}
-            barDurationMs={durationMs / Math.max(1, storedWaveform.length)}
+            peaksDb={peaksDb}
+            barDurationMs={barDurationMs}
             progressMs={playbackMs}
             durationMs={durationMs}
-            windowMs={WINDOW_MS}
+            windowMs={PLAYBACK_WINDOW_MS}
             mode={waveformView}
             cursorMode="follow"
             showCursor={true}
+            dbRange={dbRange}
             minBarPx={1}
             tagTimestamps={tags.map((t) => t.timestamp_ms)}
             tagWidthMs={500}
@@ -213,7 +232,7 @@ export default function PlaybackScreen() {
             style={styles.toggleBtn}
           >
             <Text style={styles.toggleText}>
-              {waveformView === 'full' ? '📉 Switch to 3s Scroll View' : '🗺️ Switch to Full Waveform'}
+              {waveformView === 'full' ? '📉 Switch to 8s Scroll View' : '🗺️ Switch to Full Waveform'}
             </Text>
           </TouchableOpacity>
 

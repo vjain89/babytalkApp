@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,18 @@ import { addRecording, addTag, getTodayRecordingCount } from '../db';
 import CircularRecordButton from '../components/CircularRecordButton';
 import RecordingLayout from '../components/RecordingLayout';
 import Waveform from '../components/Waveform';
+import {
+  BAR_MS,
+  CAPTURE_DB_MIN,
+  RECORD_WINDOW_MS,
+  SUBSCRIPTION_SEC,
+} from '../waveform/config';
+import { RECORD_DB_RANGE } from '../waveform/scale';
+import { densifyPeaks, serializeWaveform, upsertSample } from '../waveform/storage';
+import { emptyWaveformPayload, type WaveformSample } from '../waveform/types';
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 const TAG_SUGGESTIONS = ['hungry', 'tired', 'frustrated', 'playful', 'bored'];
-
-const BAR_MS = 10;       // 10ms bins -> 300 bars in 3s for fine timesteps
-const WINDOW_MS = 3_000; // 3 second rolling window
 
 export default function RecordScreen() {
   const [recording, setRecording] = useState(false);
@@ -34,19 +40,20 @@ export default function RecordScreen() {
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [customTag, setCustomTag] = useState('');
 
-  // ✅ Fixed-grid waveform for entire session
-  const waveformAllRef = useRef<number[]>([]);
+  // Sparse capture list (mutated in place; displayPeaks is React state for re-renders)
+  const samplesRef = useRef<WaveformSample[]>([]);
+  const [displayPeaks, setDisplayPeaks] = useState<number[]>([]);
 
   const navigation = useNavigation();
 
   const startRecording = async () => {
     try {
-      waveformAllRef.current = [];
+      samplesRef.current = [];
+      setDisplayPeaks([]);
       setLiveTags([]);
       setRecordMs(0);
 
-      // Library default is 0.5s; use 50ms so the record-back callback (and thus waveform) updates often.
-      await audioRecorderPlayer.setSubscriptionDuration(0.05);
+      await audioRecorderPlayer.setSubscriptionDuration(SUBSCRIPTION_SEC);
 
       const result = await audioRecorderPlayer.startRecorder(
         Platform.select({ ios: 'recording.m4a', android: undefined }),
@@ -56,33 +63,25 @@ export default function RecordScreen() {
       setFilePath(result);
 
       audioRecorderPlayer.addRecordBackListener((e) => {
-        if (typeof e?.currentPosition === 'number') {
-          setRecordMs(e.currentPosition);
+        if (typeof e?.currentPosition !== 'number') return;
 
-          // Fixed-grid index for this time
-          const idx = Math.max(0, Math.round(e.currentPosition / BAR_MS));
+        const tMs = e.currentPosition;
+        setRecordMs(tMs);
 
-          // Normalize metering
-          if (typeof e.currentMetering === 'number') {
-            const minDb = -60;
-            const maxDb = 0;
-            const clamped = Math.max(minDb, Math.min(maxDb, e.currentMetering));
-            let normalized = (clamped - minDb) / (maxDb - minDb); // 0..1
-            normalized = Math.pow(normalized, 1.6);
+        const avgDb =
+          typeof e.currentMetering === 'number' ? e.currentMetering : CAPTURE_DB_MIN;
+        const peakDb =
+          typeof e.currentPeakMetering === 'number'
+            ? e.currentPeakMetering
+            : avgDb;
 
-            const arr = waveformAllRef.current;
+        upsertSample(samplesRef.current, { tMs, avgDb, peakDb });
 
-            // Fill gaps with 0 so index==time bin
-            while (arr.length < idx) arr.push(0);
-
-            // Set the value at idx (use max to avoid losing peaks if listener fires multiple times per bin)
-            const prev = arr[idx] ?? 0;
-            arr[idx] = Math.max(prev, normalized);
-
-            waveformAllRef.current = arr;
-          }
-        }
-        return;
+        // Live tail: window ends at "now" so new bars appear at the right edge.
+        // Negative start → left-padded silence until the recording fills 3s.
+        setDisplayPeaks(
+          densifyPeaks(samplesRef.current, tMs - RECORD_WINDOW_MS, tMs, BAR_MS)
+        );
       });
 
       setRecording(true);
@@ -147,11 +146,13 @@ export default function RecordScreen() {
       }
 
       try {
+        const payload = emptyWaveformPayload();
+        payload.samples = samplesRef.current.slice();
         const recordingId = await addRecording({
           filename,
           sessionName: finalSessionName,
           durationMs,
-          waveformData: waveformAllRef.current, // ✅ fixed-grid waveform
+          waveformData: serializeWaveform(payload),
         });
 
         for (const tag of liveTags) {
@@ -161,8 +162,8 @@ export default function RecordScreen() {
         console.error('❌ DB insert failed:', err);
       }
 
-      // reset
-      waveformAllRef.current = [];
+      samplesRef.current = [];
+      setDisplayPeaks([]);
       setRecordMs(0);
       setFilePath(null);
       setLiveTags([]);
@@ -180,6 +181,13 @@ export default function RecordScreen() {
     }
   };
 
+  const tagTimestampsInWindow = useMemo(() => {
+    const start = Math.max(0, recordMs - RECORD_WINDOW_MS);
+    return liveTags
+      .map((t) => Number(t.timestampMs))
+      .filter((ts) => ts >= start && ts <= recordMs);
+  }, [liveTags, recordMs]);
+
   return (
     <>
       <RecordingLayout
@@ -187,15 +195,16 @@ export default function RecordScreen() {
         durationLabel={`Duration: ${(recordMs / 1000).toFixed(1)}s`}
         waveform={
           <Waveform
-            peaks={waveformAllRef.current}
+            peaksDb={displayPeaks}
             barDurationMs={BAR_MS}
             progressMs={recordMs}
-            windowMs={WINDOW_MS}
+            windowMs={RECORD_WINDOW_MS}
             mode="rolling"
             cursorMode="pinned"
             showCursor={true}
+            dbRange={RECORD_DB_RANGE}
             minBarPx={1}
-            tagTimestamps={liveTags.map((t) => Number(t.timestampMs))}
+            tagTimestamps={tagTimestampsInWindow}
             tagWidthMs={500}
           />
         }
