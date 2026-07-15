@@ -2,6 +2,8 @@
 
 React Native app for recording baby sounds, tagging moments, visualizing waveforms, and exporting sessions locally.
 
+**Why this exists:** existing first-word trackers are diaries — a log of when words appeared. BabyTalk captures the audio moments themselves, tagged in real time with context and emotion, building a structured dataset of one child's speech development — with the longer-term goal of training models on it. Solo project.
+
 ## Features
 
 - **Record / pause / resume / stop** with live metering
