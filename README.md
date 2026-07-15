@@ -1,97 +1,106 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# BabyTalk App
 
-# Getting Started
+React Native app for recording baby sounds, tagging moments, visualizing waveforms, and exporting sessions locally.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Features
 
-## Step 1: Start Metro
+- **Record / pause / resume / stop** with live metering
+- **Waveform visualization** — 3s live tail while recording; 8s rolling window on playback (50ms bars, peak dB)
+- **Tagging** during record and playback, with markers on the waveform
+- **Session library** — search by name or tag, sort, rename
+- **Export** single recording or Export All (audio + JSON) via the system share sheet
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Stack
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+| Piece | Choice |
+|-------|--------|
+| Framework | React Native 0.78 / React 19 / TypeScript |
+| Audio | Local fork of `react-native-audio-recorder-player` |
+| Storage | SQLite (`react-native-sqlite-storage`) + `.m4a` on disk |
+| Navigation | React Navigation native stack |
 
-```sh
-# Using npm
-npm start
+## Project layout
 
-# OR using Yarn
-yarn start
+```
+src/
+├── screens/          # Record, Playback, RecordingList
+├── components/       # Waveform, buttons, layout
+├── waveform/         # Capture/storage helpers, scale, config
+├── db.ts             # SQLite API
+└── navigation/
+docs/
+└── ARCHITECTURE_DEEP_DIVE.md   # Engine → bridge → capture → store → render → playback
 ```
 
-## Step 2: Build and run your app
+## Setup
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+### Prerequisites
+
+- Node ≥ 18
+- Xcode (iOS) with CocoaPods
+- Physical device: Xcode major version must support your iOS version (e.g. iOS 26.x needs Xcode 26.x / macOS Tahoe)
+
+### Install
+
+```sh
+npm install
+cd ios && bundle install && bundle exec pod install && cd ..
+```
+
+The audio module is linked as `file:../react-native-audio-recorder-player` (sibling checkout). Ensure that directory exists next to this repo (or adjust `package.json` / reinstall).
+
+### Run
+
+```sh
+npm start
+# other terminal:
+npm run ios          # simulator
+# or open in Xcode:
+open ios/babytalkApp.xcworkspace
+```
+
+After **native** audio-module changes (Swift/Kotlin), do a Clean Build in Xcode (`Shift+Cmd+K`), then Run — Metro Fast Refresh alone is not enough.
 
 ### Android
 
 ```sh
-# Using npm
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+## Waveform model (summary)
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+| Phase | Window | Resolution | Y scale |
+|-------|--------|------------|---------|
+| Recording | last 3s | 50ms peak bars | Fixed −60…0 dB |
+| Playback | last 8s | 50ms peak bars | Fixed per session (95th percentile) |
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+Samples are stored as sparse `{ tMs, avgDb, peakDb }` with metadata (`barDurationMs`, `version`) in SQLite. Details: [docs/ARCHITECTURE_DEEP_DIVE.md](docs/ARCHITECTURE_DEEP_DIVE.md).
 
-```sh
-bundle install
-```
+## Docs
 
-Then, and every time you update your native dependencies, run:
+| Doc | Purpose |
+|-----|---------|
+| [docs/ARCHITECTURE_DEEP_DIVE.md](docs/ARCHITECTURE_DEEP_DIVE.md) | File-tied architecture walkthrough |
+| [INSTALL_TO_IPHONE.md](INSTALL_TO_IPHONE.md) | USB install via Xcode |
+| [PROJECT_STATUS.md](PROJECT_STATUS.md) | Historical status notes (may lag code) |
 
-```sh
-bundle exec pod install
-```
+## Roadmap
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+- [ ] Device validation of waveform rescope
+- [ ] Structured export for offline/cloud processing
+- [ ] Google Drive backup
+- [ ] Optional file-based waveform (decode `.m4a` peaks)
+- [ ] Local and/or cloud audio processing
 
-```sh
-# Using npm
-npm run ios
+## Troubleshooting
 
-# OR using Yarn
-yarn ios
-```
+| Issue | Likely cause |
+|-------|----------------|
+| Developer disk image / mount error on device | Xcode too old for the phone’s iOS — upgrade macOS/Xcode or use Simulator |
+| Flat waveform while speaking | Mic permission denied, or native rebuild missing after metering changes |
+| `react-native-sqlite-storage` CLI config warning | Harmless package metadata warning; ignore unless DB fails at runtime |
+| Stub / no real audio | Wrong audio module path — confirm `node_modules` symlink and pods |
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## License
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Private project.
