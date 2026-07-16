@@ -17,7 +17,7 @@ import Share from 'react-native-share';
 import Waveform from '../components/Waveform';
 import RecordingLayout from '../components/RecordingLayout';
 import CircularPlayButton from '../components/CircularPlayButton';
-import { BAR_MS, PLAYBACK_WINDOW_MS } from '../waveform/config';
+import { BAR_MS, PLAYBACK_WINDOW_MS, TAG_MARKER_MS } from '../waveform/config';
 import { computePlaybackDbRange, type DbRange } from '../waveform/scale';
 import { densifyPeaks, parseWaveformData } from '../waveform/storage';
 import type { WaveformSample } from '../waveform/types';
@@ -215,7 +215,7 @@ export default function PlaybackScreen() {
             dbRange={dbRange}
             minBarPx={1}
             tagTimestamps={tags.map((t) => t.timestamp_ms)}
-            tagWidthMs={500}
+            tagWidthMs={TAG_MARKER_MS}
           />
         ) : (
           <Text style={{ textAlign: 'center', color: '#888' }}>

@@ -22,6 +22,7 @@ import {
   CAPTURE_DB_MIN,
   RECORD_WINDOW_MS,
   SUBSCRIPTION_SEC,
+  TAG_MARKER_MS,
 } from '../waveform/config';
 import { RECORD_DB_RANGE } from '../waveform/scale';
 import { densifyPeaks, serializeWaveform, upsertSample } from '../waveform/storage';
@@ -205,7 +206,7 @@ export default function RecordScreen() {
             dbRange={RECORD_DB_RANGE}
             minBarPx={1}
             tagTimestamps={tagTimestampsInWindow}
-            tagWidthMs={500}
+            tagWidthMs={TAG_MARKER_MS}
           />
         }
         controls={

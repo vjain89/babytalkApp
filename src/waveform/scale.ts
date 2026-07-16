@@ -55,8 +55,11 @@ export function computePlaybackDbRange(samples: WaveformSample[]): DbRange {
   // A loud shriek above p still clips at the top; conversation below p stays visible.
   const maxDb = CAPTURE_DB_MAX;
   let minDb = p / (1 - TARGET_PEAK_FRACTION);
+  // Stay within a useful speech window; do not reopen older ultra-wide -60 floors.
   minDb = clamp(minDb, CAPTURE_DB_MIN, RECORD_VISIBLE_DB_MIN);
-  if (maxDb - minDb < 40) minDb = maxDb - 40;
+  if (maxDb - minDb < 30) minDb = maxDb - 30;
+  // Floor should sit near ambient; never lower than RECORD_VISIBLE for readability.
+  if (minDb < RECORD_VISIBLE_DB_MIN - 10) minDb = RECORD_VISIBLE_DB_MIN - 10;
 
   return { minDb, maxDb };
 }
