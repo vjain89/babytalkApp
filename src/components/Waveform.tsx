@@ -13,6 +13,10 @@ type Props = {
   /** Dense peak dB array: one entry per barDurationMs in the visible window. */
   peaksDb: number[];
   progressMs: number;
+  /** Preview position while scrubbing (cursor only). */
+  scrubPreviewMs?: number | null;
+  /** Rolling view: time at the right edge of the visible window. */
+  rollingWindowEndMs?: number;
   durationMs?: number;
 
   barDurationMs?: number;
@@ -49,6 +53,8 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export default function Waveform({
   peaksDb,
   progressMs,
+  scrubPreviewMs = null,
+  rollingWindowEndMs,
   durationMs,
   barDurationMs = BAR_MS,
   windowMs,
@@ -78,20 +84,19 @@ export default function Waveform({
     }
   };
 
-  const displayProgressMs = scrubMs ?? progressMs;
-  const anchorMsRef = useRef(displayProgressMs);
-  anchorMsRef.current = displayProgressMs;
+  const displayProgressMs = scrubPreviewMs ?? scrubMs ?? progressMs;
 
   // For rolling mode, peaksDb is already the densified trailing window ending at progressMs.
   // visibleStart may be negative early in a session (silence padding on the left).
+  const rollingEndMs = rollingWindowEndMs ?? progressMs;
+
   const { visibleStartMs, visibleEndMs } = useMemo(() => {
     if (mode === 'full') {
       const totalMs = Math.max(durationMs ?? 0, peaksDb.length * barDurationMs);
       return { visibleStartMs: 0, visibleEndMs: totalMs };
     }
-    const end = displayProgressMs;
-    return { visibleStartMs: end - windowMs, visibleEndMs: end };
-  }, [mode, durationMs, peaksDb.length, barDurationMs, displayProgressMs, windowMs]);
+    return { visibleStartMs: rollingEndMs - windowMs, visibleEndMs: rollingEndMs };
+  }, [mode, durationMs, peaksDb.length, barDurationMs, rollingEndMs, windowMs]);
 
   const totalMsFull = useMemo(
     () => Math.max(1, durationMs ?? peaksDb.length * barDurationMs),
@@ -104,10 +109,14 @@ export default function Waveform({
     if (mode === 'full') {
       return clampedX * totalMsFull;
     }
-    const anchor = anchorMsRef.current;
-    const start = anchor - windowMs;
+    const start = rollingEndMs - windowMs;
     const t = start + clampedX * windowMs;
     return Math.max(0, Math.min(totalMsFull, t));
+  };
+
+  const endScrub = () => {
+    setScrubMs(null);
+    onScrubChange?.(null);
   };
 
   const panResponder = useMemo(
@@ -130,16 +139,14 @@ export default function Waveform({
         onPanResponderRelease: (evt) => {
           if (!seekable) return;
           const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
-          setScrubMs(null);
-          onScrubChange?.(null);
           onSeek?.(ms);
+          endScrub();
         },
         onPanResponderTerminate: () => {
-          setScrubMs(null);
-          onScrubChange?.(null);
+          endScrub();
         },
       }),
-    [seekable, onSeek, onScrubChange, mode, progressMs, windowMs, totalMsFull],
+    [seekable, onSeek, onScrubChange, mode, rollingEndMs, windowMs, totalMsFull],
   );
 
   // One pixel bar per source bar when they fit; only downsample if screen is too narrow.
@@ -178,15 +185,20 @@ export default function Waveform({
     if (mode === 'full') {
       return clamp01(displayProgressMs / totalMsFull) * width;
     }
-    if (cursorMode === 'pinned') return width - 1;
-    const start = displayProgressMs - windowMs;
+    if (cursorMode === 'pinned' && scrubPreviewMs == null && scrubMs == null) {
+      return width - 1;
+    }
+    const start = rollingEndMs - windowMs;
     return clamp01((displayProgressMs - start) / windowMs) * width;
   }, [
     showCursor,
     mode,
     cursorMode,
+    scrubPreviewMs,
+    scrubMs,
     width,
     displayProgressMs,
+    rollingEndMs,
     totalMsFull,
     windowMs,
   ]);

@@ -50,8 +50,20 @@ export default function PlaybackScreen() {
   const [dbRange, setDbRange] = useState<DbRange>(() => computePlaybackDbRange([]));
   const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('rolling');
   const [scrubPreviewMs, setScrubPreviewMs] = useState<number | null>(null);
+  const [scrubWindowEndMs, setScrubWindowEndMs] = useState<number | null>(null);
 
   const displayMs = scrubPreviewMs ?? playbackMs;
+  const rollingWindowEndMs = scrubWindowEndMs ?? playbackMs;
+
+  const handleScrubChange = (ms: number | null) => {
+    if (ms === null) {
+      setScrubPreviewMs(null);
+      setScrubWindowEndMs(null);
+      return;
+    }
+    setScrubWindowEndMs((prev) => prev ?? playbackMs);
+    setScrubPreviewMs(ms);
+  };
 
   useEffect(() => {
     loadTags();
@@ -154,6 +166,7 @@ export default function PlaybackScreen() {
     const clamped = Math.max(0, Math.min(durationMs, Math.floor(ms)));
     setPlaybackMs(clamped);
     setScrubPreviewMs(null);
+    setScrubWindowEndMs(null);
     setHighlightedTagId(null);
     try {
       await audioPlayer.seekToPlayer(clamped);
@@ -226,11 +239,11 @@ export default function PlaybackScreen() {
     // Trailing window ending at playhead (left-pad if near start).
     return densifyPeaks(
       samples,
-      displayMs - PLAYBACK_WINDOW_MS,
-      displayMs,
+      rollingWindowEndMs - PLAYBACK_WINDOW_MS,
+      rollingWindowEndMs,
       barDurationMs
     );
-  }, [samples, waveformView, durationMs, displayMs, barDurationMs]);
+  }, [samples, waveformView, durationMs, rollingWindowEndMs, barDurationMs]);
 
   return (
     <RecordingLayout
@@ -241,7 +254,9 @@ export default function PlaybackScreen() {
           <Waveform
             peaksDb={peaksDb}
             barDurationMs={barDurationMs}
-            progressMs={displayMs}
+            progressMs={playbackMs}
+            scrubPreviewMs={scrubPreviewMs}
+            rollingWindowEndMs={rollingWindowEndMs}
             durationMs={durationMs}
             windowMs={PLAYBACK_WINDOW_MS}
             mode={waveformView}
@@ -253,7 +268,7 @@ export default function PlaybackScreen() {
             tagWidthMs={TAG_MARKER_MS}
             seekable
             onSeek={seekTo}
-            onScrubChange={setScrubPreviewMs}
+            onScrubChange={handleScrubChange}
           />
         ) : (
           <Text style={{ textAlign: 'center', color: '#888' }}>
