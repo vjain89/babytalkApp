@@ -49,6 +49,9 @@ export default function PlaybackScreen() {
   const [barDurationMs, setBarDurationMs] = useState(BAR_MS);
   const [dbRange, setDbRange] = useState<DbRange>(() => computePlaybackDbRange([]));
   const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('rolling');
+  const [scrubPreviewMs, setScrubPreviewMs] = useState<number | null>(null);
+
+  const displayMs = scrubPreviewMs ?? playbackMs;
 
   useEffect(() => {
     loadTags();
@@ -147,8 +150,20 @@ export default function PlaybackScreen() {
     else startPlaying();
   };
 
+  const seekTo = async (ms: number) => {
+    const clamped = Math.max(0, Math.min(durationMs, Math.floor(ms)));
+    setPlaybackMs(clamped);
+    setScrubPreviewMs(null);
+    setHighlightedTagId(null);
+    try {
+      await audioPlayer.seekToPlayer(clamped);
+    } catch {
+      // Player may not be started yet; position is stored for the next play.
+    }
+  };
+
   const handleTag = async () => {
-    const ts = Math.floor(playbackMs);
+    const ts = Math.floor(displayMs);
     let wasPlaying = false;
 
     if (isPlaying) {
@@ -211,22 +226,22 @@ export default function PlaybackScreen() {
     // Trailing window ending at playhead (left-pad if near start).
     return densifyPeaks(
       samples,
-      playbackMs - PLAYBACK_WINDOW_MS,
-      playbackMs,
+      displayMs - PLAYBACK_WINDOW_MS,
+      displayMs,
       barDurationMs
     );
-  }, [samples, waveformView, durationMs, playbackMs, barDurationMs]);
+  }, [samples, waveformView, durationMs, displayMs, barDurationMs]);
 
   return (
     <RecordingLayout
       title={filename}
-      durationLabel={`⏱️ ${(playbackMs / 1000).toFixed(1)}s`}
+      durationLabel={`⏱️ ${(displayMs / 1000).toFixed(1)}s / ${(durationMs / 1000).toFixed(1)}s`}
       waveform={
         samples.length > 0 ? (
           <Waveform
             peaksDb={peaksDb}
             barDurationMs={barDurationMs}
-            progressMs={playbackMs}
+            progressMs={displayMs}
             durationMs={durationMs}
             windowMs={PLAYBACK_WINDOW_MS}
             mode={waveformView}
@@ -236,6 +251,9 @@ export default function PlaybackScreen() {
             minBarPx={1}
             tagTimestamps={tags.map((t) => t.timestamp_ms)}
             tagWidthMs={TAG_MARKER_MS}
+            seekable
+            onSeek={seekTo}
+            onScrubChange={setScrubPreviewMs}
           />
         ) : (
           <Text style={{ textAlign: 'center', color: '#888' }}>
@@ -257,6 +275,7 @@ export default function PlaybackScreen() {
           </TouchableOpacity>
 
           <Button title="🏷️ Tag This Moment" onPress={handleTag} />
+          <Text style={styles.seekHint}>Tap or drag the waveform to seek</Text>
           <Button title="📤 Export Recording + Tags" onPress={handleExport} />
         </View>
       }
@@ -272,8 +291,7 @@ export default function PlaybackScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => {
-                audioPlayer.seekToPlayer(item.timestamp_ms);
-                setPlaybackMs(item.timestamp_ms);
+                void seekTo(item.timestamp_ms);
                 setHighlightedTagId(item.id);
               }}
               onLongPress={() => {
@@ -328,5 +346,10 @@ const styles = StyleSheet.create({
   toggleText: {
     color: '#007AFF',
     fontSize: 14,
+  },
+  seekHint: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
   },
 });

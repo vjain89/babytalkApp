@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, LayoutChangeEvent, PanResponder } from 'react-native';
 import {
   BAR_GAP_PX,
   BAR_MS,
@@ -31,6 +31,12 @@ type Props = {
 
   height?: number;
   minBarPx?: number;
+
+  /** Tap/drag to seek (playback). Maps touch X → time via onSeek. */
+  seekable?: boolean;
+  onSeek?: (ms: number) => void;
+  /** Fires during scrub with preview ms, or null when scrub ends. */
+  onScrubChange?: (ms: number | null) => void;
 };
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -55,13 +61,26 @@ export default function Waveform({
   dbRange,
   height = WAVEFORM_HEIGHT,
   minBarPx = MIN_BAR_PX,
+  seekable = false,
+  onSeek,
+  onScrubChange,
 }: Props) {
   const [width, setWidth] = useState(1);
+  const [scrubMs, setScrubMs] = useState<number | null>(null);
+  const widthRef = useRef(1);
+  const mapXToMsRef = useRef<(x: number) => number>(() => 0);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
-    if (w > 0) setWidth(w);
+    if (w > 0) {
+      setWidth(w);
+      widthRef.current = w;
+    }
   };
+
+  const displayProgressMs = scrubMs ?? progressMs;
+  const anchorMsRef = useRef(displayProgressMs);
+  anchorMsRef.current = displayProgressMs;
 
   // For rolling mode, peaksDb is already the densified trailing window ending at progressMs.
   // visibleStart may be negative early in a session (silence padding on the left).
@@ -70,9 +89,58 @@ export default function Waveform({
       const totalMs = Math.max(durationMs ?? 0, peaksDb.length * barDurationMs);
       return { visibleStartMs: 0, visibleEndMs: totalMs };
     }
-    const end = progressMs;
+    const end = displayProgressMs;
     return { visibleStartMs: end - windowMs, visibleEndMs: end };
-  }, [mode, durationMs, peaksDb.length, barDurationMs, progressMs, windowMs]);
+  }, [mode, durationMs, peaksDb.length, barDurationMs, displayProgressMs, windowMs]);
+
+  const totalMsFull = useMemo(
+    () => Math.max(1, durationMs ?? peaksDb.length * barDurationMs),
+    [durationMs, peaksDb.length, barDurationMs],
+  );
+
+  mapXToMsRef.current = (x: number) => {
+    const w = Math.max(1, widthRef.current);
+    const clampedX = clamp01(x / w);
+    if (mode === 'full') {
+      return clampedX * totalMsFull;
+    }
+    const anchor = anchorMsRef.current;
+    const start = anchor - windowMs;
+    const t = start + clampedX * windowMs;
+    return Math.max(0, Math.min(totalMsFull, t));
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => seekable,
+        onMoveShouldSetPanResponder: () => seekable,
+        onPanResponderGrant: (evt) => {
+          if (!seekable) return;
+          const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
+          setScrubMs(ms);
+          onScrubChange?.(ms);
+        },
+        onPanResponderMove: (evt) => {
+          if (!seekable) return;
+          const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
+          setScrubMs(ms);
+          onScrubChange?.(ms);
+        },
+        onPanResponderRelease: (evt) => {
+          if (!seekable) return;
+          const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
+          setScrubMs(null);
+          onScrubChange?.(null);
+          onSeek?.(ms);
+        },
+        onPanResponderTerminate: () => {
+          setScrubMs(null);
+          onScrubChange?.(null);
+        },
+      }),
+    [seekable, onSeek, onScrubChange, mode, progressMs, windowMs, totalMsFull],
+  );
 
   // One pixel bar per source bar when they fit; only downsample if screen is too narrow.
   const { barsToRender, barPx } = useMemo(() => {
@@ -108,21 +176,18 @@ export default function Waveform({
   const cursorX = useMemo(() => {
     if (!showCursor) return -100;
     if (mode === 'full') {
-      const totalMs = Math.max(1, durationMs ?? peaksDb.length * barDurationMs);
-      return clamp01(progressMs / totalMs) * width;
+      return clamp01(displayProgressMs / totalMsFull) * width;
     }
     if (cursorMode === 'pinned') return width - 1;
-    return clamp01((progressMs - visibleStartMs) / windowMs) * width;
+    const start = displayProgressMs - windowMs;
+    return clamp01((displayProgressMs - start) / windowMs) * width;
   }, [
     showCursor,
     mode,
     cursorMode,
     width,
-    progressMs,
-    durationMs,
-    peaksDb.length,
-    barDurationMs,
-    visibleStartMs,
+    displayProgressMs,
+    totalMsFull,
     windowMs,
   ]);
 
@@ -194,7 +259,24 @@ export default function Waveform({
         </View>
       )}
 
-      {showCursor && <View style={[styles.cursor, { left: cursorX }]} />}
+      {showCursor && (
+        <View
+          style={[
+            styles.cursor,
+            { left: cursorX },
+            scrubMs !== null && styles.cursorScrubbing,
+          ]}
+        />
+      )}
+
+      {seekable && (
+        <View
+          style={styles.seekOverlay}
+          {...panResponder.panHandlers}
+          accessibilityRole="adjustable"
+          accessibilityLabel="Waveform seek"
+        />
+      )}
     </View>
   );
 }
@@ -238,5 +320,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 2,
     backgroundColor: 'red',
+  },
+  cursorScrubbing: {
+    width: 3,
+    backgroundColor: '#D32F2F',
+  },
+  seekOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
 });
