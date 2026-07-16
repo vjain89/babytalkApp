@@ -70,6 +70,17 @@ export const addRecording = async ({
     return result.insertId!;
 };
 
+export const updateWaveformData = async (
+  recordingId: number,
+  waveformData: string,
+): Promise<void> => {
+  const db = await getDb();
+  await db.executeSql(`UPDATE recordings SET waveform_data = ? WHERE id = ?`, [
+    waveformData,
+    recordingId,
+  ]);
+};
+
 // Get all recordings, ordered by newest
 export const getAllRecordings = async (sort: 'newest' | 'oldest' | 'longest' | 'shortest' = 'newest') => {
     const db = await getDb();

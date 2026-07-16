@@ -1,26 +1,31 @@
 import { BAR_MS, WAVEFORM_SCHEMA_VERSION } from './config';
 
-/** One metering sample from a native record-back callback. */
+/** One metering or file-extracted sample. */
 export type WaveformSample = {
   /** Time from start of recording, milliseconds. */
   tMs: number;
-  /** averagePower (iOS) or equivalent, dBFS. */
+  /** RMS / averagePower equivalent, dBFS. */
   avgDb: number;
-  /** peakPower (iOS) or maxAmplitude-derived (Android), dBFS. */
+  /** Peak amplitude, dBFS. */
   peakDb: number;
 };
+
+export type WaveformSource = 'metering' | 'file';
 
 /** Persisted waveform payload (JSON in recordings.waveform_data). */
 export type WaveformPayload = {
   version: typeof WAVEFORM_SCHEMA_VERSION | number;
   barDurationMs: number;
+  /** Where samples came from. Path B uses 'file'. */
+  source?: WaveformSource;
   samples: WaveformSample[];
 };
 
-export function emptyWaveformPayload(): WaveformPayload {
+export function emptyWaveformPayload(source: WaveformSource = 'metering'): WaveformPayload {
   return {
     version: WAVEFORM_SCHEMA_VERSION,
     barDurationMs: BAR_MS,
+    source,
     samples: [],
   };
 }

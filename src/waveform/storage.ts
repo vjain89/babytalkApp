@@ -87,9 +87,12 @@ export function parseWaveformData(raw: string | null | undefined): WaveformPaylo
         avgDb: Number.isFinite(Number(s.avgDb)) ? Number(s.avgDb) : CAPTURE_DB_MIN,
         peakDb: Number.isFinite(Number(s.peakDb)) ? Number(s.peakDb) : CAPTURE_DB_MIN,
       }));
+      const source =
+        parsed.source === 'file' || parsed.source === 'metering' ? parsed.source : undefined;
       return {
         version: Number(parsed.version) || WAVEFORM_SCHEMA_VERSION,
         barDurationMs: Number(parsed.barDurationMs) || BAR_MS,
+        source,
         samples,
       };
     }
@@ -105,6 +108,7 @@ export function parseWaveformData(raw: string | null | undefined): WaveformPaylo
       return {
         version: 1,
         barDurationMs: BAR_MS,
+        source: 'metering' as const,
         samples,
       };
     }

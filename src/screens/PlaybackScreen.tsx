@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { addTag, getTagsForRecording, getDb, updateTagLabel } from '../db';
+import { addTag, getTagsForRecording, getDb, updateTagLabel, updateWaveformData } from '../db';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import Waveform from '../components/Waveform';
@@ -19,8 +19,9 @@ import RecordingLayout from '../components/RecordingLayout';
 import CircularPlayButton from '../components/CircularPlayButton';
 import { BAR_MS, PLAYBACK_WINDOW_MS, TAG_MARKER_MS } from '../waveform/config';
 import { computePlaybackDbRange, type DbRange } from '../waveform/scale';
-import { densifyPeaks, parseWaveformData } from '../waveform/storage';
-import type { WaveformSample } from '../waveform/types';
+import { densifyPeaks, parseWaveformData, serializeWaveform } from '../waveform/storage';
+import { resolveAudioUri } from '../waveform/audioPath';
+import { emptyWaveformPayload, type WaveformSample } from '../waveform/types';
 
 const audioPlayer = new AudioRecorderPlayer();
 
@@ -79,7 +80,26 @@ export default function PlaybackScreen() {
         const row = res.rows.item(0);
         if (typeof row.duration_ms === 'number') setDurationMs(row.duration_ms);
 
-        const payload = parseWaveformData(row.waveform_data);
+        let payload = parseWaveformData(row.waveform_data);
+
+        // Path B: if we only have live metering (or nothing), decode peaks from the file.
+        if (payload.source !== 'file' || payload.samples.length === 0) {
+          const uri = await resolveAudioUri(filePath);
+          if (uri) {
+            try {
+              const extracted = await audioPlayer.extractWaveformPeaks(uri, BAR_MS);
+              if (extracted.length > 0) {
+                payload = emptyWaveformPayload('file');
+                payload.samples = extracted;
+                payload.barDurationMs = BAR_MS;
+                await updateWaveformData(recordingId, serializeWaveform(payload));
+              }
+            } catch (extractErr) {
+              console.warn('⚠️ Playback file peak extract failed:', extractErr);
+            }
+          }
+        }
+
         setSamples(payload.samples);
         setBarDurationMs(payload.barDurationMs || BAR_MS);
         setDbRange(computePlaybackDbRange(payload.samples));

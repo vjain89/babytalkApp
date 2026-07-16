@@ -152,8 +152,21 @@ export default function RecordScreen() {
       }
 
       try {
-        const payload = emptyWaveformPayload();
-        payload.samples = samplesRef.current.slice();
+        // Path B: prefer peaks decoded from the saved file; fall back to live metering.
+        let samples = samplesRef.current.slice();
+        let source: 'file' | 'metering' = 'metering';
+        try {
+          const extracted = await audioRecorderPlayer.extractWaveformPeaks(filePath, BAR_MS);
+          if (extracted.length > 0) {
+            samples = extracted;
+            source = 'file';
+          }
+        } catch (extractErr) {
+          console.warn('⚠️ File peak extract failed; using live metering:', extractErr);
+        }
+
+        const payload = emptyWaveformPayload(source);
+        payload.samples = samples;
         const recordingId = await addRecording({
           filename,
           sessionName: finalSessionName,
