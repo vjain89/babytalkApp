@@ -1,6 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
-import { BAR_MS, MIN_BAR_PX, WAVEFORM_HEIGHT } from '../waveform/config';
+import {
+  BAR_GAP_PX,
+  BAR_MS,
+  MIN_BAR_PX,
+  TAG_MARKER_MS,
+  WAVEFORM_HEIGHT,
+} from '../waveform/config';
 import { dbToHeight01, type DbRange } from '../waveform/scale';
 
 type Props = {
@@ -32,7 +38,7 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 /**
  * Display-only waveform. Does not capture or store audio.
  * Expects peaksDb already densified for the visible window (or full clip).
- * One bar per sample — no downsampling when bars fit on screen.
+ * Renders a level envelope (metering), not a PCM oscilloscope.
  */
 export default function Waveform({
   peaksDb,
@@ -44,7 +50,7 @@ export default function Waveform({
   cursorMode = 'pinned',
   showCursor = true,
   tagTimestamps = [],
-  tagWidthMs = 500,
+  tagWidthMs = TAG_MARKER_MS,
   showTagMarkers = true,
   dbRange,
   height = WAVEFORM_HEIGHT,
@@ -85,7 +91,6 @@ export default function Waveform({
       };
     }
 
-    // Fallback only: merge adjacent bins (should not hit for 8s @ 50ms on phone).
     const bucketSize = Math.ceil(source.length / maxCount);
     const out: number[] = [];
     for (let i = 0; i < source.length; i += bucketSize) {
@@ -97,6 +102,8 @@ export default function Waveform({
     }
     return { barsToRender: out, barPx: width / Math.max(1, out.length) };
   }, [peaksDb, width, minBarPx, dbRange]);
+
+  const drawnBarWidth = Math.max(1, barPx - BAR_GAP_PX);
 
   const cursorX = useMemo(() => {
     if (!showCursor) return -100;
@@ -159,14 +166,17 @@ export default function Waveform({
     <View style={[styles.container, { height }]} onLayout={onLayout}>
       <View style={styles.barsRow}>
         {barsToRender.map((h01, i) => {
-          const h = Math.max(1, h01 * height);
+          // Silence: hairline only. Active audio: proportional height from center.
+          const h = h01 <= 0 ? 1 : Math.max(2, h01 * height);
           return (
             <View
               key={i}
               style={{
-                width: barPx,
+                width: drawnBarWidth,
+                marginRight: BAR_GAP_PX,
                 height: h,
-                backgroundColor: '#CFCFCF',
+                backgroundColor: h01 <= 0 ? '#E8E8E8' : '#8A8A8A',
+                borderRadius: 1,
               }}
             />
           );
@@ -220,7 +230,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: '#2F80ED',
-    opacity: 0.85,
+    opacity: 0.55,
   },
   cursor: {
     position: 'absolute',

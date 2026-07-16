@@ -22,6 +22,7 @@ import {
   CAPTURE_DB_MIN,
   RECORD_WINDOW_MS,
   SUBSCRIPTION_SEC,
+  TAG_MARKER_MS,
 } from '../waveform/config';
 import { RECORD_DB_RANGE } from '../waveform/scale';
 import { densifyPeaks, serializeWaveform, upsertSample } from '../waveform/storage';
@@ -38,6 +39,7 @@ export default function RecordScreen() {
 
   const [liveTags, setLiveTags] = useState<{ timestampMs: number; label: string }[]>([]);
   const [tagModalVisible, setTagModalVisible] = useState(false);
+  const [pendingTagMs, setPendingTagMs] = useState<number | null>(null);
   const [customTag, setCustomTag] = useState('');
 
   // Sparse capture list (mutated in place; displayPeaks is React state for re-renders)
@@ -122,12 +124,16 @@ export default function RecordScreen() {
   };
 
   const handleTagNow = () => {
+    // Stamp the recording clock immediately so label picking does not delay the mark.
+    setPendingTagMs(Math.floor(recordMs));
     setCustomTag('');
     setTagModalVisible(true);
   };
 
   const saveTag = (label: string) => {
-    setLiveTags((prev) => [...prev, { timestampMs: Math.floor(recordMs), label }]);
+    const timestampMs = pendingTagMs ?? Math.floor(recordMs);
+    setLiveTags((prev) => [...prev, { timestampMs, label }]);
+    setPendingTagMs(null);
     setTagModalVisible(false);
   };
 
@@ -205,7 +211,7 @@ export default function RecordScreen() {
             dbRange={RECORD_DB_RANGE}
             minBarPx={1}
             tagTimestamps={tagTimestampsInWindow}
-            tagWidthMs={500}
+            tagWidthMs={TAG_MARKER_MS}
           />
         }
         controls={
@@ -259,7 +265,13 @@ export default function RecordScreen() {
                 }}
               />
             </ScrollView>
-            <Button title="Cancel" onPress={() => setTagModalVisible(false)} />
+            <Button
+              title="Cancel"
+              onPress={() => {
+                setPendingTagMs(null);
+                setTagModalVisible(false);
+              }}
+            />
           </View>
         </View>
       </Modal>

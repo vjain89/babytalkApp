@@ -44,5 +44,14 @@ target 'babytalkApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 26+: Apple Clang rejects fmt 11.0.2 consteval usage (format-inl.h).
+    # Compile only the fmt pod as C++17 so consteval is disabled; leave RN on C++20.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end
