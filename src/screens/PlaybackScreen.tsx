@@ -8,31 +8,46 @@ import {
   Alert,
   Platform,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { addTag, getTagsForRecording, getDb, updateTagLabel, updateWaveformData } from '../db';
-import RNFS from 'react-native-fs';
+import {
+  addTag,
+  getTagsForRecording,
+  getDb,
+  updateTagLabel,
+  updateWaveformData,
+  type TagRow,
+} from '../db';
 import Share from 'react-native-share';
 import Waveform from '../components/Waveform';
 import RecordingLayout from '../components/RecordingLayout';
 import CircularPlayButton from '../components/CircularPlayButton';
-import { BAR_MS, PLAYBACK_WINDOW_MS, TAG_MARKER_MS } from '../waveform/config';
-import { computePlaybackDbRange, type DbRange } from '../waveform/scale';
-import { densifyPeaks, parseWaveformData, serializeWaveform } from '../waveform/storage';
+import { prepareSingleBackup } from '../export/backup';
+import { buildSessionKitForShare } from '../export/sessionKit';
+import { PLAYBACK_BAR_MS, PLAYBACK_WINDOW_MS, TAG_MARKER_MS } from '../waveform/config';
+import {
+  computeBipolarAmpScale,
+  computePlaybackDbRange,
+  type DbRange,
+} from '../waveform/scale';
+import {
+  densifyBipolar,
+  densifyPeaks,
+  parseWaveformData,
+  serializeWaveform,
+} from '../waveform/storage';
 import { resolveAudioUri } from '../waveform/audioPath';
 import { emptyWaveformPayload, type WaveformSample } from '../waveform/types';
 
 const audioPlayer = new AudioRecorderPlayer();
 
 type PlaybackScreenProps = {
-  route: RouteProp<{ params: { recordingId: number; filePath: string; filename: string } }, 'params'>;
-};
-
-type Tag = {
-  id: number;
-  label: string;
-  timestamp_ms: number;
+  route: RouteProp<
+    { params: { recordingId: number; filePath: string; filename: string } },
+    'params'
+  >;
 };
 
 export default function PlaybackScreen() {
@@ -42,18 +57,23 @@ export default function PlaybackScreen() {
   const [playbackMs, setPlaybackMs] = useState(0);
   const [durationMs, setDurationMs] = useState(1);
 
-  const [tags, setTags] = useState<Tag[]>([]);
+  const [tags, setTags] = useState<TagRow[]>([]);
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
 
   const [samples, setSamples] = useState<WaveformSample[]>([]);
-  const [barDurationMs, setBarDurationMs] = useState(BAR_MS);
+  const [barDurationMs, setBarDurationMs] = useState(PLAYBACK_BAR_MS);
   const [dbRange, setDbRange] = useState<DbRange>(() => computePlaybackDbRange([]));
+  const [bipolarScale, setBipolarScale] = useState(1);
+  const [hasBipolar, setHasBipolar] = useState(false);
   const [waveformView, setWaveformView] = useState<'full' | 'rolling'>('rolling');
   const [scrubPreviewMs, setScrubPreviewMs] = useState<number | null>(null);
   const [scrubWindowEndMs, setScrubWindowEndMs] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const displayMs = scrubPreviewMs ?? playbackMs;
   const rollingWindowEndMs = scrubWindowEndMs ?? playbackMs;
+
+  const tagStartMs = (t: TagRow) => t.start_ms ?? t.timestamp_ms;
 
   const handleScrubChange = (ms: number | null) => {
     if (ms === null) {
@@ -89,24 +109,32 @@ export default function PlaybackScreen() {
       const db = await getDb();
       const [res] = await db.executeSql(
         `SELECT duration_ms, waveform_data FROM recordings WHERE id = ? LIMIT 1`,
-        [recordingId]
+        [recordingId],
       );
       if (res.rows.length > 0) {
         const row = res.rows.item(0);
         if (typeof row.duration_ms === 'number') setDurationMs(row.duration_ms);
 
         let payload = parseWaveformData(row.waveform_data);
+        const needsA1 =
+          payload.source !== 'file' ||
+          payload.samples.length === 0 ||
+          payload.barDurationMs > PLAYBACK_BAR_MS ||
+          !payload.samples.some((s) => s.minAmp != null && s.maxAmp != null);
 
-        // Path B: if we only have live metering (or nothing), decode peaks from the file.
-        if (payload.source !== 'file' || payload.samples.length === 0) {
+        if (needsA1) {
           const uri = await resolveAudioUri(filePath);
           if (uri) {
             try {
-              const extracted = await audioPlayer.extractWaveformPeaks(uri, BAR_MS);
+              const extracted = await audioPlayer.extractWaveformPeaks(
+                uri,
+                PLAYBACK_BAR_MS,
+                true,
+              );
               if (extracted.length > 0) {
                 payload = emptyWaveformPayload('file');
+                payload.barDurationMs = PLAYBACK_BAR_MS;
                 payload.samples = extracted;
-                payload.barDurationMs = BAR_MS;
                 await updateWaveformData(recordingId, serializeWaveform(payload));
               }
             } catch (extractErr) {
@@ -116,8 +144,10 @@ export default function PlaybackScreen() {
         }
 
         setSamples(payload.samples);
-        setBarDurationMs(payload.barDurationMs || BAR_MS);
+        setBarDurationMs(payload.barDurationMs || PLAYBACK_BAR_MS);
         setDbRange(computePlaybackDbRange(payload.samples));
+        setBipolarScale(computeBipolarAmpScale(payload.samples));
+        setHasBipolar(payload.samples.some((s) => s.minAmp != null && s.maxAmp != null));
       }
     } catch (err) {
       console.error('❌ Failed to load waveform_data:', err);
@@ -187,7 +217,11 @@ export default function PlaybackScreen() {
 
     const promptForLabel = async (label: string) => {
       try {
-        await addTag({ recordingId, timestampMs: ts, label: label.trim() || 'Untitled tag' });
+        await addTag({
+          recordingId,
+          timestampMs: ts,
+          label: label.trim() || 'Untitled tag',
+        });
         await loadTags();
       } catch (err) {
         console.error('❌ Failed to save tag:', err);
@@ -208,42 +242,73 @@ export default function PlaybackScreen() {
   };
 
   const handleExport = async () => {
+    setBusy(true);
     try {
-      const exportData = { filename, recordingId, tags };
-      const exportJson = JSON.stringify(exportData, null, 2);
-      const exportPath = `${RNFS.CachesDirectoryPath}/${filename.replace(/\s/g, '_')}_tags.json`;
-      await RNFS.writeFile(exportPath, exportJson, 'utf8');
-
-      const audioPath = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
-      const tagPath = `file://${exportPath}`;
-
+      const { urls } = await buildSessionKitForShare(recordingId);
       await Share.open({
-        title: 'Export Recording & Tags',
-        message: 'Sharing the recording and associated tags',
-        urls: [audioPath, tagPath],
+        title: 'Export Session Kit',
+        message: 'Session kit (WAV + manifest + tags)',
+        urls,
         failOnCancel: false,
       });
     } catch (err) {
       console.error('❌ Failed to export:', err);
+      Alert.alert('Export failed', String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePrepareBackup = async () => {
+    setBusy(true);
+    try {
+      const dest = await prepareSingleBackup(recordingId);
+      Alert.alert(
+        'Backup ready',
+        `Written to Documents/Backups.\nPlug into your Mac and copy via Finder:\n${dest.replace(
+          /.*\/Documents\//,
+          'Documents/',
+        )}`,
+      );
+    } catch (err) {
+      console.error('❌ Backup failed:', err);
+      Alert.alert('Backup failed', String(err));
+    } finally {
+      setBusy(false);
     }
   };
 
   const peaksDb = useMemo(() => {
-    if (samples.length === 0) return [];
+    if (hasBipolar || samples.length === 0) return [];
 
     if (waveformView === 'full') {
       const end = Math.max(durationMs, samples[samples.length - 1]?.tMs ?? 0) + barDurationMs;
       return densifyPeaks(samples, 0, end, barDurationMs);
     }
 
-    // Trailing window ending at playhead (left-pad if near start).
     return densifyPeaks(
       samples,
       rollingWindowEndMs - PLAYBACK_WINDOW_MS,
       rollingWindowEndMs,
-      barDurationMs
+      barDurationMs,
     );
-  }, [samples, waveformView, durationMs, rollingWindowEndMs, barDurationMs]);
+  }, [samples, hasBipolar, waveformView, durationMs, rollingWindowEndMs, barDurationMs]);
+
+  const bipolarColumns = useMemo(() => {
+    if (!hasBipolar || samples.length === 0) return undefined;
+
+    if (waveformView === 'full') {
+      const end = Math.max(durationMs, samples[samples.length - 1]?.tMs ?? 0) + barDurationMs;
+      return densifyBipolar(samples, 0, end, barDurationMs);
+    }
+
+    return densifyBipolar(
+      samples,
+      rollingWindowEndMs - PLAYBACK_WINDOW_MS,
+      rollingWindowEndMs,
+      barDurationMs,
+    );
+  }, [samples, hasBipolar, waveformView, durationMs, rollingWindowEndMs, barDurationMs]);
 
   return (
     <RecordingLayout
@@ -253,6 +318,8 @@ export default function PlaybackScreen() {
         samples.length > 0 ? (
           <Waveform
             peaksDb={peaksDb}
+            bipolarColumns={bipolarColumns}
+            bipolarScale={bipolarScale}
             barDurationMs={barDurationMs}
             progressMs={playbackMs}
             scrubPreviewMs={scrubPreviewMs}
@@ -264,7 +331,7 @@ export default function PlaybackScreen() {
             showCursor={true}
             dbRange={dbRange}
             minBarPx={1}
-            tagTimestamps={tags.map((t) => t.timestamp_ms)}
+            tagTimestamps={tags.map(tagStartMs)}
             tagWidthMs={TAG_MARKER_MS}
             seekable
             onSeek={seekTo}
@@ -291,7 +358,14 @@ export default function PlaybackScreen() {
 
           <Button title="🏷️ Tag This Moment" onPress={handleTag} />
           <Text style={styles.seekHint}>Tap or drag the waveform to seek</Text>
-          <Button title="📤 Export Recording + Tags" onPress={handleExport} />
+          {busy ? (
+            <ActivityIndicator />
+          ) : (
+            <>
+              <Button title="📤 Export Session Kit" onPress={handleExport} />
+              <Button title="💾 Prepare USB Backup" onPress={handlePrepareBackup} />
+            </>
+          )}
         </View>
       }
     >
@@ -302,11 +376,11 @@ export default function PlaybackScreen() {
       ) : (
         <FlatList
           data={tags}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.uuid || item.id.toString()}
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => {
-                void seekTo(item.timestamp_ms);
+                void seekTo(tagStartMs(item));
                 setHighlightedTagId(item.id);
               }}
               onLongPress={() => {
@@ -329,8 +403,11 @@ export default function PlaybackScreen() {
               }}
               style={[styles.tagItem, item.id === highlightedTagId && { backgroundColor: '#fff3c4' }]}
             >
-              <Text style={styles.tagLabel}>{item.label}</Text>
-              <Text style={styles.tagTime}>{(item.timestamp_ms / 1000).toFixed(1)}s</Text>
+              <Text style={styles.tagLabel}>
+                {item.label}
+                {item.source && item.source !== 'user' ? ` · ${item.source}` : ''}
+              </Text>
+              <Text style={styles.tagTime}>{(tagStartMs(item) / 1000).toFixed(1)}s</Text>
             </TouchableOpacity>
           )}
         />

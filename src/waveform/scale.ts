@@ -63,3 +63,22 @@ export function computePlaybackDbRange(samples: WaveformSample[]): DbRange {
 
   return { minDb, maxDb };
 }
+
+/**
+ * Scale factor for bipolar amp columns: percentile of |amp| → TARGET_PEAK_FRACTION.
+ * Returns a divisor: renderAmp = amp / scale (clamped to -1..1).
+ */
+export function computeBipolarAmpScale(samples: WaveformSample[]): number {
+  const amps = samples
+    .flatMap((s) => [Math.abs(s.minAmp ?? 0), Math.abs(s.maxAmp ?? 0)])
+    .filter((a) => a > 1e-6)
+    .sort((a, b) => a - b);
+
+  if (amps.length === 0) return 1;
+  const idx = Math.min(
+    amps.length - 1,
+    Math.max(0, Math.floor(amps.length * PLAYBACK_SCALE_PERCENTILE)),
+  );
+  const p = amps[idx];
+  return Math.max(1e-6, p / TARGET_PEAK_FRACTION);
+}

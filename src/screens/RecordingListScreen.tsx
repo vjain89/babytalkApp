@@ -11,8 +11,10 @@ import {
     Platform,
 } from 'react-native';
 import { format } from 'date-fns';
-import { getAllRecordings, updateSessionName, getRecordingsByTagLabel, getTagsForRecording } from '../db';
+import { getAllRecordings, updateSessionName, getRecordingsByTagLabel } from '../db';
 import { useNavigation } from '@react-navigation/native';
+import { importInboxAnnotations, prepareBackup } from '../export/backup';
+import { buildExportBatch } from '../export/sessionKit';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 
@@ -109,58 +111,64 @@ export default function RecordingListScreen() {
 
     const [exportingAll, setExportingAll] = useState(false);
 
-    const resolveAudioPath = async (filename: string): Promise<string | null> => {
-        const candidates = [
-            filename,
-            `${RNFS.CachesDirectoryPath}/${filename}`,
-            `${RNFS.DocumentDirectoryPath}/${filename}`,
-        ];
-        for (const c of candidates) {
-            const p = c.replace(/^file:\/\//, '');
-            if (await RNFS.exists(p)) return c.startsWith('file://') ? c : `file://${p}`;
-        }
-        return null;
-    };
-
     const handleExportAll = async () => {
         if (filteredRecordings.length === 0) return;
         setExportingAll(true);
         try {
-            const exportData: { exportedAt: string; recordings: Array<{ filename: string; recordingId: number; session_name: string | null; duration_ms: number; created_at: number; tags: Array<{ id: number; label: string; timestamp_ms: number }> }> } = {
-                exportedAt: new Date().toISOString(),
-                recordings: [],
-            };
-            const urls: string[] = [];
-
-            for (const r of filteredRecordings) {
-                const tags = await getTagsForRecording(r.id);
-                exportData.recordings.push({
-                    filename: r.filename,
-                    recordingId: r.id,
-                    session_name: r.session_name ?? null,
-                    duration_ms: r.duration_ms,
-                    created_at: r.created_at,
-                    tags,
-                });
-                const audioUrl = await resolveAudioPath(r.filename);
-                if (audioUrl) urls.push(audioUrl);
-            }
-
-            const jsonPath = `${RNFS.CachesDirectoryPath}/babytalk_export_all_${Date.now()}.json`;
-            await RNFS.writeFile(jsonPath, JSON.stringify(exportData, null, 2), 'utf8');
-            urls.push(`file://${jsonPath}`);
-
+            const parent = `${RNFS.CachesDirectoryPath}/export_all_${Date.now()}`;
+            await buildExportBatch(
+                filteredRecordings.map((r) => r.id),
+                parent,
+            );
+            Alert.alert(
+                'Export ready',
+                `Built ${filteredRecordings.length} session kit(s) as a folder. Prepare USB Backup writes the same kits under Documents/Backups for Finder.`,
+            );
+            // Also offer share of the batch manifest as a pointer.
             await Share.open({
-                title: 'Export All Recordings & Tags',
-                message: `Exporting ${exportData.recordings.length} recording(s) and tags`,
-                urls,
+                title: 'Export All Session Kits',
+                message: `Exported ${filteredRecordings.length} session kit(s)`,
+                urls: [`file://${parent}/export_manifest.json`],
                 failOnCancel: false,
             });
         } catch (err) {
             console.error('❌ Export all failed:', err);
-            if (Platform.OS === 'ios') {
-                Alert.alert('Export failed', String(err));
-            }
+            Alert.alert('Export failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const handlePrepareBackup = async () => {
+        if (filteredRecordings.length === 0) return;
+        setExportingAll(true);
+        try {
+            const dest = await prepareBackup(filteredRecordings.map((r) => r.id));
+            Alert.alert(
+                'Backup ready',
+                `Copied ${filteredRecordings.length} kit(s) to Documents/Backups.\nPlug into your Mac → Finder → your iPhone → babytalkApp → Backups.\n\n${dest.replace(/.*\/Documents\//, 'Documents/')}`,
+            );
+        } catch (err) {
+            console.error('❌ Backup failed:', err);
+            Alert.alert('Backup failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const handleImportAnnotations = async () => {
+        setExportingAll(true);
+        try {
+            const summary = await importInboxAnnotations();
+            Alert.alert(
+                'Import complete',
+                `Scanned ${summary.scanned}: +${summary.inserted} new, ${summary.updated} updated, ${summary.skipped} skipped, ${summary.unmatched} unmatched.` +
+                    (summary.errors.length ? `\n\n${summary.errors.slice(0, 3).join('\n')}` : ''),
+            );
+            fetchData();
+        } catch (err) {
+            console.error('❌ Import failed:', err);
+            Alert.alert('Import failed', String(err));
         } finally {
             setExportingAll(false);
         }
@@ -220,9 +228,21 @@ export default function RecordingListScreen() {
             />
 
             <Button
-                title={exportingAll ? 'Exporting…' : '📤 Export All Recordings + Tags'}
+                title={exportingAll ? 'Working…' : '📤 Export All Session Kits'}
                 onPress={handleExportAll}
                 disabled={filteredRecordings.length === 0 || exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '💾 Prepare USB Backup'}
+                onPress={handlePrepareBackup}
+                disabled={filteredRecordings.length === 0 || exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '📥 Import Inbox Annotations'}
+                onPress={handleImportAnnotations}
+                disabled={exportingAll}
             />
 
             {filteredRecordings.length === 0 ? (

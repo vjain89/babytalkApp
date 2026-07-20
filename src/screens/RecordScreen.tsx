@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { useNavigation } from '@react-navigation/native';
+import RNFS from 'react-native-fs';
+import { IOS_ALAC_AUDIO_SET, newRecordingFilename } from '../audio/captureSettings';
 import { addRecording, addTag, getTodayRecordingCount } from '../db';
 import CircularRecordButton from '../components/CircularRecordButton';
 import RecordingLayout from '../components/RecordingLayout';
@@ -57,10 +59,12 @@ export default function RecordScreen() {
 
       await audioRecorderPlayer.setSubscriptionDuration(SUBSCRIPTION_SEC);
 
+      // Unique ALAC master in Caches; handleSave moves it into Documents.
+      const filename = Platform.OS === 'ios' ? newRecordingFilename() : undefined;
       const result = await audioRecorderPlayer.startRecorder(
-        Platform.select({ ios: 'recording.m4a', android: undefined }),
-        undefined,
-        true
+        filename,
+        Platform.OS === 'ios' ? IOS_ALAC_AUDIO_SET : undefined,
+        true,
       );
       setFilePath(result);
 
@@ -143,7 +147,8 @@ export default function RecordScreen() {
 
     const promptAndSave = async (enteredName: string | null) => {
       const durationMs = recordMs;
-      const filename = filePath.split('/').pop() || `recording_${Date.now()}.m4a`;
+      const srcPath = filePath.replace(/^file:\/\//, '');
+      const basename = srcPath.split('/').pop() || newRecordingFilename();
 
       let finalSessionName = enteredName?.trim();
       if (!finalSessionName) {
@@ -152,11 +157,22 @@ export default function RecordScreen() {
       }
 
       try {
+        // Persist master into Documents (survives cache clears; visible via File Sharing).
+        const destPath = `${RNFS.DocumentDirectoryPath}/${basename}`;
+        if (srcPath !== destPath && (await RNFS.exists(srcPath))) {
+          if (await RNFS.exists(destPath)) await RNFS.unlink(destPath);
+          await RNFS.moveFile(srcPath, destPath);
+        }
+        const filename = basename;
+
         // Path B: prefer peaks decoded from the saved file; fall back to live metering.
         let samples = samplesRef.current.slice();
         let source: 'file' | 'metering' = 'metering';
         try {
-          const extracted = await audioRecorderPlayer.extractWaveformPeaks(filePath, BAR_MS);
+          const extracted = await audioRecorderPlayer.extractWaveformPeaks(
+            `file://${destPath}`,
+            BAR_MS,
+          );
           if (extracted.length > 0) {
             samples = extracted;
             source = 'file';

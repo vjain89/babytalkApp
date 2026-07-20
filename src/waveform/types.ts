@@ -8,6 +8,10 @@ export type WaveformSample = {
   avgDb: number;
   /** Peak amplitude, dBFS. */
   peakDb: number;
+  /** A1 bipolar: min signed amplitude in bin (-1..1). */
+  minAmp?: number;
+  /** A1 bipolar: max signed amplitude in bin (-1..1). */
+  maxAmp?: number;
 };
 
 export type WaveformSource = 'metering' | 'file';
@@ -29,3 +33,6 @@ export function emptyWaveformPayload(source: WaveformSource = 'metering'): Wavef
     samples: [],
   };
 }
+
+/** One bipolar column for rendering: normalized -1..1 min/max. */
+export type BipolarColumn = { min: number; max: number };

@@ -6,6 +6,7 @@ import RecordScreen from './src/screens/RecordScreen';
 import RecordingListScreen from './src/screens/RecordingListScreen';
 import PlaybackScreen from './src/screens/PlaybackScreen';
 import { initDb } from './src/db';
+import { ensureBackupDirs } from './src/export/backup';
 import type { RootStackParamList } from './src/navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -15,6 +16,7 @@ export default function App() {
     const initialize = async () => {
       try {
         await initDb();
+        await ensureBackupDirs();
         console.log('✅ Database initialized from App.tsx');
       } catch (err) {
         console.error('❌ Failed to initialize DB:', err);

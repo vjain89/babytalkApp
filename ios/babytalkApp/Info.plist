@@ -50,5 +50,10 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app records baby sounds to help understand them better.</string>
+	<!-- Finder USB File Sharing: Documents appears when the phone is plugged into a Mac. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>
