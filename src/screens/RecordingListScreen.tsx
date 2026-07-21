@@ -301,7 +301,7 @@ export default function RecordingListScreen() {
             />
             <View style={{ height: 8 }} />
             <Button
-                title={exportingAll ? 'Working…' : '📥 Import Inbox Annotations'}
+                title={exportingAll ? 'Working…' : '📥 Retry Import Annotations'}
                 onPress={handleImportAnnotations}
                 disabled={exportingAll}
             />

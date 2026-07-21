@@ -1,31 +1,45 @@
 """BabyTalk Mac review studio (P3).
 
-Local browser UI over a session-kit folder (or a backup batch of kits):
+Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
   - drag on the waveform to select a span
   - add / edit / delete free-form tags with start+end times
   - confirm or dismiss ML candidates
-Writes tags.json / annotations.json back into each kit for USB sync to the phone.
+  - Sync with iPhone (USB) to pull kits and push tags.json
 
 Usage:
-  # After copying Documents/Backups/<date> from the iPhone via Finder:
-  python3 tools/review_server.py ~/Desktop/Backups/2026-07-20_1200
+  python3 tools/review_server.py
+  # or: python3 tools/review_server.py ~/Documents/BabyTalk/Library
   open http://127.0.0.1:8765
 
-Requires: Python 3 stdlib only.
+USB sync needs tools/.venv (pymobiledevice3). See tools/README.md.
 """
 
 from __future__ import annotations
 
 import json
 import mimetypes
+import subprocess
 import sys
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+TOOLS_DIR = Path(__file__).resolve().parent
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+
+from babytalk_paths import (  # noqa: E402
+    DEFAULT_BUNDLE_ID,
+    LIBRARY_DIR,
+    ensure_library,
+    seed_library_from_backups,
+)
+
 ROOT: Path = Path(".")
+BUNDLE_ID = DEFAULT_BUNDLE_ID
+VENV_PYTHON = TOOLS_DIR / ".venv" / "bin" / "python"
 
 
 def load_json(path: Path):
@@ -136,11 +150,23 @@ HTML = r"""<!DOCTYPE html>
   header .top-row {
     display: flex;
     gap: 16px;
-    align-items: baseline;
+    align-items: center;
     flex-wrap: wrap;
   }
   header strong { font-size: 18px; letter-spacing: 0.02em; }
-  header .hint { color: #bdb7ae; font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif; }
+  header .hint { color: #bdb7ae; font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif; flex: 1; }
+  .sync-btn {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: 1px solid #5a5a5a;
+    background: #2a2a2a;
+    color: #f7f3ec;
+    cursor: pointer;
+  }
+  .sync-btn:hover { background: #3a3a3a; }
+  .sync-btn:disabled { opacity: 0.55; cursor: wait; }
   #vocabBar {
     font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 13px;
@@ -334,7 +360,8 @@ HTML = r"""<!DOCTYPE html>
 <header>
   <div class="top-row">
     <strong>BabyTalk</strong>
-    <span class="hint">Mac review · tags write live to each kit’s <code style="color:#e8dcc8">tags.json</code> · sync kit folder back to phone Import</span>
+    <span class="hint">Mac review · tags write live to each kit’s <code style="color:#e8dcc8">tags.json</code></span>
+    <button type="button" id="btnSync" class="sync-btn">Sync with iPhone</button>
   </div>
   <div id="vocabBar">
     <div class="vocab-stats" id="vocabStats">Loading vocabulary…</div>
@@ -851,7 +878,7 @@ function renderShell() {
       Existing tags show as orange bands on the waveform (and overview strip).
       <strong>Play:</strong> with no selection, plays from the playhead; with a selection, loops that snippet only.
       Drag the blue handles to adjust snippet ends (pauses if playing). Scroll to zoom · Shift-drag to pan.
-      Space plays/pauses. Sync kit → phone <code>Documents/Import</code> → <em>Import Inbox Annotations</em>.
+      Space plays/pauses. Use <strong>Sync with iPhone</strong> (USB) to pull kits and push tags — open the app on the phone so tags auto-import.
     </div>
     <h2>${esc(k.manifest.sessionName || k.folder)}</h2>
     <p class="muted sans">${esc(k.manifest.recordingUuid)} · hash ${esc(String(k.manifest.audioContentHash||'').slice(0,12))}…</p>
@@ -1502,6 +1529,37 @@ window.addEventListener('resize', () => {
 });
 
 wireWordCloud();
+document.getElementById('btnSync').onclick = async () => {
+  const btn = document.getElementById('btnSync');
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  flashSaveStatus('USB sync in progress…');
+  try {
+    const data = await postJson('/api/sync', {});
+    if (!data.ok) {
+      flashSaveStatus('Sync failed: ' + (data.error || 'iPhone not connected'), false);
+      return;
+    }
+    const pullN = (data.pull && data.pull.pulled || []).length;
+    const pushN = (data.push && data.push.pushed || []).length;
+    const pushTags = (data.push && data.push.pushed || []).reduce((s, x) => s + (x.tagCount || 0), 0);
+    const name = (data.status && data.status.deviceName) || 'iPhone';
+    flashSaveStatus(
+      `Synced with ${name}: pulled ${pullN} kit(s), pushed ${pushN} kit(s) / ${pushTags} tags. Open BabyTalk on the phone to auto-import.`
+    );
+    const folder = current && current.folder;
+    await refresh();
+    if (folder) {
+      const i = kits.findIndex(x => x.folder === folder);
+      if (i >= 0) await softRefreshCurrent();
+    }
+  } catch (err) {
+    flashSaveStatus('Sync failed: ' + err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sync with iPhone';
+  }
+};
 refresh();
 </script>
 </body>
@@ -1520,7 +1578,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def _read_json(self) -> dict:
         length = int(self.headers.get("Content-Length", "0"))
+        if length <= 0:
+            return {}
         return json.loads(self.rfile.read(length).decode("utf-8"))
+
+    def _send_json(self, code: int, payload: dict) -> None:
+        self._send(code, json.dumps(payload).encode("utf-8"), "application/json")
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -1530,6 +1593,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/kits":
             payload = [kit_payload(k) for k in list_kits(ROOT)]
             self._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+            return
+        if parsed.path == "/api/sync/status":
+            self._send_json(200, run_iphone_sync("status"))
             return
         if parsed.path == "/audio":
             qs = parse_qs(parsed.query)
@@ -1552,6 +1618,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/sync":
+            self._send_json(200, run_iphone_sync("sync"))
+            return
+
         try:
             body = self._read_json()
             kit = resolve_kit(body.get("kit", ""))
@@ -1667,22 +1737,66 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
 
+def run_iphone_sync(command: str) -> dict:
+    """Run tools/iphone_sync.py via the tools venv when available."""
+    script = TOOLS_DIR / "iphone_sync.py"
+    py = VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable)
+    if not script.exists():
+        return {"ok": False, "error": f"Missing {script}"}
+    try:
+        proc = subprocess.run(
+            [str(py), str(script), command, "--json", "--bundle-id", BUNDLE_ID],
+            capture_output=True,
+            text=True,
+            timeout=60 * 30,
+            cwd=str(TOOLS_DIR.parent),
+        )
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "Sync timed out"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+    raw = (proc.stdout or "").strip()
+    if not raw:
+        err = (proc.stderr or "").strip() or f"exit {proc.returncode}"
+        return {"ok": False, "error": err}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {
+            "ok": False,
+            "error": (proc.stderr or raw)[:500],
+        }
+    if command == "status":
+        data.setdefault("ok", bool(data.get("connected")))
+    return data
+
+
 def main(argv: list[str]) -> int:
-    global ROOT
-    if len(argv) < 2:
-        print(__doc__)
-        return 2
-    ROOT = Path(argv[1]).expanduser().resolve()
+    global ROOT, BUNDLE_ID
+    ensure_library()
+    seeded = seed_library_from_backups()
+    if len(argv) >= 2 and not argv[1].startswith("-"):
+        ROOT = Path(argv[1]).expanduser().resolve()
+    else:
+        ROOT = LIBRARY_DIR.resolve()
     if not ROOT.exists():
         print(f"Path not found: {ROOT}")
         return 1
     port = 8765
+    # Optional: review_server.py [path] [port] or review_server.py [port]
     if len(argv) >= 3:
         port = int(argv[2])
+    elif len(argv) == 2 and argv[1].isdigit():
+        port = int(argv[1])
+        ROOT = LIBRARY_DIR.resolve()
+
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     print(f"Review UI: http://127.0.0.1:{port}")
     print(f"Kits root: {ROOT}")
-    print("Tag spans → tags.json. Copy kit(s) back to phone Documents/Import, then Import Inbox Annotations.")
+    if seeded:
+        print(f"Seeded {seeded} kit(s) into {LIBRARY_DIR}")
+    print(f"Library: {LIBRARY_DIR}")
+    print("Sync with iPhone uses USB (pymobiledevice3). Open the app on the phone to auto-import tags.")
     server.serve_forever()
     return 0
 

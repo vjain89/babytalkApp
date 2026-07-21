@@ -1,27 +1,59 @@
 # BabyTalk Mac tools
 
-## Review studio (tag spans in the browser)
-
-1. On the iPhone: **Prepare USB Backup** (writes `Documents/Backups/<date>/` session kits).
-2. Plug into Mac → Finder → your iPhone → babytalkApp → copy the backup folder to the Mac.
-3. Run:
+## One-time setup
 
 ```bash
-python3 tools/review_server.py /path/to/Backups/<date>
+cd /path/to/babytalkApp-1
+python3 -m venv tools/.venv
+tools/.venv/bin/pip install -r tools/requirements.txt
 ```
 
-4. Open http://127.0.0.1:8765
-5. Select a session → play → **drag on the waveform** to select a span → enter a label → **Add tag**.
-6. Tags are written into each kit’s `tags.json` (with `startMs` / `endMs`).
-7. Copy the reviewed kit folder(s) back into the phone’s `Documents/Import/`.
-8. On the iPhone: **Import Inbox Annotations**.
+Plug in the iPhone, unlock it, and tap **Trust** if asked.
 
-Optional ML candidates:
+## Review studio
+
+Default library (no path needed):
 
 ```bash
-pip install numpy soundfile
-python3 tools/propose_candidates.py /path/to/Backups/<date>
-python3 tools/validate_export.py /path/to/Backups/<date>
+python3 tools/review_server.py
+open http://127.0.0.1:8765
 ```
 
-Then reopen the review UI to confirm/dismiss proposals.
+Kits live in `~/Documents/BabyTalk/Library/`. On first launch, kits are seeded from `~/Documents/BabyTalk/Backups/` if present.
+
+Optional override:
+
+```bash
+python3 tools/review_server.py /path/to/some/kit-or-batch
+```
+
+### Tagging
+
+1. Select a session → play → **drag** on the waveform → label → **Add tag**
+2. Tags write live into that kit’s `tags.json`
+3. Click **Sync with iPhone** (USB) to pull new kits and push tags
+
+### USB sync (CLI)
+
+```bash
+tools/.venv/bin/python tools/iphone_sync.py status
+tools/.venv/bin/python tools/iphone_sync.py sync   # pull kits + push tags.json
+tools/.venv/bin/python tools/iphone_sync.py pull
+tools/.venv/bin/python tools/iphone_sync.py push
+```
+
+**Pull:** copies new/changed kits from phone `Documents/Backups/` → Mac `Library/`  
+**Push:** writes `manifest.json` + `tags.json` into phone `Documents/Import/<kit>/` (tags only)
+
+Open **BabyTalk** on the phone after a push — it auto-imports Import folders when the app becomes active.
+
+Bundle id default: `org.reactjs.native.example.babytalkApp`  
+Override: `--bundle-id your.bundle.id`
+
+## Optional ML candidates
+
+```bash
+pip install numpy soundfile   # system or another venv
+python3 tools/propose_candidates.py ~/Documents/BabyTalk/Library
+python3 tools/validate_export.py ~/Documents/BabyTalk/Library
+```
