@@ -12,7 +12,15 @@ import type { KitAnnotation, SessionManifest } from './types';
 const DOCUMENTS = RNFS.DocumentDirectoryPath;
 
 export const BACKUPS_DIR = `${DOCUMENTS}/Backups`;
-export const INBOX_DIR = `${DOCUMENTS}/Inbox`;
+/** App-owned drop folder for Finder / USB imports (kits, annotations, audio). */
+export const IMPORT_DIR = `${DOCUMENTS}/Import`;
+/**
+ * iOS system Inbox for "Open In" shares. Do NOT mkdir — iOS creates it when needed
+ * and rejects app-created Inbox folders.
+ */
+export const SYSTEM_INBOX_DIR = `${DOCUMENTS}/Inbox`;
+/** @deprecated Use IMPORT_DIR or SYSTEM_INBOX_DIR. Kept as alias for Import. */
+export const INBOX_DIR = IMPORT_DIR;
 
 async function ensureDir(path: string) {
   if (!(await RNFS.exists(path))) {
@@ -22,15 +30,37 @@ async function ensureDir(path: string) {
 
 export async function ensureBackupDirs(): Promise<void> {
   await ensureDir(BACKUPS_DIR);
-  await ensureDir(INBOX_DIR);
-  // Drop a short README so Finder users know the Inbox purpose.
-  const readme = `${INBOX_DIR}/README.txt`;
+  await ensureDir(IMPORT_DIR);
+  // Never create Documents/Inbox — that path is reserved by iOS.
+  const readme = `${IMPORT_DIR}/README.txt`;
   if (!(await RNFS.exists(readme))) {
     await RNFS.writeFile(
       readme,
-      'Drop session kits or annotations.json here after Mac review, then tap Import Inbox Annotations in the app.\n',
+      [
+        'BabyTalk Import',
+        '',
+        'Drop whole session kit folders here after Mac review (must include manifest.json + tags.json), then tap Import Inbox Annotations.',
+        '',
+        'Audio: drop .m4a/.wav files here, then tap Import Inbox Audio.',
+        'Or use Import Voice Memos / Audio and browse On My iPhone → Voice Memos.',
+        'Voice Memos → Share → Open in babytalkApp also lands in the system Inbox (imported automatically by the same button).',
+        '',
+        'Mac review: python3 tools/review_server.py /path/to/copied/Backups/<date>',
+        '',
+      ].join('\n'),
       'utf8',
     );
+  }
+}
+
+async function listDirIfExists(
+  path: string,
+): Promise<Array<{ path: string; name: string; isFile: () => boolean; isDirectory: () => boolean }>> {
+  if (!(await RNFS.exists(path))) return [];
+  try {
+    return await RNFS.readDir(path);
+  } catch {
+    return [];
   }
 }
 
@@ -105,6 +135,37 @@ async function resolveRecordingId(opts: {
   return null;
 }
 
+async function importTagList(
+  list: KitAnnotation[],
+  recordingId: number,
+  summary: ImportSummary,
+) {
+  for (const ann of list) {
+    summary.scanned += 1;
+    if (!ann?.uuid) {
+      summary.skipped += 1;
+      continue;
+    }
+    if ((ann as { status?: string }).status === 'dismissed') {
+      summary.skipped += 1;
+      continue;
+    }
+    const startMs = ann.startMs ?? (ann as { tMs?: number }).tMs ?? 0;
+    const result = await upsertAnnotationByUuid({
+      recordingId,
+      uuid: ann.uuid,
+      label: ann.label || 'untitled',
+      startMs,
+      endMs: ann.endMs ?? null,
+      source: normalizeSource(ann.source ?? 'user'),
+      status: normalizeStatus(ann.status ?? 'confirmed'),
+    });
+    if (result === 'inserted') summary.inserted += 1;
+    else if (result === 'updated') summary.updated += 1;
+    else summary.skipped += 1;
+  }
+}
+
 async function importAnnotationsFile(
   annotationsPath: string,
   recordingId: number,
@@ -118,31 +179,21 @@ async function importAnnotationsFile(
     return;
   }
   const list = Array.isArray(payload) ? payload : payload.annotations ?? [];
-  for (const ann of list) {
-    summary.scanned += 1;
-    if (!ann?.uuid) {
-      summary.skipped += 1;
-      continue;
-    }
-    // Mac review can mark candidates dismissed — do not import those.
-    if ((ann as { status?: string }).status === 'dismissed') {
-      summary.skipped += 1;
-      continue;
-    }
-    const startMs = ann.startMs ?? (ann as any).tMs ?? 0;
-    const result = await upsertAnnotationByUuid({
-      recordingId,
-      uuid: ann.uuid,
-      label: ann.label || 'untitled',
-      startMs,
-      endMs: ann.endMs ?? null,
-      source: normalizeSource(ann.source),
-      status: normalizeStatus(ann.status),
-    });
-    if (result === 'inserted') summary.inserted += 1;
-    else if (result === 'updated') summary.updated += 1;
-    else summary.skipped += 1;
+  await importTagList(list, recordingId, summary);
+}
+
+async function importTagsFile(
+  tagsPath: string,
+  recordingId: number,
+  summary: ImportSummary,
+) {
+  const payload = await readJson<{ tags?: KitAnnotation[] } | KitAnnotation[]>(tagsPath);
+  if (!payload) {
+    summary.errors.push(`Could not parse ${tagsPath}`);
+    return;
   }
+  const list = Array.isArray(payload) ? payload : payload.tags ?? [];
+  await importTagList(list, recordingId, summary);
 }
 
 async function importKitDir(kitDir: string, summary: ImportSummary) {
@@ -159,6 +210,11 @@ async function importKitDir(kitDir: string, summary: ImportSummary) {
     return;
   }
 
+  const tagsPath = `${kitDir}/tags.json`;
+  if (await RNFS.exists(tagsPath)) {
+    await importTagsFile(tagsPath, recordingId, summary);
+  }
+
   const annPath = `${kitDir}/annotations.json`;
   if (await RNFS.exists(annPath)) {
     await importAnnotationsFile(annPath, recordingId, summary);
@@ -166,12 +222,12 @@ async function importKitDir(kitDir: string, summary: ImportSummary) {
 }
 
 /**
- * Import annotations dropped into Documents/Inbox/ (whole kits or annotations.json).
+ * Import annotations from Documents/Import (and system Inbox if present).
  * Merge rules: user wins; provisional ml may update while provisional; confirmed sticky.
  * Re-links by audio content hash first, then recording UUID.
  */
 export async function importInboxAnnotations(): Promise<ImportSummary> {
-  await ensureDir(INBOX_DIR);
+  await ensureDir(IMPORT_DIR);
   const summary: ImportSummary = {
     scanned: 0,
     inserted: 0,
@@ -181,26 +237,28 @@ export async function importInboxAnnotations(): Promise<ImportSummary> {
     errors: [],
   };
 
-  const entries = await RNFS.readDir(INBOX_DIR);
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      await importKitDir(entry.path, summary);
-      continue;
-    }
-    if (entry.name === 'annotations.json' || entry.name.endsWith('_annotations.json')) {
-      // Loose file: require sibling manifest.json or skip
-      const parent = entry.path.replace(/\/[^/]+$/, '');
-      const manifest = await readJson<SessionManifest>(`${parent}/manifest.json`);
-      const recordingId = await resolveRecordingId({
-        recordingUuid: manifest?.recordingUuid,
-        audioContentHash: manifest?.audioContentHash,
-      });
-      if (!recordingId) {
-        summary.unmatched += 1;
-        summary.errors.push(`Loose annotations need a kit/manifest: ${entry.name}`);
+  const roots = [IMPORT_DIR, SYSTEM_INBOX_DIR];
+  for (const root of roots) {
+    const entries = await listDirIfExists(root);
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        await importKitDir(entry.path, summary);
         continue;
       }
-      await importAnnotationsFile(entry.path, recordingId, summary);
+      if (entry.name === 'annotations.json' || entry.name.endsWith('_annotations.json')) {
+        const parent = entry.path.replace(/\/[^/]+$/, '');
+        const manifest = await readJson<SessionManifest>(`${parent}/manifest.json`);
+        const recordingId = await resolveRecordingId({
+          recordingUuid: manifest?.recordingUuid,
+          audioContentHash: manifest?.audioContentHash,
+        });
+        if (!recordingId) {
+          summary.unmatched += 1;
+          summary.errors.push(`Loose annotations need a kit/manifest: ${entry.name}`);
+          continue;
+        }
+        await importAnnotationsFile(entry.path, recordingId, summary);
+      }
     }
   }
 

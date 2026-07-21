@@ -15,6 +15,10 @@ import { getAllRecordings, updateSessionName, getRecordingsByTagLabel } from '..
 import { useNavigation } from '@react-navigation/native';
 import { importInboxAnnotations, prepareBackup } from '../export/backup';
 import { buildExportBatch } from '../export/sessionKit';
+import {
+    importAudioFromInbox,
+    pickAndImportAudioFiles,
+} from '../audio/importAudio';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 
@@ -174,6 +178,51 @@ export default function RecordingListScreen() {
         }
     };
 
+    const handleImportVoiceMemos = async () => {
+        setExportingAll(true);
+        try {
+            const result = await pickAndImportAudioFiles(true);
+            if (result.cancelled) return;
+            const errTail = result.errors.length
+                ? `\n\n${result.errors.slice(0, 3).join('\n')}`
+                : '';
+            Alert.alert(
+                'Audio import',
+                result.imported.length
+                    ? `Imported ${result.imported.length} recording(s).${errTail}`
+                    : `No files imported.${errTail || '\nTip: In the picker, open Browse → On My iPhone → Voice Memos.'}`,
+            );
+            fetchData();
+        } catch (err) {
+            console.error('❌ Audio import failed:', err);
+            Alert.alert('Audio import failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const handleImportInboxAudio = async () => {
+        setExportingAll(true);
+        try {
+            const result = await importAudioFromInbox();
+            const errTail = result.errors.length
+                ? `\n\n${result.errors.slice(0, 3).join('\n')}`
+                : '';
+            Alert.alert(
+                'Inbox audio',
+                result.imported.length
+                    ? `Imported ${result.imported.length} file(s) from Documents/Import (and system Inbox if present).${errTail}`
+                    : `No audio files found in Documents/Import or Inbox.${errTail}\n\nFrom Voice Memos: use Import Voice Memos / Audio, or Share → Open in babytalkApp.`,
+            );
+            fetchData();
+        } catch (err) {
+            console.error('❌ Inbox audio import failed:', err);
+            Alert.alert('Inbox import failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
     const renderItem = ({ item }: { item: Recording }) => (
         <TouchableOpacity
             style={styles.item}
@@ -227,6 +276,18 @@ export default function RecordingListScreen() {
                 style={styles.searchInput}
             />
 
+            <Button
+                title={exportingAll ? 'Working…' : '🎙 Import Voice Memos / Audio'}
+                onPress={handleImportVoiceMemos}
+                disabled={exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '📂 Import Inbox Audio'}
+                onPress={handleImportInboxAudio}
+                disabled={exportingAll}
+            />
+            <View style={{ height: 8 }} />
             <Button
                 title={exportingAll ? 'Working…' : '📤 Export All Session Kits'}
                 onPress={handleExportAll}

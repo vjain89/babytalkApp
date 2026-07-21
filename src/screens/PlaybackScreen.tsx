@@ -56,6 +56,7 @@ export default function PlaybackScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackMs, setPlaybackMs] = useState(0);
   const [durationMs, setDurationMs] = useState(1);
+  const [resolvedUri, setResolvedUri] = useState<string | null>(null);
 
   const [tags, setTags] = useState<TagRow[]>([]);
   const [highlightedTagId, setHighlightedTagId] = useState<number | null>(null);
@@ -106,6 +107,9 @@ export default function PlaybackScreen() {
 
   const loadRecordingWaveform = async () => {
     try {
+      const uri = await resolveAudioUri(filePath);
+      setResolvedUri(uri);
+
       const db = await getDb();
       const [res] = await db.executeSql(
         `SELECT duration_ms, waveform_data FROM recordings WHERE id = ? LIMIT 1`,
@@ -113,7 +117,9 @@ export default function PlaybackScreen() {
       );
       if (res.rows.length > 0) {
         const row = res.rows.item(0);
-        if (typeof row.duration_ms === 'number') setDurationMs(row.duration_ms);
+        if (typeof row.duration_ms === 'number' && row.duration_ms > 0) {
+          setDurationMs(row.duration_ms);
+        }
 
         let payload = parseWaveformData(row.waveform_data);
         const needsA1 =
@@ -122,24 +128,21 @@ export default function PlaybackScreen() {
           payload.barDurationMs > PLAYBACK_BAR_MS ||
           !payload.samples.some((s) => s.minAmp != null && s.maxAmp != null);
 
-        if (needsA1) {
-          const uri = await resolveAudioUri(filePath);
-          if (uri) {
-            try {
-              const extracted = await audioPlayer.extractWaveformPeaks(
-                uri,
-                PLAYBACK_BAR_MS,
-                true,
-              );
-              if (extracted.length > 0) {
-                payload = emptyWaveformPayload('file');
-                payload.barDurationMs = PLAYBACK_BAR_MS;
-                payload.samples = extracted;
-                await updateWaveformData(recordingId, serializeWaveform(payload));
-              }
-            } catch (extractErr) {
-              console.warn('⚠️ Playback file peak extract failed:', extractErr);
+        if (needsA1 && uri) {
+          try {
+            const extracted = await audioPlayer.extractWaveformPeaks(
+              uri,
+              PLAYBACK_BAR_MS,
+              true,
+            );
+            if (extracted.length > 0) {
+              payload = emptyWaveformPayload('file');
+              payload.barDurationMs = PLAYBACK_BAR_MS;
+              payload.samples = extracted;
+              await updateWaveformData(recordingId, serializeWaveform(payload));
             }
+          } catch (extractErr) {
+            console.warn('⚠️ Playback file peak extract failed:', extractErr);
           }
         }
 
@@ -148,6 +151,20 @@ export default function PlaybackScreen() {
         setDbRange(computePlaybackDbRange(payload.samples));
         setBipolarScale(computeBipolarAmpScale(payload.samples));
         setHasBipolar(payload.samples.some((s) => s.minAmp != null && s.maxAmp != null));
+
+        // Fallback duration from waveform or native probe when DB has 0.
+        if ((!row.duration_ms || row.duration_ms <= 0) && payload.samples.length > 0) {
+          const last = payload.samples[payload.samples.length - 1];
+          const fromWave = Math.round(last.tMs + (payload.barDurationMs || PLAYBACK_BAR_MS));
+          if (fromWave > 0) setDurationMs(fromWave);
+        } else if ((!row.duration_ms || row.duration_ms <= 0) && uri) {
+          try {
+            const ms = Math.round(await audioPlayer.getAudioDurationMs(uri));
+            if (ms > 0) setDurationMs(ms);
+          } catch {
+            // leave duration as-is
+          }
+        }
       }
     } catch (err) {
       console.error('❌ Failed to load waveform_data:', err);
@@ -156,7 +173,14 @@ export default function PlaybackScreen() {
 
   const startPlaying = async () => {
     try {
-      await audioPlayer.startPlayer(filePath);
+      const uri = resolvedUri ?? (await resolveAudioUri(filePath));
+      if (!uri) {
+        Alert.alert('Missing audio', 'Could not find the audio file on disk.');
+        return;
+      }
+      setResolvedUri(uri);
+
+      await audioPlayer.startPlayer(uri);
 
       if (playbackMs > 0) {
         await audioPlayer.seekToPlayer(playbackMs);
@@ -174,6 +198,7 @@ export default function PlaybackScreen() {
       setIsPlaying(true);
     } catch (err) {
       console.error('❌ Failed to play audio:', err);
+      Alert.alert('Playback failed', String(err));
     }
   };
 

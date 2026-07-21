@@ -19,7 +19,7 @@ export default function App() {
         await ensureBackupDirs();
         console.log('✅ Database initialized from App.tsx');
       } catch (err) {
-        console.error('❌ Failed to initialize DB:', err);
+        console.error('❌ Failed to initialize app:', err);
       }
     };
 
