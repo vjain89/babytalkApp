@@ -112,27 +112,45 @@ def _docs_join(*parts: str) -> str:
     return DOCUMENTS_ROOT + ("/" + "/".join(cleaned) if cleaned else "")
 
 
+async def _afc(result):
+    """pymobiledevice3 AFC helpers are often async at runtime — normalize."""
+    if asyncio.iscoroutine(result):
+        return await result
+    return result
+
+
 async def _listdir(service, remote: str) -> list[str]:
     try:
-        entries = service.listdir(remote)
+        entries = await _afc(service.listdir(remote))
     except Exception:
         return []
-    # Filter noise
     return [e for e in entries if e not in (".", "..")]
 
 
 async def _exists(service, remote: str) -> bool:
     try:
-        return bool(service.exists(remote))
+        return bool(await _afc(service.exists(remote)))
     except Exception:
         return False
 
 
 async def _isdir(service, remote: str) -> bool:
     try:
-        return bool(service.isdir(remote))
+        return bool(await _afc(service.isdir(remote)))
     except Exception:
         return False
+
+
+async def _makedirs(service, remote: str) -> None:
+    try:
+        await _afc(service.makedirs(remote))
+    except Exception:
+        pass
+
+
+async def _get_bytes(service, remote: str) -> bytes:
+    data = await _afc(service.get_file_contents(remote))
+    return data if isinstance(data, (bytes, bytearray)) else bytes(data)
 
 
 async def discover_device(bundle_id: str) -> dict:
@@ -163,11 +181,16 @@ async def discover_device(bundle_id: str) -> dict:
         await service.close()
 
 
+async def _pull_remote_file(service, remote_path: str, local_path: Path) -> None:
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(await _get_bytes(service, remote_path))
+
+
 async def _pull_remote_dir(service, remote_dir: str, local_dir: Path) -> None:
     local_dir.mkdir(parents=True, exist_ok=True)
     # Prefer service.pull for trees when available
     try:
-        await service.pull(remote_dir, str(local_dir), progress_bar=False)
+        await _afc(service.pull(remote_dir, str(local_dir), progress_bar=False))
         # pull may nest an extra folder named after the remote basename
         nested = local_dir / Path(remote_dir.rstrip("/")).name
         if nested.is_dir() and nested != local_dir:
@@ -192,19 +215,14 @@ async def _pull_remote_dir(service, remote_dir: str, local_dir: Path) -> None:
         if await _isdir(service, remote):
             await _pull_remote_dir(service, remote, local)
         else:
-            data = service.get_file_contents(remote)
-            local.parent.mkdir(parents=True, exist_ok=True)
-            local.write_bytes(data)
+            await _pull_remote_file(service, remote, local)
 
 
 async def _push_bytes(service, data: bytes, remote_path: str) -> None:
     parent = str(Path(remote_path).parent).replace("\\", "/")
     if parent and parent not in (".", "/"):
-        try:
-            service.makedirs(parent)
-        except Exception:
-            pass
-    service.set_file_contents(remote_path, data)
+        await _makedirs(service, parent)
+    await _afc(service.set_file_contents(remote_path, data))
 
 
 async def _push_file(service, local: Path, remote_path: str) -> None:
@@ -249,12 +267,42 @@ async def pull_kits(bundle_id: str) -> dict:
         remote_kits = await find_remote_kits(service)
         for kit_name, remote_dir in remote_kits:
             dest = LIBRARY_DIR / kit_name
-            # Skip if local exists with same audio hash from remote manifest (cheap check)
             try:
+                # Cheap check: pull manifest only first
+                remote_hash = None
                 with tempfile.TemporaryDirectory() as tmp:
+                    tmp_man = Path(tmp) / "manifest.json"
+                    try:
+                        await _pull_remote_file(
+                            service, f"{remote_dir}/manifest.json", tmp_man
+                        )
+                        remote_hash = _kit_audio_hash(Path(tmp))
+                    except Exception:
+                        remote_hash = None
+
+                    local_hash = _kit_audio_hash(dest) if dest.exists() else None
+                    if dest.exists() and remote_hash and remote_hash == local_hash:
+                        # Same audio — optionally fill missing local tags from phone
+                        local_tags = dest / "tags.json"
+                        if not local_tags.exists():
+                            try:
+                                await _pull_remote_file(
+                                    service,
+                                    f"{remote_dir}/tags.json",
+                                    local_tags,
+                                )
+                                result["pulled"].append(
+                                    {"kit": kit_name, "action": "tags-from-phone"}
+                                )
+                            except Exception:
+                                result["skipped"].append(kit_name)
+                        else:
+                            result["skipped"].append(kit_name)
+                        continue
+
+                    # Full kit copy (new or changed audio)
                     tmp_path = Path(tmp) / kit_name
                     await _pull_remote_dir(service, remote_dir, tmp_path)
-                    # If pull nested oddly, find manifest
                     if not (tmp_path / "manifest.json").exists():
                         matches = list(tmp_path.rglob("manifest.json"))
                         if matches:
@@ -262,34 +310,18 @@ async def pull_kits(bundle_id: str) -> dict:
                     if not (tmp_path / "manifest.json").exists():
                         result["errors"].append(f"No manifest in pulled {kit_name}")
                         continue
-                    remote_hash = _kit_audio_hash(tmp_path)
-                    local_hash = _kit_audio_hash(dest) if dest.exists() else None
-                    if dest.exists() and remote_hash and remote_hash == local_hash:
-                        # Still refresh tags.json if remote tags are newer/different
-                        remote_tags = tmp_path / "tags.json"
-                        local_tags = dest / "tags.json"
-                        if remote_tags.exists():
-                            rfp = _tags_fingerprint(remote_tags)
-                            lfp = _tags_fingerprint(local_tags) if local_tags.exists() else None
-                            if rfp and rfp != lfp:
-                                # Prefer keeping Mac tags if local has more user tags;
-                                # only copy remote tags when local has none.
-                                if not local_tags.exists():
-                                    shutil.copy2(remote_tags, local_tags)
-                                    result["pulled"].append(
-                                        {"kit": kit_name, "action": "tags-from-phone"}
-                                    )
-                                else:
-                                    result["skipped"].append(kit_name)
-                            else:
-                                result["skipped"].append(kit_name)
-                        else:
-                            result["skipped"].append(kit_name)
-                        continue
-
                     if dest.exists():
+                        # Preserve newer Mac tags.json across audio refresh
+                        mac_tags = dest / "tags.json"
+                        saved_tags = None
+                        if mac_tags.exists():
+                            saved_tags = mac_tags.read_bytes()
                         shutil.rmtree(dest)
-                    shutil.copytree(tmp_path, dest)
+                        shutil.copytree(tmp_path, dest)
+                        if saved_tags is not None:
+                            (dest / "tags.json").write_bytes(saved_tags)
+                    else:
+                        shutil.copytree(tmp_path, dest)
                     result["pulled"].append({"kit": kit_name, "action": "copied"})
             except Exception as e:
                 result["errors"].append(f"{kit_name}: {e}")
@@ -298,7 +330,7 @@ async def pull_kits(bundle_id: str) -> dict:
         await service.close()
 
 
-async def push_tags(bundle_id: str) -> dict:
+async def push_tags(bundle_id: str, force: bool = False) -> dict:
     ensure_library()
     result = {
         "pushed": [],
@@ -312,10 +344,7 @@ async def push_tags(bundle_id: str) -> dict:
     lockdown, service = await _open_docs(bundle_id)
     try:
         import_root = _docs_join("Import")
-        try:
-            service.makedirs(import_root)
-        except Exception:
-            pass
+        await _makedirs(service, import_root)
 
         state = load_sync_state()
         kit_state = state.setdefault("kits", {})
@@ -328,15 +357,16 @@ async def push_tags(bundle_id: str) -> dict:
                 continue
             fp = _tags_fingerprint(tags_path)
             prev = kit_state.get(kit.name, {})
-            if prev.get("tagsFingerprint") == fp and prev.get("pushed"):
+            if (
+                not force
+                and prev.get("tagsFingerprint") == fp
+                and prev.get("pushed")
+            ):
                 result["skipped"].append({"kit": kit.name, "reason": "unchanged"})
                 continue
 
             remote_kit = f"{import_root}/{kit.name}"
-            try:
-                service.makedirs(remote_kit)
-            except Exception:
-                pass
+            await _makedirs(service, remote_kit)
             try:
                 await _push_file(service, man_path, f"{remote_kit}/manifest.json")
                 await _push_file(service, tags_path, f"{remote_kit}/tags.json")
@@ -373,7 +403,7 @@ async def push_tags(bundle_id: str) -> dict:
         await service.close()
 
 
-async def full_sync(bundle_id: str) -> dict:
+async def full_sync(bundle_id: str, force: bool = False) -> dict:
     status = await discover_device(bundle_id)
     if not status.get("connected"):
         return {
@@ -384,7 +414,7 @@ async def full_sync(bundle_id: str) -> dict:
             "error": status.get("error") or "iPhone not connected",
         }
     pull = await pull_kits(bundle_id)
-    push = await push_tags(bundle_id)
+    push = await push_tags(bundle_id, force=force)
     return {"ok": True, "status": status, "pull": pull, "push": push, "error": None}
 
 
@@ -406,6 +436,11 @@ def main(argv: list[str]) -> int:
         help=f"App bundle id (default {DEFAULT_BUNDLE_ID})",
     )
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-push tags even if fingerprint unchanged",
+    )
     args = parser.parse_args(argv[1:])
 
     ensure_library()
@@ -429,9 +464,9 @@ def main(argv: list[str]) -> int:
             status = await discover_device(args.bundle_id)
             if not status.get("connected"):
                 return {"ok": False, "status": status, "error": status.get("error")}
-            push = await push_tags(args.bundle_id)
+            push = await push_tags(args.bundle_id, force=args.force)
             return {"ok": True, "status": status, "push": push}
-        return await full_sync(args.bundle_id)
+        return await full_sync(args.bundle_id, force=args.force)
 
     try:
         result = asyncio.run(run())

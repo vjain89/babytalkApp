@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -9,16 +9,19 @@ import {
     Button,
     Alert,
     Platform,
+    DeviceEventEmitter,
 } from 'react-native';
 import { format } from 'date-fns';
-import { getAllRecordings, updateSessionName, getRecordingsByTagLabel } from '../db';
-import { useNavigation } from '@react-navigation/native';
+import { getAllRecordings, updateSessionName, getRecordingsByTagLabel, deleteRecording } from '../db';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { importInboxAnnotations, prepareBackup } from '../export/backup';
+import { RECORDINGS_CHANGED_EVENT, runAutoImportAnnotations } from '../export/autoImport';
 import { buildExportBatch } from '../export/sessionKit';
 import {
     importAudioFromInbox,
     pickAndImportAudioFiles,
 } from '../audio/importAudio';
+import { resolveAudioUri } from '../waveform/audioPath';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 
@@ -63,6 +66,22 @@ export default function RecordingListScreen() {
     useEffect(() => {
         fetchData();
     }, [tagQuery]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void (async () => {
+                await runAutoImportAnnotations({ alertOnChange: true });
+                fetchData();
+            })();
+            const sub = DeviceEventEmitter.addListener(
+                RECORDINGS_CHANGED_EVENT,
+                () => {
+                    fetchData();
+                },
+            );
+            return () => sub.remove();
+        }, [tagQuery]),
+    );
 
     useEffect(() => {
         applyFilters();
@@ -181,6 +200,20 @@ export default function RecordingListScreen() {
     const handleImportVoiceMemos = async () => {
         setExportingAll(true);
         try {
+            // First: anything already in Import / Inbox / Documents (Share / Save to Files).
+            const pending = await importAudioFromInbox();
+            if (pending.imported.length > 0) {
+                const errTail = pending.errors.length
+                    ? `\n\n${pending.errors.slice(0, 3).join('\n')}`
+                    : '';
+                Alert.alert(
+                    'Audio import',
+                    `Imported ${pending.imported.length} file(s) waiting in Import/Inbox.${errTail}`,
+                );
+                fetchData();
+                return;
+            }
+
             const result = await pickAndImportAudioFiles(true);
             if (result.cancelled) return;
             const errTail = result.errors.length
@@ -190,7 +223,7 @@ export default function RecordingListScreen() {
                 'Audio import',
                 result.imported.length
                     ? `Imported ${result.imported.length} recording(s).${errTail}`
-                    : `No files imported.${errTail || '\nTip: In the picker, open Browse → On My iPhone → Voice Memos.'}`,
+                    : `No files imported.${errTail || ''}\n\nVoice Memos are not visible in the Files picker.\n\nFrom Voice Memos:\n1. Share the memo\n2. Tap BabyTalk (or “Copy to BabyTalk”) — enable it under More if needed\n3. Or Save to Files → On My iPhone → BabyTalk (Documents)\n4. Then return here and tap this button again`,
             );
             fetchData();
         } catch (err) {
@@ -223,6 +256,59 @@ export default function RecordingListScreen() {
         }
     };
 
+    const renameRecording = (item: Recording) => {
+        if (Platform.OS === 'ios') {
+            Alert.prompt(
+                'Rename Session',
+                'Enter a new session name:',
+                async (newName) => {
+                    if (newName?.trim()) {
+                        await updateSessionName(item.id, newName.trim());
+                        fetchData();
+                    }
+                },
+            );
+        } else {
+            const newName = prompt('Enter a new session name:');
+            if (newName?.trim()) {
+                updateSessionName(item.id, newName.trim()).then(fetchData);
+            }
+        }
+    };
+
+    const confirmDeleteRecording = (item: Recording) => {
+        const title = item.session_name || 'Untitled session';
+        Alert.alert(
+            'Delete recording?',
+            `“${title}” and its tags will be removed. This can’t be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const { filename } = await deleteRecording(item.id);
+                            if (filename) {
+                                const uri = await resolveAudioUri(filename);
+                                if (uri) {
+                                    const path = uri.replace(/^file:\/\//, '');
+                                    if (await RNFS.exists(path)) {
+                                        await RNFS.unlink(path);
+                                    }
+                                }
+                            }
+                            fetchData();
+                        } catch (err) {
+                            console.error('❌ Delete failed:', err);
+                            Alert.alert('Delete failed', String(err));
+                        }
+                    },
+                },
+            ],
+        );
+    };
+
     const renderItem = ({ item }: { item: Recording }) => (
         <TouchableOpacity
             style={styles.item}
@@ -234,23 +320,15 @@ export default function RecordingListScreen() {
                 })
             }
             onLongPress={() => {
-                if (Platform.OS === 'ios') {
-                    Alert.prompt(
-                        'Rename Session',
-                        'Enter a new session name:',
-                        async (newName) => {
-                            if (newName?.trim()) {
-                                await updateSessionName(item.id, newName.trim());
-                                fetchData(); // reload list
-                            }
-                        }
-                    );
-                } else {
-                    const newName = prompt('Enter a new session name:');
-                    if (newName?.trim()) {
-                        updateSessionName(item.id, newName.trim()).then(fetchData);
-                    }
-                }
+                Alert.alert(item.session_name || 'Untitled session', undefined, [
+                    { text: 'Rename', onPress: () => renameRecording(item) },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => confirmDeleteRecording(item),
+                    },
+                    { text: 'Cancel', style: 'cancel' },
+                ]);
             }}
         >
             <Text style={styles.session}>{item.session_name || 'Untitled session'}</Text>

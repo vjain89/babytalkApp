@@ -193,17 +193,24 @@ export async function pickAndImportAudioFiles(allowMultiple = true): Promise<{
 }
 
 /**
- * Import loose audio from Documents/Import and the iOS system Inbox (Open In).
- * Voice Memos → Share → Open in BabyTalk lands in system Inbox when iOS creates it.
+ * Import loose audio from Documents/Import, Documents root, and the iOS system Inbox.
+ * Call prepareIncomingSharedAudio() first (Share extension / Copy-to land here).
  */
 export async function importAudioFromInbox(): Promise<{
   imported: ImportedRecording[];
   errors: string[];
 }> {
+  try {
+    await audioBridge.prepareIncomingSharedAudio();
+  } catch (err) {
+    console.warn('prepareIncomingSharedAudio:', err);
+  }
+
   const imported: ImportedRecording[] = [];
   const errors: string[] = [];
 
-  for (const dir of [IMPORT_DIR, SYSTEM_INBOX_DIR]) {
+  const docsRoot = RNFS.DocumentDirectoryPath;
+  for (const dir of [IMPORT_DIR, SYSTEM_INBOX_DIR, docsRoot]) {
     const dirPath = await resolveExistingPath(dir);
     if (!dirPath) continue;
     let entries: Awaited<ReturnType<typeof RNFS.readDir>> = [];
@@ -216,13 +223,17 @@ export async function importAudioFromInbox(): Promise<{
     for (const entry of entries) {
       if (!entry.isFile() || !isAudioFilename(entry.name)) continue;
       if (entry.name === 'README.txt') continue;
+      // Don't scoop up in-app recordings already living in Documents root.
+      if (dirPath === docsRoot || dirPath === `/private${docsRoot}`) {
+        const n = entry.name.toLowerCase();
+        if (n.startsWith('recording_') || n.startsWith('imported_')) continue;
+      }
       try {
         const result = await importAudioFile({
           uri: entry.path,
           name: entry.name,
         });
         imported.push(result);
-        // importAudioFile may have moved the Import/ file already; ignore missing unlink.
         try {
           if (await RNFS.exists(entry.path)) await RNFS.unlink(entry.path);
         } catch {

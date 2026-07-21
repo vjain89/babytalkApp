@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>babytalkApp</string>
+	<string>BabyTalk</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -53,9 +53,21 @@
 	<!-- Finder USB File Sharing: Documents appears when the phone is plugged into a Mac. -->
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<!-- YES helps Voice Memos show “Copy to BabyTalk” in the share sheet. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-	<!-- Open In / Share → BabyTalk for Voice Memos and other audio files. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>org.reactjs.native.example.babytalkApp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>babytalk</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Open In / Copy to BabyTalk for Voice Memos and other audio files. -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -64,15 +76,19 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Alternate</string>
+			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.audio</string>
 				<string>public.mpeg-4-audio</string>
 				<string>com.apple.m4a-audio</string>
+				<string>public.mpeg-4</string>
 				<string>public.aiff-audio</string>
 				<string>com.microsoft.waveform-audio</string>
 				<string>public.mp3</string>
+				<string>com.apple.coreaudio-format</string>
+				<string>public.data</string>
+				<string>public.item</string>
 			</array>
 		</dict>
 	</array>

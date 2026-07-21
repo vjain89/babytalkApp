@@ -180,6 +180,24 @@ export const updateAudioContentHash = async (
   ]);
 };
 
+/** Delete a recording row and its tags. Returns the filename for optional file cleanup. */
+export const deleteRecording = async (
+  recordingId: number,
+): Promise<{ filename: string | null }> => {
+  const db = await getDb();
+  const [rows] = await db.executeSql(
+    `SELECT filename FROM recordings WHERE id = ?`,
+    [recordingId],
+  );
+  const filename =
+    rows.rows.length > 0 ? (rows.rows.item(0).filename as string) : null;
+
+  // Explicit tag delete — CASCADE is unreliable unless PRAGMA foreign_keys=ON.
+  await db.executeSql(`DELETE FROM tags WHERE recording_id = ?`, [recordingId]);
+  await db.executeSql(`DELETE FROM recordings WHERE id = ?`, [recordingId]);
+  return { filename };
+};
+
 // Get all recordings, ordered by newest
 export const getAllRecordings = async (
   sort: 'newest' | 'oldest' | 'longest' | 'shortest' = 'newest',

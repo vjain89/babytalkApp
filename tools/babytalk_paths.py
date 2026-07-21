@@ -54,12 +54,10 @@ def list_local_kits(library: Path | None = None) -> list[Path]:
 
 def seed_library_from_backups(extra_roots: list[Path] | None = None) -> int:
     """
-    If Library is empty, copy kits from known Mac backup trees into Library/
-    (flat: one folder per kit). Returns number of kits copied.
+    Copy any missing kits from known Mac backup trees into Library/
+    (flat: one folder per kit). Returns number of kits newly copied.
     """
     ensure_library()
-    if list_local_kits():
-        return 0
 
     candidates: list[Path] = []
     backups = BABYTALK_ROOT / "Backups"
@@ -81,6 +79,11 @@ def seed_library_from_backups(extra_roots: list[Path] | None = None) -> int:
                 pass
             dest = LIBRARY_DIR / kit.name
             if dest.exists():
+                # Keep Mac tags ahead of seed copies; fill tags only if missing.
+                src_tags = kit / "tags.json"
+                dest_tags = dest / "tags.json"
+                if src_tags.exists() and not dest_tags.exists():
+                    shutil.copy2(src_tags, dest_tags)
                 continue
             shutil.copytree(kit, dest)
             copied += 1

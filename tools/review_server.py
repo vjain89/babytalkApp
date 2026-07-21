@@ -1544,9 +1544,15 @@ document.getElementById('btnSync').onclick = async () => {
     const pushN = (data.push && data.push.pushed || []).length;
     const pushTags = (data.push && data.push.pushed || []).reduce((s, x) => s + (x.tagCount || 0), 0);
     const name = (data.status && data.status.deviceName) || 'iPhone';
-    flashSaveStatus(
-      `Synced with ${name}: pulled ${pullN} kit(s), pushed ${pushN} kit(s) / ${pushTags} tags. Open BabyTalk on the phone to auto-import.`
-    );
+    if (pullN === 0 && pushN === 0) {
+      flashSaveStatus(
+        `Already in sync with ${name}. If a new phone recording is missing: open BabyTalk on the phone (it exports kits to Backups/sync), wait for WAV export to finish, then Sync again.`,
+      );
+    } else {
+      flashSaveStatus(
+        `Synced with ${name}: pulled ${pullN} kit(s), pushed ${pushN} kit(s) / ${pushTags} tags. Open BabyTalk on the phone to auto-import tags.`,
+      );
+    }
     const folder = current && current.folder;
     await refresh();
     if (folder) {

@@ -6,8 +6,9 @@ import {
   type TagSource,
   type TagStatus,
 } from '../db';
-import { buildExportBatch, buildSessionKit } from './sessionKit';
+import { buildExportBatch, buildSessionKit, sessionFolderName } from './sessionKit';
 import type { KitAnnotation, SessionManifest } from './types';
+import { getAllRecordings } from '../db';
 
 const DOCUMENTS = RNFS.DocumentDirectoryPath;
 
@@ -41,11 +42,11 @@ export async function ensureBackupDirs(): Promise<void> {
         '',
         'Mac USB sync drops kit folders here (manifest.json + tags.json).',
         'The app imports them automatically when it becomes active — no button required.',
-        'You can still tap Import Inbox Annotations as a manual retry.',
+        'You can still tap Retry Import Annotations as a manual retry.',
         '',
-        'Audio: drop .m4a/.wav files here, then tap Import Inbox Audio.',
-        'Or use Import Voice Memos / Audio and browse On My iPhone → Voice Memos.',
-        'Voice Memos → Share → Open in babytalkApp also lands in the system Inbox.',
+        'New recordings are auto-exported to Documents/Backups/sync/ for Mac Sync with iPhone.',
+        'Audio: drop .m4a/.wav files here, then open the app (or Import Inbox Audio).',
+        'Or use Import Voice Memos / Audio, or Share → BabyTalk from Voice Memos.',
         '',
         'Mac review: python3 tools/review_server.py',
         'Mac sync:   tools/.venv/bin/python tools/iphone_sync.py sync',
@@ -75,6 +76,95 @@ function backupDateFolder(): string {
   const h = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${y}-${m}-${day}_${h}${min}`;
+}
+
+/** Stable folder of kits kept ready for Mac USB sync (flat under Backups/sync/). */
+export const SYNC_KITS_DIR = `${BACKUPS_DIR}/sync`;
+
+async function listManifestPaths(root: string): Promise<string[]> {
+  if (!(await RNFS.exists(root))) return [];
+  const out: string[] = [];
+  const walk = async (dir: string) => {
+    let entries: Awaited<ReturnType<typeof RNFS.readDir>> = [];
+    try {
+      entries = await RNFS.readDir(dir);
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        await walk(e.path);
+      } else if (e.name === 'manifest.json') {
+        out.push(e.path);
+      }
+    }
+  };
+  await walk(root);
+  return out;
+}
+
+/** Collect recordingUuid / audioContentHash already present under Documents/Backups. */
+async function indexExistingBackupKits(): Promise<{
+  uuids: Set<string>;
+  hashes: Set<string>;
+}> {
+  const uuids = new Set<string>();
+  const hashes = new Set<string>();
+  const manifests = await listManifestPaths(BACKUPS_DIR);
+  for (const path of manifests) {
+    const man = await readJson<SessionManifest>(path);
+    if (!man) continue;
+    if (man.recordingUuid) uuids.add(man.recordingUuid);
+    if (man.audioContentHash) hashes.add(man.audioContentHash);
+  }
+  return { uuids, hashes };
+}
+
+/**
+ * Ensure every local recording has a session kit under Documents/Backups/sync/
+ * so Mac "Sync with iPhone" can pull new imports without tapping Prepare USB Backup.
+ */
+export async function ensureRecordingKitsForSync(): Promise<{
+  created: string[];
+  skipped: number;
+  errors: string[];
+}> {
+  await ensureBackupDirs();
+  await ensureDir(SYNC_KITS_DIR);
+
+  const recordings = await getAllRecordings();
+  const { uuids, hashes } = await indexExistingBackupKits();
+
+  const created: string[] = [];
+  const errors: string[] = [];
+  let skipped = 0;
+
+  for (const rec of recordings) {
+    const uuid = rec.uuid as string | undefined;
+    const hash = rec.audio_content_hash as string | undefined;
+    if ((uuid && uuids.has(uuid)) || (hash && hashes.has(hash))) {
+      skipped += 1;
+      continue;
+    }
+    const folder = sessionFolderName(rec);
+    const existingKit = `${SYNC_KITS_DIR}/${folder}`;
+    if (await RNFS.exists(`${existingKit}/manifest.json`)) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      const { kitDir, manifest } = await buildSessionKit(rec.id, SYNC_KITS_DIR);
+      created.push(kitDir.split('/').pop() || folder);
+      if (manifest.recordingUuid) uuids.add(manifest.recordingUuid);
+      if (manifest.audioContentHash) hashes.add(manifest.audioContentHash);
+      console.log(`✅ Sync kit ready: ${folder}`);
+    } catch (err) {
+      errors.push(`${folder}: ${String(err)}`);
+      console.warn('ensureRecordingKitsForSync failed', rec.id, err);
+    }
+  }
+
+  return { created, skipped, errors };
 }
 
 /** Write dated session kits under Documents/Backups/<date>/ for Finder USB copy. */
