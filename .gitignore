@@ -76,3 +76,8 @@ yarn-error.log
 
 # Added 25-03-27
 react-native-audio-recorder-player/react-native-audio-recorder-player/
+
+# Python
+__pycache__/
+*.py[cod]
+tools/.venv/

@@ -1593,7 +1593,7 @@ PODS:
     - React-logger (= 0.78.1)
     - React-perflogger (= 0.78.1)
     - React-utils (= 0.78.1)
-  - RNAudioRecorderPlayer (3.6.12):
+  - RNAudioRecorderPlayer (3.6.1):
     - React-Core
   - RNFS (2.20.0):
     - React-Core
@@ -1961,7 +1961,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 5da0393968ce2767e79f9fda7caa108592b9b63e
   ReactCodegen: 82d5bc3e3ad2c8496848554cb2d3b64b03b53420
   ReactCommon: 269d0d36423fad044eaea49900e88684ac670a16
-  RNAudioRecorderPlayer: 11df0c7b614e9767ef24d896465c3a758c592de7
+  RNAudioRecorderPlayer: 8f86a146576e310a11ea527a9fae9690ae414a10
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNScreens: b32d0d59b53acb574fa795a9343591ef4e7ab7c2
   RNShare: 56b5431c60e1e9ee167191f4f327471af1c2941a

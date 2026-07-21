@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		73EC5C744F760D787F8B0EB7 /* IncomingAudioIngest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23DBBE79CFA2935950DE9FAB /* IncomingAudioIngest.swift */; };
+		AE6F0A28B0CDA69BC053D7F9 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54C2CB4EF84FCAFDCB0F83F8 /* ShareViewController.swift */; };
+		ABBDA1CAC9AE202DCC9D7466 /* BabyTalkShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E05C53E77CE489FC241E8444 /* BabyTalkShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+
 		0C80B921A6F3F58F76C31292 /* libPods-babytalkApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-babytalkApp.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
@@ -15,6 +19,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		23DBBE79CFA2935950DE9FAB /* IncomingAudioIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IncomingAudioIngest.swift; path = babytalkApp/IncomingAudioIngest.swift; sourceTree = "<group>"; };
+		AF5396E115EF0C475AE55F68 /* babytalkApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = babytalkApp.entitlements; path = babytalkApp/babytalkApp.entitlements; sourceTree = "<group>"; };
+		54C2CB4EF84FCAFDCB0F83F8 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		0D3139517E4A90229CEC15BB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		3E8673A9E532CB6BCC55407A /* BabyTalkShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BabyTalkShare.entitlements; sourceTree = "<group>"; };
+		E05C53E77CE489FC241E8444 /* BabyTalkShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BabyTalkShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+
 		13B07F961A680F5B00A75B9A /* babytalkApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = babytalkApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = babytalkApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = babytalkApp/Info.plist; sourceTree = "<group>"; };
@@ -27,12 +38,34 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		7316CF886B64C8E022E917F8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				ABBDA1CAC9AE202DCC9D7466 /* BabyTalkShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-babytalkApp.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		49B13725FA8EC73745BC2697 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,6 +77,8 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				23DBBE79CFA2935950DE9FAB /* IncomingAudioIngest.swift */,
+				AF5396E115EF0C475AE55F68 /* babytalkApp.entitlements */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -71,6 +106,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07FAE1A68108700A75B9A /* babytalkApp */,
+				B461F8164E8A72B998890C2E /* BabyTalkShare */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -98,6 +134,17 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+
+		B461F8164E8A72B998890C2E /* BabyTalkShare */ = {
+			isa = PBXGroup;
+			children = (
+				54C2CB4EF84FCAFDCB0F83F8 /* ShareViewController.swift */,
+				0D3139517E4A90229CEC15BB /* Info.plist */,
+				3E8673A9E532CB6BCC55407A /* BabyTalkShare.entitlements */,
+			);
+			path = BabyTalkShare;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -112,17 +159,56 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+				7316CF886B64C8E022E917F8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				34AA99A0A977641121ECE968 /* PBXTargetDependency */,
 			);
 			name = babytalkApp;
 			productName = babytalkApp;
 			productReference = 13B07F961A680F5B00A75B9A /* babytalkApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+
+		0410BF6676E030EDE725C17D /* BabyTalkShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2AB7674F5FB2FBD4AA707B13 /* Build configuration list for PBXNativeTarget "BabyTalkShare" */;
+			buildPhases = (
+				F19069D46F9091DAB7E8A414 /* Sources */,
+				49B13725FA8EC73745BC2697 /* Frameworks */,
+				5E352BE816612CCE1BC0F93D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BabyTalkShare;
+			productName = BabyTalkShare;
+			productReference = E05C53E77CE489FC241E8444 /* BabyTalkShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		48A518D2790D0CCCB7E464AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0410BF6676E030EDE725C17D;
+			remoteInfo = BabyTalkShare;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		34AA99A0A977641121ECE968 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0410BF6676E030EDE725C17D /* BabyTalkShare */;
+			targetProxy = 48A518D2790D0CCCB7E464AD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 
 /* Begin PBXProject section */
 		83CBB9F71A601CBA00E9B192 /* Project object */ = {
@@ -149,6 +235,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* babytalkApp */,
+				0410BF6676E030EDE725C17D /* BabyTalkShare */,
 			);
 		};
 /* End PBXProject section */
@@ -161,6 +248,14 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				A157D9D048B08AC36A44891C /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		5E352BE816612CCE1BC0F93D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -247,6 +342,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				73EC5C744F760D787F8B0EB7 /* IncomingAudioIngest.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		F19069D46F9091DAB7E8A414 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AE6F0A28B0CDA69BC053D7F9 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,6 +381,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = babytalkApp;
+				CODE_SIGN_ENTITLEMENTS = babytalkApp/babytalkApp.entitlements;
+				SWIFT_OBJC_BRIDGING_HEADER = "babytalkApp/babytalkApp-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -304,6 +411,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = babytalkApp;
+				CODE_SIGN_ENTITLEMENTS = babytalkApp/babytalkApp.entitlements;
+				SWIFT_OBJC_BRIDGING_HEADER = "babytalkApp/babytalkApp-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -461,6 +570,58 @@
 			};
 			name = Release;
 		};
+
+		17B4E2759107F2B2680266B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BabyTalkShare/BabyTalkShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = NJ4VG2SM54;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BabyTalkShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.babytalkApp.BabyTalkShare";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+
+		B349D15622917A37FA103FFB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BabyTalkShare/BabyTalkShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = NJ4VG2SM54;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BabyTalkShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.babytalkApp.BabyTalkShare";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -478,6 +639,16 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+
+		2AB7674F5FB2FBD4AA707B13 /* Build configuration list for PBXNativeTarget "BabyTalkShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				17B4E2759107F2B2680266B6 /* Debug */,
+				B349D15622917A37FA103FFB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

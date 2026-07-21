@@ -3,14 +3,20 @@
 /** Native record-back callback interval (seconds). Must match BAR_MS. */
 export const SUBSCRIPTION_SEC = 0.05;
 
-/** One stored / displayed bar = 50ms of audio. */
+/** One stored / displayed bar while recording = 50ms of audio. */
 export const BAR_MS = 50;
+
+/**
+ * A1 playback detailed waveform: ~7 ms columns (min+max).
+ * Recording live view stays at BAR_MS; playback Path B re-extracts at this size.
+ */
+export const PLAYBACK_BAR_MS = 7;
 
 /** Recording live-tail window. */
 export const RECORD_WINDOW_MS = 3_000; // 60 bars
 
-/** Playback rolling window (fits ~160 bars on a phone without downsampling). */
-export const PLAYBACK_WINDOW_MS = 8_000; // 160 bars
+/** Playback rolling window. */
+export const PLAYBACK_WINDOW_MS = 8_000;
 
 /** iOS metering floor (silence). Store raw values; do not clip on capture. */
 export const CAPTURE_DB_MIN = -160;
@@ -43,4 +49,5 @@ export const BAR_GAP_PX = 1;
 export const MIN_BAR_PX = 1;
 export const WAVEFORM_HEIGHT = 72;
 
-export const WAVEFORM_SCHEMA_VERSION = 2;
+/** v3 adds optional minAmp/maxAmp for bipolar A1 playback. */
+export const WAVEFORM_SCHEMA_VERSION = 3;

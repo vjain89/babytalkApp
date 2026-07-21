@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -9,10 +9,19 @@ import {
     Button,
     Alert,
     Platform,
+    DeviceEventEmitter,
 } from 'react-native';
 import { format } from 'date-fns';
-import { getAllRecordings, updateSessionName, getRecordingsByTagLabel, getTagsForRecording } from '../db';
-import { useNavigation } from '@react-navigation/native';
+import { getAllRecordings, updateSessionName, getRecordingsByTagLabel, deleteRecording } from '../db';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { importInboxAnnotations, prepareBackup } from '../export/backup';
+import { RECORDINGS_CHANGED_EVENT, runAutoImportAnnotations } from '../export/autoImport';
+import { buildExportBatch } from '../export/sessionKit';
+import {
+    importAudioFromInbox,
+    pickAndImportAudioFiles,
+} from '../audio/importAudio';
+import { resolveAudioUri } from '../waveform/audioPath';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 
@@ -57,6 +66,22 @@ export default function RecordingListScreen() {
     useEffect(() => {
         fetchData();
     }, [tagQuery]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void (async () => {
+                await runAutoImportAnnotations({ alertOnChange: true });
+                fetchData();
+            })();
+            const sub = DeviceEventEmitter.addListener(
+                RECORDINGS_CHANGED_EVENT,
+                () => {
+                    fetchData();
+                },
+            );
+            return () => sub.remove();
+        }, [tagQuery]),
+    );
 
     useEffect(() => {
         applyFilters();
@@ -109,61 +134,179 @@ export default function RecordingListScreen() {
 
     const [exportingAll, setExportingAll] = useState(false);
 
-    const resolveAudioPath = async (filename: string): Promise<string | null> => {
-        const candidates = [
-            filename,
-            `${RNFS.CachesDirectoryPath}/${filename}`,
-            `${RNFS.DocumentDirectoryPath}/${filename}`,
-        ];
-        for (const c of candidates) {
-            const p = c.replace(/^file:\/\//, '');
-            if (await RNFS.exists(p)) return c.startsWith('file://') ? c : `file://${p}`;
-        }
-        return null;
-    };
-
     const handleExportAll = async () => {
         if (filteredRecordings.length === 0) return;
         setExportingAll(true);
         try {
-            const exportData: { exportedAt: string; recordings: Array<{ filename: string; recordingId: number; session_name: string | null; duration_ms: number; created_at: number; tags: Array<{ id: number; label: string; timestamp_ms: number }> }> } = {
-                exportedAt: new Date().toISOString(),
-                recordings: [],
-            };
-            const urls: string[] = [];
-
-            for (const r of filteredRecordings) {
-                const tags = await getTagsForRecording(r.id);
-                exportData.recordings.push({
-                    filename: r.filename,
-                    recordingId: r.id,
-                    session_name: r.session_name ?? null,
-                    duration_ms: r.duration_ms,
-                    created_at: r.created_at,
-                    tags,
-                });
-                const audioUrl = await resolveAudioPath(r.filename);
-                if (audioUrl) urls.push(audioUrl);
-            }
-
-            const jsonPath = `${RNFS.CachesDirectoryPath}/babytalk_export_all_${Date.now()}.json`;
-            await RNFS.writeFile(jsonPath, JSON.stringify(exportData, null, 2), 'utf8');
-            urls.push(`file://${jsonPath}`);
-
+            const parent = `${RNFS.CachesDirectoryPath}/export_all_${Date.now()}`;
+            await buildExportBatch(
+                filteredRecordings.map((r) => r.id),
+                parent,
+            );
+            Alert.alert(
+                'Export ready',
+                `Built ${filteredRecordings.length} session kit(s) as a folder. Prepare USB Backup writes the same kits under Documents/Backups for Finder.`,
+            );
+            // Also offer share of the batch manifest as a pointer.
             await Share.open({
-                title: 'Export All Recordings & Tags',
-                message: `Exporting ${exportData.recordings.length} recording(s) and tags`,
-                urls,
+                title: 'Export All Session Kits',
+                message: `Exported ${filteredRecordings.length} session kit(s)`,
+                urls: [`file://${parent}/export_manifest.json`],
                 failOnCancel: false,
             });
         } catch (err) {
             console.error('❌ Export all failed:', err);
-            if (Platform.OS === 'ios') {
-                Alert.alert('Export failed', String(err));
-            }
+            Alert.alert('Export failed', String(err));
         } finally {
             setExportingAll(false);
         }
+    };
+
+    const handlePrepareBackup = async () => {
+        if (filteredRecordings.length === 0) return;
+        setExportingAll(true);
+        try {
+            const dest = await prepareBackup(filteredRecordings.map((r) => r.id));
+            Alert.alert(
+                'Backup ready',
+                `Copied ${filteredRecordings.length} kit(s) to Documents/Backups.\nPlug into your Mac → Finder → your iPhone → babytalkApp → Backups.\n\n${dest.replace(/.*\/Documents\//, 'Documents/')}`,
+            );
+        } catch (err) {
+            console.error('❌ Backup failed:', err);
+            Alert.alert('Backup failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const handleImportAnnotations = async () => {
+        setExportingAll(true);
+        try {
+            const summary = await importInboxAnnotations();
+            Alert.alert(
+                'Import complete',
+                `Scanned ${summary.scanned}: +${summary.inserted} new, ${summary.updated} updated, ${summary.skipped} skipped, ${summary.unmatched} unmatched.` +
+                    (summary.errors.length ? `\n\n${summary.errors.slice(0, 3).join('\n')}` : ''),
+            );
+            fetchData();
+        } catch (err) {
+            console.error('❌ Import failed:', err);
+            Alert.alert('Import failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const handleImportVoiceMemos = async () => {
+        setExportingAll(true);
+        try {
+            // First: anything already in Import / Inbox / Documents (Share / Save to Files).
+            const pending = await importAudioFromInbox();
+            if (pending.imported.length > 0) {
+                const errTail = pending.errors.length
+                    ? `\n\n${pending.errors.slice(0, 3).join('\n')}`
+                    : '';
+                Alert.alert(
+                    'Audio import',
+                    `Imported ${pending.imported.length} file(s) waiting in Import/Inbox.${errTail}`,
+                );
+                fetchData();
+                return;
+            }
+
+            const result = await pickAndImportAudioFiles(true);
+            if (result.cancelled) return;
+            const errTail = result.errors.length
+                ? `\n\n${result.errors.slice(0, 3).join('\n')}`
+                : '';
+            Alert.alert(
+                'Audio import',
+                result.imported.length
+                    ? `Imported ${result.imported.length} recording(s).${errTail}`
+                    : `No files imported.${errTail || ''}\n\nVoice Memos are not visible in the Files picker.\n\nFrom Voice Memos:\n1. Share the memo\n2. Tap BabyTalk (or “Copy to BabyTalk”) — enable it under More if needed\n3. Or Save to Files → On My iPhone → BabyTalk (Documents)\n4. Then return here and tap this button again`,
+            );
+            fetchData();
+        } catch (err) {
+            console.error('❌ Audio import failed:', err);
+            Alert.alert('Audio import failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const handleImportInboxAudio = async () => {
+        setExportingAll(true);
+        try {
+            const result = await importAudioFromInbox();
+            const errTail = result.errors.length
+                ? `\n\n${result.errors.slice(0, 3).join('\n')}`
+                : '';
+            Alert.alert(
+                'Inbox audio',
+                result.imported.length
+                    ? `Imported ${result.imported.length} file(s) from Documents/Import (and system Inbox if present).${errTail}`
+                    : `No audio files found in Documents/Import or Inbox.${errTail}\n\nFrom Voice Memos: use Import Voice Memos / Audio, or Share → Open in babytalkApp.`,
+            );
+            fetchData();
+        } catch (err) {
+            console.error('❌ Inbox audio import failed:', err);
+            Alert.alert('Inbox import failed', String(err));
+        } finally {
+            setExportingAll(false);
+        }
+    };
+
+    const renameRecording = (item: Recording) => {
+        if (Platform.OS === 'ios') {
+            Alert.prompt(
+                'Rename Session',
+                'Enter a new session name:',
+                async (newName) => {
+                    if (newName?.trim()) {
+                        await updateSessionName(item.id, newName.trim());
+                        fetchData();
+                    }
+                },
+            );
+        } else {
+            const newName = prompt('Enter a new session name:');
+            if (newName?.trim()) {
+                updateSessionName(item.id, newName.trim()).then(fetchData);
+            }
+        }
+    };
+
+    const confirmDeleteRecording = (item: Recording) => {
+        const title = item.session_name || 'Untitled session';
+        Alert.alert(
+            'Delete recording?',
+            `“${title}” and its tags will be removed. This can’t be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const { filename } = await deleteRecording(item.id);
+                            if (filename) {
+                                const uri = await resolveAudioUri(filename);
+                                if (uri) {
+                                    const path = uri.replace(/^file:\/\//, '');
+                                    if (await RNFS.exists(path)) {
+                                        await RNFS.unlink(path);
+                                    }
+                                }
+                            }
+                            fetchData();
+                        } catch (err) {
+                            console.error('❌ Delete failed:', err);
+                            Alert.alert('Delete failed', String(err));
+                        }
+                    },
+                },
+            ],
+        );
     };
 
     const renderItem = ({ item }: { item: Recording }) => (
@@ -177,23 +320,15 @@ export default function RecordingListScreen() {
                 })
             }
             onLongPress={() => {
-                if (Platform.OS === 'ios') {
-                    Alert.prompt(
-                        'Rename Session',
-                        'Enter a new session name:',
-                        async (newName) => {
-                            if (newName?.trim()) {
-                                await updateSessionName(item.id, newName.trim());
-                                fetchData(); // reload list
-                            }
-                        }
-                    );
-                } else {
-                    const newName = prompt('Enter a new session name:');
-                    if (newName?.trim()) {
-                        updateSessionName(item.id, newName.trim()).then(fetchData);
-                    }
-                }
+                Alert.alert(item.session_name || 'Untitled session', undefined, [
+                    { text: 'Rename', onPress: () => renameRecording(item) },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => confirmDeleteRecording(item),
+                    },
+                    { text: 'Cancel', style: 'cancel' },
+                ]);
             }}
         >
             <Text style={styles.session}>{item.session_name || 'Untitled session'}</Text>
@@ -220,9 +355,33 @@ export default function RecordingListScreen() {
             />
 
             <Button
-                title={exportingAll ? 'Exporting…' : '📤 Export All Recordings + Tags'}
+                title={exportingAll ? 'Working…' : '🎙 Import Voice Memos / Audio'}
+                onPress={handleImportVoiceMemos}
+                disabled={exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '📂 Import Inbox Audio'}
+                onPress={handleImportInboxAudio}
+                disabled={exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '📤 Export All Session Kits'}
                 onPress={handleExportAll}
                 disabled={filteredRecordings.length === 0 || exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '💾 Prepare USB Backup'}
+                onPress={handlePrepareBackup}
+                disabled={filteredRecordings.length === 0 || exportingAll}
+            />
+            <View style={{ height: 8 }} />
+            <Button
+                title={exportingAll ? 'Working…' : '📥 Retry Import Annotations'}
+                onPress={handleImportAnnotations}
+                disabled={exportingAll}
             />
 
             {filteredRecordings.length === 0 ? (

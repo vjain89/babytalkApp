@@ -1,5 +1,10 @@
 import { BAR_MS, CAPTURE_DB_MIN, WAVEFORM_SCHEMA_VERSION } from './config';
-import { emptyWaveformPayload, type WaveformPayload, type WaveformSample } from './types';
+import {
+  emptyWaveformPayload,
+  type BipolarColumn,
+  type WaveformPayload,
+  type WaveformSample,
+} from './types';
 
 /**
  * Upsert a sample into a time-ordered sparse list.
@@ -11,12 +16,22 @@ export function upsertSample(samples: WaveformSample[], next: WaveformSample): W
     tMs: bin,
     avgDb: next.avgDb,
     peakDb: next.peakDb,
+    minAmp: next.minAmp,
+    maxAmp: next.maxAmp,
   };
 
   const last = samples[samples.length - 1];
   if (last && last.tMs === bin) {
     last.avgDb = Math.max(last.avgDb, sample.avgDb);
     last.peakDb = Math.max(last.peakDb, sample.peakDb);
+    if (sample.minAmp != null) {
+      last.minAmp =
+        last.minAmp == null ? sample.minAmp : Math.min(last.minAmp, sample.minAmp);
+    }
+    if (sample.maxAmp != null) {
+      last.maxAmp =
+        last.maxAmp == null ? sample.maxAmp : Math.max(last.maxAmp, sample.maxAmp);
+    }
     return samples;
   }
 
@@ -66,13 +81,47 @@ export function densifyPeaks(
   return out;
 }
 
+/** Dense bipolar columns (min/max amp) for A1 playback render. */
+export function densifyBipolar(
+  samples: WaveformSample[],
+  startMs: number,
+  endMs: number,
+  barDurationMs: number,
+): BipolarColumn[] {
+  const startBin = Math.floor(startMs / barDurationMs);
+  const endBin = Math.max(startBin, Math.ceil(endMs / barDurationMs));
+  const count = Math.max(0, endBin - startBin);
+  const out: BipolarColumn[] = new Array(count);
+  for (let i = 0; i < count; i++) out[i] = { min: 0, max: 0 };
+
+  if (samples.length === 0 || count === 0) return out;
+
+  for (const s of samples) {
+    const bin = Math.round(s.tMs / barDurationMs);
+    if (bin < startBin || bin >= endBin) continue;
+    const idx = bin - startBin;
+    const minA = s.minAmp ?? (s.peakDb > CAPTURE_DB_MIN ? -dbToApproxAmp(s.peakDb) : 0);
+    const maxA = s.maxAmp ?? (s.peakDb > CAPTURE_DB_MIN ? dbToApproxAmp(s.peakDb) : 0);
+    out[idx] = {
+      min: Math.min(out[idx].min, minA),
+      max: Math.max(out[idx].max, maxA),
+    };
+  }
+  return out;
+}
+
+function dbToApproxAmp(db: number): number {
+  if (db <= -160) return 0;
+  return Math.min(1, Math.pow(10, db / 20));
+}
+
 export function serializeWaveform(payload: WaveformPayload): string {
   return JSON.stringify(payload);
 }
 
 /**
  * Parse DB JSON. Supports:
- * - v2: { version, barDurationMs, samples: [{tMs,avgDb,peakDb}] }
+ * - v2/v3: { version, barDurationMs, samples: [{tMs,avgDb,peakDb,minAmp?,maxAmp?}] }
  * - legacy: number[] of normalized 0..1 peaks (best-effort)
  */
 export function parseWaveformData(raw: string | null | undefined): WaveformPayload {
@@ -82,14 +131,22 @@ export function parseWaveformData(raw: string | null | undefined): WaveformPaylo
     const parsed = JSON.parse(raw);
 
     if (parsed && typeof parsed === 'object' && Array.isArray(parsed.samples)) {
-      const samples: WaveformSample[] = parsed.samples.map((s: any) => ({
-        tMs: Number(s.tMs) || 0,
-        avgDb: Number.isFinite(Number(s.avgDb)) ? Number(s.avgDb) : CAPTURE_DB_MIN,
-        peakDb: Number.isFinite(Number(s.peakDb)) ? Number(s.peakDb) : CAPTURE_DB_MIN,
-      }));
+      const samples: WaveformSample[] = parsed.samples.map((s: any) => {
+        const sample: WaveformSample = {
+          tMs: Number(s.tMs) || 0,
+          avgDb: Number.isFinite(Number(s.avgDb)) ? Number(s.avgDb) : CAPTURE_DB_MIN,
+          peakDb: Number.isFinite(Number(s.peakDb)) ? Number(s.peakDb) : CAPTURE_DB_MIN,
+        };
+        if (Number.isFinite(Number(s.minAmp))) sample.minAmp = Number(s.minAmp);
+        if (Number.isFinite(Number(s.maxAmp))) sample.maxAmp = Number(s.maxAmp);
+        return sample;
+      });
+      const source =
+        parsed.source === 'file' || parsed.source === 'metering' ? parsed.source : undefined;
       return {
         version: Number(parsed.version) || WAVEFORM_SCHEMA_VERSION,
         barDurationMs: Number(parsed.barDurationMs) || BAR_MS,
+        source,
         samples,
       };
     }
@@ -98,13 +155,13 @@ export function parseWaveformData(raw: string | null | undefined): WaveformPaylo
     if (Array.isArray(parsed)) {
       const samples: WaveformSample[] = parsed.map((v: any, i: number) => {
         const n = Math.max(0, Math.min(1, Number(v) || 0));
-        // Invert old normalize: 0..1 was roughly (-60..0) with gamma — approximate
         const db = n <= 0 ? CAPTURE_DB_MIN : -60 + n * 60;
         return { tMs: i * BAR_MS, avgDb: db, peakDb: db };
       });
       return {
         version: 1,
         barDurationMs: BAR_MS,
+        source: 'metering' as const,
         samples,
       };
     }

@@ -90,7 +90,7 @@ Samples are stored as sparse `{ tMs, avgDb, peakDb }` with metadata (`barDuratio
 
 - [x] Waveform rescope (50ms sparse raw-dB metering envelope)
 - [x] Envelope UX polish (narrower tags, tighter Y / noise floor, gapped bars)
-- [ ] File-derived peaks for playback (Path B — true envelope from `.m4a`)
+- [x] File-derived peaks for playback/save (Path B — envelope from `.m4a`)
 - [ ] Structured export for offline/cloud processing
 - [ ] Google Drive backup
 - [ ] Optional PCM-style oscilloscope view

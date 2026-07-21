@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, LayoutChangeEvent, PanResponder } from 'react-native';
 import {
   BAR_GAP_PX,
   BAR_MS,
@@ -8,11 +8,20 @@ import {
   WAVEFORM_HEIGHT,
 } from '../waveform/config';
 import { dbToHeight01, type DbRange } from '../waveform/scale';
+import type { BipolarColumn } from '../waveform/types';
 
 type Props = {
   /** Dense peak dB array: one entry per barDurationMs in the visible window. */
-  peaksDb: number[];
+  peaksDb?: number[];
+  /** A1 bipolar columns (min/max amp already densified for the window). */
+  bipolarColumns?: BipolarColumn[];
+  /** Divisor for bipolar amp → height (from computeBipolarAmpScale). */
+  bipolarScale?: number;
   progressMs: number;
+  /** Preview position while scrubbing (cursor only). */
+  scrubPreviewMs?: number | null;
+  /** Rolling view: time at the right edge of the visible window. */
+  rollingWindowEndMs?: number;
   durationMs?: number;
 
   barDurationMs?: number;
@@ -26,23 +35,33 @@ type Props = {
   tagWidthMs?: number;
   showTagMarkers?: boolean;
 
-  /** Fixed Y mapping for this session (no live autoscale). */
+  /** Fixed Y mapping for this session (no live autoscale). Envelope mode only. */
   dbRange: DbRange;
 
   height?: number;
   minBarPx?: number;
+
+  /** Tap/drag to seek (playback). Maps touch X → time via onSeek. */
+  seekable?: boolean;
+  onSeek?: (ms: number) => void;
+  /** Fires during scrub with preview ms, or null when scrub ends. */
+  onScrubChange?: (ms: number | null) => void;
 };
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /**
  * Display-only waveform. Does not capture or store audio.
- * Expects peaksDb already densified for the visible window (or full clip).
- * Renders a level envelope (metering), not a PCM oscilloscope.
+ * Envelope mode: peaksDb densified for the visible window.
+ * Bipolar mode (A1): bipolarColumns with min/max amp around centerline.
  */
 export default function Waveform({
-  peaksDb,
+  peaksDb = [],
+  bipolarColumns,
+  bipolarScale = 1,
   progressMs,
+  scrubPreviewMs = null,
+  rollingWindowEndMs,
   durationMs,
   barDurationMs = BAR_MS,
   windowMs,
@@ -55,42 +74,130 @@ export default function Waveform({
   dbRange,
   height = WAVEFORM_HEIGHT,
   minBarPx = MIN_BAR_PX,
+  seekable = false,
+  onSeek,
+  onScrubChange,
 }: Props) {
   const [width, setWidth] = useState(1);
+  const [scrubMs, setScrubMs] = useState<number | null>(null);
+  const widthRef = useRef(1);
+  const mapXToMsRef = useRef<(x: number) => number>(() => 0);
+  const bipolar = Boolean(bipolarColumns && bipolarColumns.length > 0);
+  const columnCount = bipolar ? bipolarColumns!.length : peaksDb.length;
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
-    if (w > 0) setWidth(w);
+    if (w > 0) {
+      setWidth(w);
+      widthRef.current = w;
+    }
   };
 
-  // For rolling mode, peaksDb is already the densified trailing window ending at progressMs.
-  // visibleStart may be negative early in a session (silence padding on the left).
+  const displayProgressMs = scrubPreviewMs ?? scrubMs ?? progressMs;
+  const rollingEndMs = rollingWindowEndMs ?? progressMs;
+
   const { visibleStartMs, visibleEndMs } = useMemo(() => {
     if (mode === 'full') {
-      const totalMs = Math.max(durationMs ?? 0, peaksDb.length * barDurationMs);
+      const totalMs = Math.max(durationMs ?? 0, columnCount * barDurationMs);
       return { visibleStartMs: 0, visibleEndMs: totalMs };
     }
-    const end = progressMs;
-    return { visibleStartMs: end - windowMs, visibleEndMs: end };
-  }, [mode, durationMs, peaksDb.length, barDurationMs, progressMs, windowMs]);
+    return { visibleStartMs: rollingEndMs - windowMs, visibleEndMs: rollingEndMs };
+  }, [mode, durationMs, columnCount, barDurationMs, rollingEndMs, windowMs]);
 
-  // One pixel bar per source bar when they fit; only downsample if screen is too narrow.
-  const { barsToRender, barPx } = useMemo(() => {
+  const totalMsFull = useMemo(
+    () => Math.max(1, durationMs ?? columnCount * barDurationMs),
+    [durationMs, columnCount, barDurationMs],
+  );
+
+  mapXToMsRef.current = (x: number) => {
+    const w = Math.max(1, widthRef.current);
+    const clampedX = clamp01(x / w);
+    if (mode === 'full') {
+      return clampedX * totalMsFull;
+    }
+    const start = rollingEndMs - windowMs;
+    const t = start + clampedX * windowMs;
+    return Math.max(0, Math.min(totalMsFull, t));
+  };
+
+  const endScrub = () => {
+    setScrubMs(null);
+    onScrubChange?.(null);
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => seekable,
+        onMoveShouldSetPanResponder: () => seekable,
+        onPanResponderGrant: (evt) => {
+          if (!seekable) return;
+          const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
+          setScrubMs(ms);
+          onScrubChange?.(ms);
+        },
+        onPanResponderMove: (evt) => {
+          if (!seekable) return;
+          const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
+          setScrubMs(ms);
+          onScrubChange?.(ms);
+        },
+        onPanResponderRelease: (evt) => {
+          if (!seekable) return;
+          const ms = mapXToMsRef.current(evt.nativeEvent.locationX);
+          onSeek?.(ms);
+          endScrub();
+        },
+        onPanResponderTerminate: () => {
+          endScrub();
+        },
+      }),
+    [seekable, onSeek, onScrubChange, mode, rollingEndMs, windowMs, totalMsFull],
+  );
+
+  const { envelopeBars, bipolarBars, barPx } = useMemo(() => {
     const minPx = Math.max(1, Math.floor(minBarPx));
     const maxCount = Math.max(1, Math.floor(width / minPx));
-    const source = peaksDb;
 
-    if (source.length === 0) {
-      return { barsToRender: [] as number[], barPx: minPx };
-    }
-
-    if (source.length <= maxCount) {
+    if (bipolar && bipolarColumns) {
+      const source = bipolarColumns;
+      if (source.length === 0) {
+        return { envelopeBars: [] as number[], bipolarBars: [] as BipolarColumn[], barPx: minPx };
+      }
+      const downsample = (cols: BipolarColumn[]): BipolarColumn[] => {
+        if (cols.length <= maxCount) return cols;
+        const bucketSize = Math.ceil(cols.length / maxCount);
+        const out: BipolarColumn[] = [];
+        for (let i = 0; i < cols.length; i += bucketSize) {
+          let min = 0;
+          let max = 0;
+          for (let j = 0; j < bucketSize && i + j < cols.length; j++) {
+            min = Math.min(min, cols[i + j].min);
+            max = Math.max(max, cols[i + j].max);
+          }
+          out.push({ min, max });
+        }
+        return out;
+      };
+      const cols = downsample(source);
       return {
-        barsToRender: source.map((db) => dbToHeight01(db, dbRange)),
-        barPx: width / source.length,
+        envelopeBars: [] as number[],
+        bipolarBars: cols,
+        barPx: width / Math.max(1, cols.length),
       };
     }
 
+    const source = peaksDb;
+    if (source.length === 0) {
+      return { envelopeBars: [] as number[], bipolarBars: [] as BipolarColumn[], barPx: minPx };
+    }
+    if (source.length <= maxCount) {
+      return {
+        envelopeBars: source.map((db) => dbToHeight01(db, dbRange)),
+        bipolarBars: [] as BipolarColumn[],
+        barPx: width / source.length,
+      };
+    }
     const bucketSize = Math.ceil(source.length / maxCount);
     const out: number[] = [];
     for (let i = 0; i < source.length; i += bucketSize) {
@@ -100,29 +207,36 @@ export default function Waveform({
       }
       out.push(dbToHeight01(m, dbRange));
     }
-    return { barsToRender: out, barPx: width / Math.max(1, out.length) };
-  }, [peaksDb, width, minBarPx, dbRange]);
+    return {
+      envelopeBars: out,
+      bipolarBars: [] as BipolarColumn[],
+      barPx: width / Math.max(1, out.length),
+    };
+  }, [peaksDb, bipolarColumns, bipolar, width, minBarPx, dbRange]);
 
   const drawnBarWidth = Math.max(1, barPx - BAR_GAP_PX);
+  const midY = height / 2;
 
   const cursorX = useMemo(() => {
     if (!showCursor) return -100;
     if (mode === 'full') {
-      const totalMs = Math.max(1, durationMs ?? peaksDb.length * barDurationMs);
-      return clamp01(progressMs / totalMs) * width;
+      return clamp01(displayProgressMs / totalMsFull) * width;
     }
-    if (cursorMode === 'pinned') return width - 1;
-    return clamp01((progressMs - visibleStartMs) / windowMs) * width;
+    if (cursorMode === 'pinned' && scrubPreviewMs == null && scrubMs == null) {
+      return width - 1;
+    }
+    const start = rollingEndMs - windowMs;
+    return clamp01((displayProgressMs - start) / windowMs) * width;
   }, [
     showCursor,
     mode,
     cursorMode,
+    scrubPreviewMs,
+    scrubMs,
     width,
-    progressMs,
-    durationMs,
-    peaksDb.length,
-    barDurationMs,
-    visibleStartMs,
+    displayProgressMs,
+    rollingEndMs,
+    totalMsFull,
     windowMs,
   ]);
 
@@ -130,7 +244,7 @@ export default function Waveform({
     if (!showTagMarkers || tagTimestamps.length === 0) return [];
 
     if (mode === 'full') {
-      const totalMs = Math.max(1, durationMs ?? peaksDb.length * barDurationMs);
+      const totalMs = Math.max(1, durationMs ?? columnCount * barDurationMs);
       const msPerPixel = totalMs / Math.max(1, width);
       const wPx = Math.max(2, Math.round(tagWidthMs / msPerPixel));
       return tagTimestamps.map((ts) => {
@@ -153,7 +267,7 @@ export default function Waveform({
     tagTimestamps,
     mode,
     durationMs,
-    peaksDb.length,
+    columnCount,
     barDurationMs,
     visibleStartMs,
     visibleEndMs,
@@ -164,24 +278,71 @@ export default function Waveform({
 
   return (
     <View style={[styles.container, { height }]} onLayout={onLayout}>
-      <View style={styles.barsRow}>
-        {barsToRender.map((h01, i) => {
-          // Silence: hairline only. Active audio: proportional height from center.
-          const h = h01 <= 0 ? 1 : Math.max(2, h01 * height);
-          return (
-            <View
-              key={i}
-              style={{
-                width: drawnBarWidth,
-                marginRight: BAR_GAP_PX,
-                height: h,
-                backgroundColor: h01 <= 0 ? '#E8E8E8' : '#8A8A8A',
-                borderRadius: 1,
-              }}
-            />
-          );
-        })}
-      </View>
+      {bipolar ? (
+        <View style={styles.barsRow}>
+          {bipolarBars.map((col, i) => {
+            const maxN = clamp01(Math.abs(col.max) / bipolarScale);
+            const minN = clamp01(Math.abs(col.min) / bipolarScale);
+            const topH = Math.max(col.max === 0 && col.min === 0 ? 0 : 1, maxN * midY);
+            const botH = Math.max(col.max === 0 && col.min === 0 ? 0 : 1, minN * midY);
+            const silent = col.max === 0 && col.min === 0;
+            return (
+              <View
+                key={i}
+                style={{
+                  width: drawnBarWidth,
+                  marginRight: BAR_GAP_PX,
+                  height,
+                  justifyContent: 'center',
+                }}
+              >
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    width: drawnBarWidth,
+                    bottom: midY,
+                    height: silent ? 1 : topH,
+                    backgroundColor: silent ? '#E8E8E8' : '#6B6B6B',
+                    borderTopLeftRadius: 1,
+                    borderTopRightRadius: 1,
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    width: drawnBarWidth,
+                    top: midY,
+                    height: silent ? 0 : botH,
+                    backgroundColor: '#6B6B6B',
+                    borderBottomLeftRadius: 1,
+                    borderBottomRightRadius: 1,
+                  }}
+                />
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <View style={styles.barsRow}>
+          {envelopeBars.map((h01, i) => {
+            const h = h01 <= 0 ? 1 : Math.max(2, h01 * height);
+            return (
+              <View
+                key={i}
+                style={{
+                  width: drawnBarWidth,
+                  marginRight: BAR_GAP_PX,
+                  height: h,
+                  backgroundColor: h01 <= 0 ? '#E8E8E8' : '#8A8A8A',
+                  borderRadius: 1,
+                }}
+              />
+            );
+          })}
+        </View>
+      )}
 
       {showTagMarkers && (
         <View pointerEvents="none" style={styles.overlay}>
@@ -194,7 +355,24 @@ export default function Waveform({
         </View>
       )}
 
-      {showCursor && <View style={[styles.cursor, { left: cursorX }]} />}
+      {showCursor && (
+        <View
+          style={[
+            styles.cursor,
+            { left: cursorX },
+            scrubMs !== null && styles.cursorScrubbing,
+          ]}
+        />
+      )}
+
+      {seekable && (
+        <View
+          style={styles.seekOverlay}
+          {...panResponder.panHandlers}
+          accessibilityRole="adjustable"
+          accessibilityLabel="Waveform seek"
+        />
+      )}
     </View>
   );
 }
@@ -238,5 +416,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 2,
     backgroundColor: 'red',
+  },
+  cursorScrubbing: {
+    width: 3,
+    backgroundColor: '#D32F2F',
+  },
+  seekOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
 });
