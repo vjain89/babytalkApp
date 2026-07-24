@@ -14,8 +14,8 @@ import {
 import AudioRecorderPlayer from '../../react-native-audio-recorder-player';
 import { useNavigation } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
-import { IOS_ALAC_AUDIO_SET, newRecordingFilename } from '../audio/captureSettings';
-import { addRecording, addTag, getTodayRecordingCount } from '../db';
+import { IOS_ALAC_AUDIO_SET, formatSessionStampName, newRecordingFilename } from '../audio/captureSettings';
+import { addRecording, addTag } from '../db';
 import CircularRecordButton from '../components/CircularRecordButton';
 import RecordingLayout from '../components/RecordingLayout';
 import Waveform from '../components/Waveform';
@@ -47,6 +47,7 @@ export default function RecordScreen() {
   // Sparse capture list (mutated in place; displayPeaks is React state for re-renders)
   const samplesRef = useRef<WaveformSample[]>([]);
   const [displayPeaks, setDisplayPeaks] = useState<number[]>([]);
+  const recordingStartedAtRef = useRef<number | null>(null);
 
   const navigation = useNavigation();
 
@@ -56,6 +57,7 @@ export default function RecordScreen() {
       setDisplayPeaks([]);
       setLiveTags([]);
       setRecordMs(0);
+      recordingStartedAtRef.current = Date.now();
 
       await audioRecorderPlayer.setSubscriptionDuration(SUBSCRIPTION_SEC);
 
@@ -152,8 +154,8 @@ export default function RecordScreen() {
 
       let finalSessionName = enteredName?.trim();
       if (!finalSessionName) {
-        const count = await getTodayRecordingCount();
-        finalSessionName = `Recording-${count + 1}`;
+        const startedAt = recordingStartedAtRef.current ?? Date.now();
+        finalSessionName = formatSessionStampName(new Date(startedAt));
       }
 
       try {
@@ -202,6 +204,7 @@ export default function RecordScreen() {
       setRecordMs(0);
       setFilePath(null);
       setLiveTags([]);
+      recordingStartedAtRef.current = null;
       setRecording(false);
       setIsPaused(false);
 
