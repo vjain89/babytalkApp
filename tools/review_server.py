@@ -3,9 +3,9 @@
 Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
   - drag on the waveform to select a span
-  - add / edit / delete free-form tags with start+end times
+  - add / edit / delete tags with category + optional speaker
   - find speech segments (VAD) → provisional ML candidates
-  - confirm or dismiss ML candidates
+  - confirm or dismiss ML candidates (assign category + speaker)
   - Sync with iPhone (USB) to pull kits and push tags.json
 
 Usage:
@@ -114,6 +114,68 @@ def read_annotations(kit: Path) -> list:
 
 def write_annotations(kit: Path, anns: list) -> None:
     write_json(kit / "annotations.json", {"annotations": anns})
+
+
+# Primary Review Browser taxonomy (human assigns on confirm; VAD does not).
+CATEGORIES = (
+    "verbal vocalization",
+    "non-verbal vocalization",
+    "non-vocal vegetative sound",
+)
+SPEAKER_PRESETS = ("Baby", "Parent", "Other")
+
+
+def normalize_category(value) -> str:
+    text = (value or "").strip()
+    if text in CATEGORIES:
+        return text
+    return ""
+
+
+def normalize_speaker(value) -> str:
+    return (value or "").strip()
+
+
+def compose_label(category: str = "", speaker: str = "", note: str = "") -> str:
+    """Keep `label` a useful string for older UI / phone import.
+
+    Prefer an explicit free-form note when present; otherwise category · speaker.
+    """
+    note = (note or "").strip()
+    if note:
+        return note
+    category = (category or "").strip()
+    speaker = (speaker or "").strip()
+    if category and speaker:
+        return f"{category} · {speaker}"
+    if category:
+        return category
+    if speaker:
+        return speaker
+    return "untitled"
+
+
+def apply_taxonomy_fields(item: dict, body: dict) -> None:
+    """Set category / speaker / label on a tag or annotation from a request body."""
+    has_tax = "category" in body or "speaker" in body or "note" in body
+    if has_tax:
+        category = normalize_category(body.get("category"))
+        speaker = normalize_speaker(body.get("speaker"))
+        note = str(body.get("note") or "").strip()
+        if category:
+            item["category"] = category
+        else:
+            item.pop("category", None)
+        if speaker:
+            item["speaker"] = speaker
+        else:
+            item.pop("speaker", None)
+        item["label"] = compose_label(category, speaker, note)
+        return
+
+    # Legacy clients that only send label.
+    if "label" in body:
+        item["label"] = (body.get("label") or item.get("label") or "").strip() or "untitled"
 
 
 def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
@@ -396,8 +458,43 @@ HTML = r"""<!DOCTYPE html>
     gap: 8px;
     margin: 14px 0 8px;
     font-family: ui-sans-serif, system-ui, sans-serif;
+    align-items: start;
   }
-  .tag-form input {
+  .tag-form input, .tag-form select {
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
+    background: #fff; color: var(--ink);
+  }
+  .tax-block {
+    display: grid;
+    gap: 6px;
+  }
+  .speaker-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .speaker-row input {
+    flex: 1 1 120px;
+    min-width: 100px;
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
+  }
+  .chip {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 5px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+  }
+  .chip.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .note-input {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
   }
   .help {
@@ -458,23 +555,36 @@ HTML = r"""<!DOCTYPE html>
   }
   .row {
     display: grid;
-    grid-template-columns: 130px 1fr auto auto auto;
-    gap: 8px; align-items: center;
-    padding: 8px 0; border-bottom: 1px solid var(--line);
+    grid-template-columns: 150px 1fr;
+    gap: 10px; align-items: start;
+    padding: 10px 0; border-bottom: 1px solid var(--line);
     font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px;
   }
-  .row input[type=text] { padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; }
+  .row-fields {
+    display: grid;
+    gap: 8px;
+  }
+  .row-fields .controls {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  }
+  .row select, .row input[type=text], .row .note-input {
+    padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+    font: inherit; background: #fff; color: var(--ink);
+  }
+  .row .category-select { width: 100%; max-width: 280px; }
+  .row .speaker-row input { padding: 6px 8px; }
   .pill {
     font-size: 11px; padding: 3px 7px; border-radius: 4px; background: #efe6da;
-    white-space: nowrap;
+    white-space: normal; line-height: 1.35;
   }
   .pill.user { background: #f3d9c8; color: #7a3410; }
   .pill.ml { background: #d9e6d9; color: #2f4f2f; }
+  .pill .sub { display: block; color: inherit; opacity: 0.85; font-weight: 500; }
   audio { display: none; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; }
     .tag-form { grid-template-columns: 1fr 1fr; }
-    .row { grid-template-columns: 1fr 1fr; }
+    .row { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -530,6 +640,69 @@ let playbackParkBuf = 0;
 
 const audioEl = () => document.getElementById('audio');
 
+const CATEGORIES = [
+  'verbal vocalization',
+  'non-verbal vocalization',
+  'non-vocal vegetative sound',
+];
+const SPEAKER_PRESETS = ['Baby', 'Parent', 'Other'];
+
+function categoryOptionsHtml(selected) {
+  const sel = selected || '';
+  let html = `<option value="">Category…</option>`;
+  for (const c of CATEGORIES) {
+    html += `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`;
+  }
+  return html;
+}
+
+function speakerChipsHtml(selected, inputId) {
+  const sel = (selected || '').trim();
+  const chips = SPEAKER_PRESETS.map(s =>
+    `<button type="button" class="chip${s === sel ? ' active' : ''}" data-speaker="${esc(s)}">${esc(s)}</button>`
+  ).join('');
+  return `<div class="speaker-row">
+    ${chips}
+    <input id="${esc(inputId)}" type="text" value="${esc(sel)}" placeholder="Speaker (optional)" autocomplete="off"/>
+  </div>`;
+}
+
+function wireSpeakerChips(root, inputEl) {
+  if (!root || !inputEl) return;
+  const sync = () => {
+    const v = inputEl.value.trim();
+    root.querySelectorAll('.chip[data-speaker]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.speaker === v);
+    });
+  };
+  root.querySelectorAll('.chip[data-speaker]').forEach(btn => {
+    btn.onclick = () => {
+      const name = btn.dataset.speaker || '';
+      inputEl.value = inputEl.value.trim() === name ? '' : name;
+      sync();
+    };
+  });
+  inputEl.addEventListener('input', sync);
+  sync();
+}
+
+function freeformNote(item) {
+  const label = (item.label || '').trim();
+  if (!label) return '';
+  const cat = (item.category || '').trim();
+  const sp = (item.speaker || '').trim();
+  const composed = cat && sp ? `${cat} · ${sp}` : (cat || sp);
+  if (composed && label === composed) return '';
+  if (CATEGORIES.includes(label)) return '';
+  return label;
+}
+
+function readTaxonomyFrom(scope) {
+  const category = (scope.querySelector('[data-field="category"], .category-select, #categoryInput')?.value || '').trim();
+  const speaker = (scope.querySelector('[data-field="speaker"]')?.value || '').trim();
+  const note = (scope.querySelector('[data-field="note"]')?.value || '').trim();
+  return { category, speaker, note };
+}
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
@@ -1167,7 +1340,7 @@ function renderShell() {
   if (!k) return;
   document.getElementById('panel').innerHTML = `
     <div class="help">
-      <strong>How to tag:</strong> click to set playhead · drag to select a snippet · type a label · Add tag.
+      <strong>How to tag:</strong> click to set playhead · drag to select a snippet · pick a <strong>category</strong> · optional <strong>speaker</strong> · Add tag.
       Existing tags show as orange bands on the waveform (and overview strip).
       <strong>Play:</strong> with no selection, plays from the playhead; with a selection, loops that snippet only.
       Drag the blue handles to adjust snippet ends (pauses if playing). Scroll to zoom · Shift-drag to pan.
@@ -1213,7 +1386,21 @@ function renderShell() {
       <span id="zoomLabel" class="muted">Zoom 1×</span>
     </div>
     <div class="tag-form">
-      <input id="labelInput" type="text" placeholder="Free-form label (e.g. mama, hungry)"/>
+      <div class="tax-block">
+        <select id="categoryInput" class="category-select" data-field="category" title="Category">
+          <option value="">Category…</option>
+          <option value="verbal vocalization">verbal vocalization</option>
+          <option value="non-verbal vocalization">non-verbal vocalization</option>
+          <option value="non-vocal vegetative sound">non-vocal vegetative sound</option>
+        </select>
+        <div class="speaker-row" id="addSpeakerRow">
+          <button type="button" class="chip" data-speaker="Baby">Baby</button>
+          <button type="button" class="chip" data-speaker="Parent">Parent</button>
+          <button type="button" class="chip" data-speaker="Other">Other</button>
+          <input id="speakerInput" data-field="speaker" type="text" placeholder="Speaker (optional)" autocomplete="off"/>
+        </div>
+        <input id="noteInput" class="note-input" data-field="note" type="text" placeholder="Optional note (e.g. mama, sneeze)"/>
+      </div>
       <input id="startInput" type="number" step="0.01" min="0" placeholder="Start s"/>
       <input id="endInput" type="number" step="0.01" min="0" placeholder="End s"/>
       <button class="primary" id="btnAdd">Add tag</button>
@@ -1232,6 +1419,7 @@ function renderShell() {
       <h3>ML candidates</h3>
       <p class="muted sans" style="margin:0 0 8px">
         Find speech-like spans with local VAD (merge gaps ≤0.4s, drop &lt;0.3s).
+        VAD does not know who spoke — on confirm, assign a <strong>category</strong> and optional <strong>speaker</strong>.
         Confirm promotes into tags; dismiss hides. Re-run replaces provisional VAD/ml_v0 suggestions only.
       </p>
       <div class="meta-actions" style="margin:0 0 10px">
@@ -1268,6 +1456,7 @@ function renderShell() {
   wireSessionTitle();
   wireMetaForm();
   wireVad();
+  wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
   renderLists();
   updateVocabBar();
 }
@@ -1754,15 +1943,29 @@ function renderLists() {
   const tagList = document.getElementById('tagList');
   tagList.innerHTML = tags.length ? tags.map(t => `
     <div class="row" data-uuid="${esc(t.uuid)}">
-      <span class="pill user">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}</span>
-      <input type="text" value="${esc(t.label)}" data-field="label"/>
-      <button data-act="seek">Seek</button>
-      <button data-act="save">Save</button>
-      <button data-act="delete">Delete</button>
+      <span class="pill user">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}
+        ${t.category ? `<span class="sub">${esc(t.category)}</span>` : ''}
+        ${t.speaker ? `<span class="sub">${esc(t.speaker)}</span>` : ''}
+      </span>
+      <div class="row-fields">
+        <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
+        ${speakerChipsHtml(t.speaker || '', 'spk-' + t.uuid)}
+        <input class="note-input" type="text" data-field="note" value="${esc(freeformNote(t))}" placeholder="Optional note"/>
+        <div class="controls">
+          <button data-act="seek">Seek</button>
+          <button data-act="save">Save</button>
+          <button data-act="delete">Delete</button>
+        </div>
+      </div>
     </div>`).join('') : '<p class="muted">No tags yet.</p>';
 
   tagList.querySelectorAll('.row').forEach(row => {
-    row.querySelectorAll('button').forEach(btn => btn.onclick = async () => {
+    const spInput = row.querySelector('input[id^="spk-"]');
+    if (spInput) {
+      spInput.dataset.field = 'speaker';
+      wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
+    }
+    row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
       const uuid = row.dataset.uuid;
       const tag = tags.find(t => t.uuid === uuid);
       const act = btn.dataset.act;
@@ -1787,14 +1990,18 @@ function renderLists() {
         return;
       }
       if (act === 'save') {
-        const label = row.querySelector('input').value.trim();
+        const tax = readTaxonomyFrom(row);
+        if (!tax.category) { alert('Pick a category'); return; }
         try {
           const data = await postJson('/api/tag/update', {
-            kit: k.folder, uuid, label,
+            kit: k.folder, uuid,
+            category: tax.category,
+            speaker: tax.speaker,
+            note: tax.note,
             startMs: tag.startMs, endMs: tag.endMs
           });
           await softRefreshCurrent();
-          flashSaveStatus(`Updated “${label}” · wrote ${data.tagsPath || current.tagsPath}`);
+          flashSaveStatus(`Updated · wrote ${data.tagsPath || current.tagsPath}`);
         } catch (err) {
           flashSaveStatus('Save failed: ' + err.message, false);
         }
@@ -1806,19 +2013,32 @@ function renderLists() {
   const annList = document.getElementById('annList');
   annList.innerHTML = anns.length ? anns.map(a => `
     <div class="row" data-uuid="${esc(a.uuid)}">
-      <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}${a.status==='confirmed'?' · confirmed':''}</span>
-      <input type="text" value="${esc(a.label||'')}" placeholder="label"/>
-      <button data-act="seek">Seek</button>
-      <button data-act="confirm">Confirm</button>
-      <button data-act="dismiss">Dismiss</button>
+      <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}${a.status==='confirmed'?' · confirmed':''}
+        ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
+        ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
+      </span>
+      <div class="row-fields">
+        <select class="category-select" data-field="category">${categoryOptionsHtml(a.category || '')}</select>
+        ${speakerChipsHtml(a.speaker || '', 'ann-spk-' + a.uuid)}
+        <input class="note-input" type="text" data-field="note" value="${esc(freeformNote(a))}" placeholder="Optional note"/>
+        <div class="controls">
+          <button data-act="seek">Seek</button>
+          <button data-act="confirm">Confirm</button>
+          <button data-act="dismiss">Dismiss</button>
+        </div>
+      </div>
     </div>`).join('') : '<p class="muted">No ML candidates yet. Click <strong>Find speech segments</strong>, or run <code>vad_segments.py</code> / <code>propose_candidates.py</code>.</p>';
 
   annList.querySelectorAll('.row').forEach(row => {
-    row.querySelectorAll('button').forEach(btn => btn.onclick = async () => {
+    const spInput = row.querySelector('input[id^="ann-spk-"]');
+    if (spInput) {
+      spInput.dataset.field = 'speaker';
+      wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
+    }
+    row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
       const uuid = row.dataset.uuid;
       const ann = anns.find(a => a.uuid === uuid);
       const act = btn.dataset.act;
-      const label = row.querySelector('input').value.trim();
       if (act === 'seek' && ann) {
         pauseIfPlaying();
         const a = (ann.startMs||ann.tMs||0)/1000;
@@ -1829,20 +2049,34 @@ function renderLists() {
         startBufferPlayback(selStart, selEnd);
         return;
       }
-      await fetch('/api/annotation/update', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ kit: k.folder, uuid, action: act, label })
-      });
-      await softRefreshCurrent();
+      const tax = readTaxonomyFrom(row);
+      if (act === 'confirm' && !tax.category) {
+        alert('Pick a category before confirming');
+        return;
+      }
+      try {
+        await postJson('/api/annotation/update', {
+          kit: k.folder, uuid, action: act,
+          category: tax.category,
+          speaker: tax.speaker,
+          note: tax.note,
+        });
+        await softRefreshCurrent();
+        if (act === 'confirm') flashSaveStatus(`Confirmed → tags.json`);
+        if (act === 'dismiss') flashSaveStatus('Dismissed candidate');
+      } catch (err) {
+        flashSaveStatus('Update failed: ' + err.message, false);
+      }
     });
   });
 }
 
 async function addTag() {
-  const label = document.getElementById('labelInput').value.trim();
+  const form = document.querySelector('.tag-form');
+  const tax = readTaxonomyFrom(form || document);
   let start = parseFloat(document.getElementById('startInput').value);
   let end = parseFloat(document.getElementById('endInput').value);
-  if (!label) { alert('Enter a label'); return; }
+  if (!tax.category) { alert('Pick a category'); return; }
   if (Number.isNaN(start)) start = playheadSec;
   if (Number.isNaN(end)) end = start;
   if (end < start) { const t = start; start = end; end = t; }
@@ -1852,11 +2086,16 @@ async function addTag() {
   try {
     const data = await postJson('/api/tag/add', {
       kit: current.folder,
-      label,
+      category: tax.category,
+      speaker: tax.speaker,
+      note: tax.note,
       startMs: Math.round(start * 1000),
       endMs: Math.round(end * 1000),
     });
-    document.getElementById('labelInput').value = '';
+    document.getElementById('categoryInput').value = '';
+    document.getElementById('speakerInput').value = '';
+    document.getElementById('noteInput').value = '';
+    wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
     selStart = selEnd = null;
     setPlayhead(parkAt);
     syncSelInputs();
@@ -1865,7 +2104,7 @@ async function addTag() {
     await softRefreshCurrent();
     const path = data.tagsPath || current.tagsPath || 'tags.json';
     const n = data.tagCount != null ? data.tagCount : (current.tags || []).length;
-    flashSaveStatus(`Saved “${label}” → ${path} · ${n} tags on disk`);
+    flashSaveStatus(`Saved → ${path} · ${n} tags on disk`);
   } catch (err) {
     flashSaveStatus('Save failed: ' + err.message, false);
   }
@@ -2042,17 +2281,28 @@ class Handler(BaseHTTPRequestHandler):
             start_ms = int(body.get("startMs") or 0)
             end_ms = body.get("endMs")
             end_ms = int(end_ms) if end_ms is not None else start_ms
-            tags.append(
-                {
-                    "uuid": str(uuid.uuid4()),
-                    "label": (body.get("label") or "untitled").strip(),
-                    "startMs": start_ms,
-                    "endMs": end_ms,
-                    "tMs": start_ms,
-                    "source": "user",
-                    "status": "confirmed",
-                }
-            )
+            if "category" in body or "speaker" in body or "note" in body:
+                if not normalize_category(body.get("category")):
+                    self._send_json(
+                        400, {"ok": False, "error": "category required"}
+                    )
+                    return
+            elif not (body.get("label") or "").strip():
+                self._send_json(
+                    400, {"ok": False, "error": "category (or legacy label) required"}
+                )
+                return
+            tag = {
+                "uuid": str(uuid.uuid4()),
+                "label": "untitled",
+                "startMs": start_ms,
+                "endMs": end_ms,
+                "tMs": start_ms,
+                "source": "user",
+                "status": "confirmed",
+            }
+            apply_taxonomy_fields(tag, body)
+            tags.append(tag)
             write_tags(kit, tags)
             path = str((kit / "tags.json").resolve())
             self._send(
@@ -2069,8 +2319,13 @@ class Handler(BaseHTTPRequestHandler):
             for t in tags:
                 if t.get("uuid") != body.get("uuid"):
                     continue
-                if "label" in body:
-                    t["label"] = (body.get("label") or t.get("label") or "").strip()
+                if "category" in body or "speaker" in body or "note" in body:
+                    if not normalize_category(body.get("category")):
+                        self._send_json(
+                            400, {"ok": False, "error": "category required"}
+                        )
+                        return
+                apply_taxonomy_fields(t, body)
                 if body.get("startMs") is not None:
                     t["startMs"] = int(body["startMs"])
                     t["tMs"] = t["startMs"]
@@ -2109,24 +2364,41 @@ class Handler(BaseHTTPRequestHandler):
                     continue
                 action = body.get("action")
                 if action == "confirm":
-                    a["label"] = body.get("label") or a.get("label") or "confirmed"
+                    if "category" in body or "speaker" in body or "note" in body:
+                        if not normalize_category(body.get("category")):
+                            self._send_json(
+                                400,
+                                {"ok": False, "error": "category required to confirm"},
+                            )
+                            return
+                    apply_taxonomy_fields(a, body)
+                    if not (a.get("label") or "").strip():
+                        a["label"] = "confirmed"
                     a["status"] = "confirmed"
                     a["source"] = "ml_confirmed"
                     # Also promote into tags.json so phone import of tags sees it.
                     tags = read_tags(kit)
-                    if not any(t.get("uuid") == a["uuid"] for t in tags):
-                        tags.append(
-                            {
-                                "uuid": a["uuid"],
-                                "label": a["label"],
-                                "startMs": a.get("startMs", a.get("tMs", 0)),
-                                "endMs": a.get("endMs"),
-                                "tMs": a.get("startMs", a.get("tMs", 0)),
-                                "source": "ml_confirmed",
-                                "status": "confirmed",
-                            }
-                        )
-                        write_tags(kit, tags)
+                    existing = next(
+                        (t for t in tags if t.get("uuid") == a["uuid"]), None
+                    )
+                    payload = {
+                        "uuid": a["uuid"],
+                        "label": a["label"],
+                        "startMs": a.get("startMs", a.get("tMs", 0)),
+                        "endMs": a.get("endMs"),
+                        "tMs": a.get("startMs", a.get("tMs", 0)),
+                        "source": "ml_confirmed",
+                        "status": "confirmed",
+                    }
+                    if a.get("category"):
+                        payload["category"] = a["category"]
+                    if a.get("speaker"):
+                        payload["speaker"] = a["speaker"]
+                    if existing:
+                        existing.update(payload)
+                    else:
+                        tags.append(payload)
+                    write_tags(kit, tags)
                 elif action == "dismiss":
                     a["status"] = "dismissed"
             write_annotations(kit, anns)

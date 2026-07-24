@@ -38,6 +38,10 @@ export type KitTag = {
   status: 'provisional' | 'confirmed';
   /** Legacy alias for startMs. */
   tMs: number;
+  /** Review taxonomy (Mac); optional — phone import ignores unknown fields. */
+  category?: string;
+  /** Who produced the sound (e.g. Baby, Parent); optional. */
+  speaker?: string;
 };
 
 export type KitAnnotation = KitTag & {
