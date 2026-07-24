@@ -4,7 +4,8 @@ Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
   - drag on the waveform to select a span
   - add / edit / delete tags with category + optional speaker
-  - verbal: word (required) + optional phonetic; other categories: optional note
+  - verbal: word (required) + optional phonetic
+  - non-verbal vocalization: optional phonetic (+ optional note); vegetative: optional note
   - find speech segments (VAD) → provisional ML candidates
   - confirm or dismiss ML candidates (assign category + speaker / word+phonetic)
   - Sync with iPhone (USB) to pull kits and push tags.json
@@ -146,8 +147,8 @@ def compose_label(
     """Keep `label` a useful string for older UI / phone import.
 
     Format: ``category · speaker · detail`` where detail is the intended
-    ``word`` (verbal) or free-form ``note`` (other categories). Phonetic is
-    never folded into label — it lives in its own field.
+    ``word`` (verbal) or free-form ``note`` (non-verbal / vegetative).
+    Phonetic is never folded into label — it lives in its own field.
     """
     category = (category or "").strip()
     speaker = (speaker or "").strip()
@@ -187,6 +188,18 @@ def apply_taxonomy_fields(item: dict, body: dict) -> None:
                 item.pop("phonetic", None)
             item.pop("note", None)
             item["label"] = compose_label(category, speaker, word=word)
+        elif category == "non-verbal vocalization":
+            item.pop("word", None)
+            if phonetic:
+                item["phonetic"] = phonetic
+            else:
+                item.pop("phonetic", None)
+            if note:
+                item["note"] = note
+            else:
+                item.pop("note", None)
+            # Phonetic stays in its own field; label uses optional note only.
+            item["label"] = compose_label(category, speaker, note=note)
         else:
             item.pop("word", None)
             item.pop("phonetic", None)
@@ -535,14 +548,13 @@ HTML = r"""<!DOCTYPE html>
     display: grid;
     gap: 6px;
   }
-  .detail-fields .verbal-fields {
-    display: grid;
-    gap: 6px;
-  }
-  .detail-fields[data-mode="verbal"] .note-fields { display: none; }
-  .detail-fields[data-mode="note"] .verbal-fields { display: none; }
-  .detail-fields[data-mode=""] .verbal-fields,
-  .detail-fields[data-mode=""] .note-fields { display: none; }
+  .detail-fields[data-mode="verbal"] .note-field { display: none; }
+  .detail-fields[data-mode="nonverbal"] .word-field { display: none; }
+  .detail-fields[data-mode="note"] .word-field,
+  .detail-fields[data-mode="note"] .phonetic-field { display: none; }
+  .detail-fields[data-mode=""] .word-field,
+  .detail-fields[data-mode=""] .phonetic-field,
+  .detail-fields[data-mode=""] .note-field { display: none; }
   .help {
     background: #e7f0ff; border: 1px solid #c5d7f5; border-radius: 8px;
     padding: 10px 12px; margin: 0 0 14px;
@@ -762,23 +774,51 @@ function itemPhonetic(item) {
 
 function itemNote(item) {
   if ((item.note || '').trim()) return String(item.note).trim();
-  if ((item.category || '') !== 'verbal vocalization') return freeformNote(item);
+  const cat = (item.category || '');
+  if (cat === 'verbal vocalization') return '';
+  // Don't treat phonetic as a free-form note for non-verbal.
+  if (cat === 'non-verbal vocalization' && (item.phonetic || '').trim()) return '';
+  return freeformNote(item);
+}
+
+function detailModeForCategory(cat) {
+  if (cat === 'verbal vocalization') return 'verbal';
+  if (cat === 'non-verbal vocalization') return 'nonverbal';
+  if (cat) return 'note';
   return '';
+}
+
+function detailSummaryHtml(item) {
+  const bits = [];
+  if ((item.word || '').trim()) {
+    const w = String(item.word).trim();
+    const ph = (item.phonetic || '').trim();
+    bits.push(ph ? `${w} · ${ph}` : w);
+  } else if ((item.phonetic || '').trim()) {
+    bits.push(String(item.phonetic).trim());
+  }
+  if ((item.note || '').trim()) bits.push(String(item.note).trim());
+  return bits.map(b => `<span class="sub">${esc(b)}</span>`).join('');
 }
 
 function detailFieldsHtml(item, idPrefix) {
   const cat = (item && item.category) || '';
-  const mode = cat === 'verbal vocalization' ? 'verbal' : (cat ? 'note' : '');
+  const mode = detailModeForCategory(cat);
   const word = itemWord(item || {});
   const phonetic = itemPhonetic(item || {});
   const note = itemNote(item || {});
+  const notePh = cat === 'non-verbal vocalization'
+    ? 'Optional note (e.g. squeal, rasp)'
+    : 'Optional note (e.g. sneeze, cough)';
   return `<div class="detail-fields" data-mode="${esc(mode)}" data-detail-root="${esc(idPrefix)}">
-    <div class="verbal-fields">
+    <div class="word-field">
       <input class="note-input" type="text" data-field="word" value="${esc(word)}" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
+    </div>
+    <div class="phonetic-field">
       <input class="note-input" type="text" data-field="phonetic" value="${esc(phonetic)}" placeholder="Phonetic (optional) — e.g. na nen zo" autocomplete="off"/>
     </div>
-    <div class="note-fields">
-      <input class="note-input" type="text" data-field="note" value="${esc(note)}" placeholder="Optional note (e.g. sneeze, cough)" autocomplete="off"/>
+    <div class="note-field">
+      <input class="note-input" type="text" data-field="note" value="${esc(note)}" placeholder="${esc(notePh)}" autocomplete="off"/>
     </div>
   </div>`;
 }
@@ -788,7 +828,7 @@ function syncDetailFields(scope) {
   const cat = (scope.querySelector('[data-field="category"], .category-select, #categoryInput')?.value || '').trim();
   const root = scope.querySelector('.detail-fields');
   if (!root) return;
-  root.dataset.mode = cat === 'verbal vocalization' ? 'verbal' : (cat ? 'note' : '');
+  root.dataset.mode = detailModeForCategory(cat);
 }
 
 function wireCategoryDetail(scope) {
@@ -824,6 +864,9 @@ function taxonomyPayload(tax) {
   if (tax.category === 'verbal vocalization') {
     payload.word = tax.word;
     payload.phonetic = tax.phonetic;
+  } else if (tax.category === 'non-verbal vocalization') {
+    payload.phonetic = tax.phonetic;
+    payload.note = tax.note;
   } else {
     payload.note = tax.note;
   }
@@ -1472,7 +1515,9 @@ function renderShell() {
   document.getElementById('panel').innerHTML = `
     <div class="help">
       <strong>How to tag:</strong> click to set playhead · drag to select a snippet · pick a <strong>category</strong> · optional <strong>speaker</strong>.
-      For <strong>verbal vocalization</strong>, enter the <strong>word</strong> (required) and optional <strong>phonetic</strong> sketch; other categories take an optional note · Add tag.
+      For <strong>verbal vocalization</strong>, enter the <strong>word</strong> (required) and optional <strong>phonetic</strong>;
+      for <strong>non-verbal vocalization</strong>, optional <strong>phonetic</strong> (+ optional note);
+      vegetative sounds take an optional note · Add tag.
       Existing tags show as orange bands on the waveform (and overview strip).
       <strong>Play:</strong> with no selection, plays from the playhead; with a selection, loops that snippet only.
       Drag the blue handles to adjust snippet ends (pauses if playing). Scroll to zoom · Shift-drag to pan.
@@ -1532,11 +1577,13 @@ function renderShell() {
           <input id="speakerInput" data-field="speaker" type="text" placeholder="Speaker (optional)" autocomplete="off"/>
         </div>
         <div class="detail-fields" id="addDetailFields" data-mode="">
-          <div class="verbal-fields">
+          <div class="word-field">
             <input id="wordInput" class="note-input" data-field="word" type="text" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
+          </div>
+          <div class="phonetic-field">
             <input id="phoneticInput" class="note-input" data-field="phonetic" type="text" placeholder="Phonetic (optional) — e.g. na nen zo" autocomplete="off"/>
           </div>
-          <div class="note-fields">
+          <div class="note-field">
             <input id="noteInput" class="note-input" data-field="note" type="text" placeholder="Optional note (e.g. sneeze, cough)"/>
           </div>
         </div>
@@ -1560,7 +1607,7 @@ function renderShell() {
       <p class="muted sans" style="margin:0 0 8px">
         Find speech-like spans with local VAD (merge gaps ≤0.4s, drop &lt;0.3s).
         VAD does not know who spoke — on confirm, assign a <strong>category</strong> and optional <strong>speaker</strong>
-        (plus <strong>word</strong> / optional <strong>phonetic</strong> for verbal vocalization).
+        (verbal: <strong>word</strong> + optional <strong>phonetic</strong>; non-verbal: optional <strong>phonetic</strong>).
         Confirm promotes into tags; dismiss hides. Re-run replaces provisional VAD/ml_v0 suggestions only.
       </p>
       <div class="meta-actions" style="margin:0 0 10px">
@@ -2088,7 +2135,7 @@ function renderLists() {
       <span class="pill user">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}
         ${t.category ? `<span class="sub">${esc(t.category)}</span>` : ''}
         ${t.speaker ? `<span class="sub">${esc(t.speaker)}</span>` : ''}
-        ${t.word ? `<span class="sub">${esc(t.word)}${t.phonetic ? ' · ' + esc(t.phonetic) : ''}</span>` : ''}
+        ${detailSummaryHtml(t)}
       </span>
       <div class="row-fields">
         <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
@@ -2159,7 +2206,7 @@ function renderLists() {
       <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}${a.status==='confirmed'?' · confirmed':''}
         ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
-        ${a.word ? `<span class="sub">${esc(a.word)}${a.phonetic ? ' · ' + esc(a.phonetic) : ''}</span>` : ''}
+        ${detailSummaryHtml(a)}
       </span>
       <div class="row-fields">
         <select class="category-select" data-field="category">${categoryOptionsHtml(a.category || '')}</select>

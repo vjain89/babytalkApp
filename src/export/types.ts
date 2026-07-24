@@ -44,9 +44,9 @@ export type KitTag = {
   speaker?: string;
   /** Intended/target word for verbal vocalization (e.g. Lorenzo). */
   word?: string;
-  /** How it sounded — casual orthographic phonetics (e.g. na nen zo). */
+  /** How it sounded — casual orthographic phonetics (e.g. na nen zo). Used for verbal and non-verbal vocalization. */
   phonetic?: string;
-  /** Free-form detail for non-verbal / vegetative categories. */
+  /** Free-form detail (optional note for non-verbal / vegetative categories). */
   note?: string;
 };
 
