@@ -31,8 +31,10 @@ python3 tools/review_server.py /path/to/some/kit-or-batch
 
 1. Select a session → play → **drag** on the waveform → pick a **category** → optional **speaker** → **Add tag**
 2. Categories: `verbal vocalization` · `non-verbal vocalization` · `non-vocal vegetative sound`
-3. Tags write live into that kit’s `tags.json` with `category`, optional `speaker`, and a composed `label` string (phone-compatible)
-4. Click **Sync with iPhone** (USB) to pull new kits and push tags
+3. For **verbal vocalization**, enter **word** (required — intended/target word) and optional **phonetic** (how it sounded, casual orthography OK)
+4. For other categories, optional free-form **note**
+5. Tags write live into that kit’s `tags.json` with `category`, optional `speaker`, `word`/`phonetic` or `note`, and a composed `label` like `verbal vocalization · Baby · Lorenzo` (phone-compatible)
+6. Click **Sync with iPhone** (USB) to pull new kits and push tags
 
 Speaker chips: Baby / Parent / Other, or type a custom name.
 
@@ -66,7 +68,7 @@ python3 tools/vad_segments.py ~/Documents/BabyTalk/Library/<kit-folder>
 
 Defaults: merge gaps ≤ **400 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
 
-In the Review UI, open a session and click **Find speech segments** (same pipeline via `POST /api/vad/run`). On confirm, assign a category (+ optional speaker); dismiss works like other ML candidates.
+In the Review UI, open a session and click **Find speech segments** (same pipeline via `POST /api/vad/run`). On confirm, assign a category (+ optional speaker; for verbal, word + optional phonetic); dismiss works like other ML candidates.
 
 VAD is energy-based only — it detects speech-like activity, not who spoke (no diarization).
 

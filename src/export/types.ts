@@ -42,6 +42,12 @@ export type KitTag = {
   category?: string;
   /** Who produced the sound (e.g. Baby, Parent); optional. */
   speaker?: string;
+  /** Intended/target word for verbal vocalization (e.g. Lorenzo). */
+  word?: string;
+  /** How it sounded — casual orthographic phonetics (e.g. na nen zo). */
+  phonetic?: string;
+  /** Free-form detail for non-verbal / vegetative categories. */
+  note?: string;
 };
 
 export type KitAnnotation = KitTag & {

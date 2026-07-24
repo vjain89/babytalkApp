@@ -4,8 +4,9 @@ Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
   - drag on the waveform to select a span
   - add / edit / delete tags with category + optional speaker
+  - verbal: word (required) + optional phonetic; other categories: optional note
   - find speech segments (VAD) → provisional ML candidates
-  - confirm or dismiss ML candidates (assign category + speaker)
+  - confirm or dismiss ML candidates (assign category + speaker / word+phonetic)
   - Sync with iPhone (USB) to pull kits and push tags.json
 
 Usage:
@@ -136,31 +137,35 @@ def normalize_speaker(value) -> str:
     return (value or "").strip()
 
 
-def compose_label(category: str = "", speaker: str = "", note: str = "") -> str:
+def compose_label(
+    category: str = "",
+    speaker: str = "",
+    word: str = "",
+    note: str = "",
+) -> str:
     """Keep `label` a useful string for older UI / phone import.
 
-    Prefer an explicit free-form note when present; otherwise category · speaker.
+    Format: ``category · speaker · detail`` where detail is the intended
+    ``word`` (verbal) or free-form ``note`` (other categories). Phonetic is
+    never folded into label — it lives in its own field.
     """
-    note = (note or "").strip()
-    if note:
-        return note
     category = (category or "").strip()
     speaker = (speaker or "").strip()
-    if category and speaker:
-        return f"{category} · {speaker}"
-    if category:
-        return category
-    if speaker:
-        return speaker
-    return "untitled"
+    detail = (word or "").strip() or (note or "").strip()
+    parts = [p for p in (category, speaker, detail) if p]
+    return " · ".join(parts) if parts else "untitled"
 
 
 def apply_taxonomy_fields(item: dict, body: dict) -> None:
-    """Set category / speaker / label on a tag or annotation from a request body."""
-    has_tax = "category" in body or "speaker" in body or "note" in body
+    """Set category / speaker / word / phonetic / note / label from a request body."""
+    has_tax = any(
+        k in body for k in ("category", "speaker", "note", "word", "phonetic")
+    )
     if has_tax:
         category = normalize_category(body.get("category"))
         speaker = normalize_speaker(body.get("speaker"))
+        word = str(body.get("word") or "").strip()
+        phonetic = str(body.get("phonetic") or "").strip()
         note = str(body.get("note") or "").strip()
         if category:
             item["category"] = category
@@ -170,12 +175,41 @@ def apply_taxonomy_fields(item: dict, body: dict) -> None:
             item["speaker"] = speaker
         else:
             item.pop("speaker", None)
-        item["label"] = compose_label(category, speaker, note)
+
+        if category == "verbal vocalization":
+            if word:
+                item["word"] = word
+            else:
+                item.pop("word", None)
+            if phonetic:
+                item["phonetic"] = phonetic
+            else:
+                item.pop("phonetic", None)
+            item.pop("note", None)
+            item["label"] = compose_label(category, speaker, word=word)
+        else:
+            item.pop("word", None)
+            item.pop("phonetic", None)
+            if note:
+                item["note"] = note
+            else:
+                item.pop("note", None)
+            item["label"] = compose_label(category, speaker, note=note)
         return
 
     # Legacy clients that only send label.
     if "label" in body:
         item["label"] = (body.get("label") or item.get("label") or "").strip() or "untitled"
+
+
+def taxonomy_validation_error(body: dict) -> str | None:
+    """Return an error string if taxonomy fields are invalid, else None."""
+    category = normalize_category(body.get("category"))
+    if not category:
+        return "category required"
+    if category == "verbal vocalization" and not str(body.get("word") or "").strip():
+        return "word required for verbal vocalization"
+    return None
 
 
 def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
@@ -497,6 +531,18 @@ HTML = r"""<!DOCTYPE html>
   .note-input {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
   }
+  .detail-fields {
+    display: grid;
+    gap: 6px;
+  }
+  .detail-fields .verbal-fields {
+    display: grid;
+    gap: 6px;
+  }
+  .detail-fields[data-mode="verbal"] .note-fields { display: none; }
+  .detail-fields[data-mode="note"] .verbal-fields { display: none; }
+  .detail-fields[data-mode=""] .verbal-fields,
+  .detail-fields[data-mode=""] .note-fields { display: none; }
   .help {
     background: #e7f0ff; border: 1px solid #c5d7f5; border-radius: 8px;
     padding: 10px 12px; margin: 0 0 14px;
@@ -687,21 +733,101 @@ function wireSpeakerChips(root, inputEl) {
 }
 
 function freeformNote(item) {
+  // Prefer explicit persisted fields when present.
+  if ((item.note || '').trim()) return String(item.note).trim();
+  if ((item.word || '').trim()) return String(item.word).trim();
   const label = (item.label || '').trim();
   if (!label) return '';
   const cat = (item.category || '').trim();
   const sp = (item.speaker || '').trim();
+  const catSp = [cat, sp].filter(Boolean).join(' · ');
+  if (catSp && label === catSp) return '';
+  if (CATEGORIES.includes(label)) return '';
+  if (catSp && label.startsWith(catSp + ' · ')) return label.slice(catSp.length + 3);
+  if (cat && label.startsWith(cat + ' · ')) return label.slice(cat.length + 3);
   const composed = cat && sp ? `${cat} · ${sp}` : (cat || sp);
   if (composed && label === composed) return '';
-  if (CATEGORIES.includes(label)) return '';
   return label;
+}
+
+function itemWord(item) {
+  if ((item.word || '').trim()) return String(item.word).trim();
+  if ((item.category || '') === 'verbal vocalization') return freeformNote(item);
+  return '';
+}
+
+function itemPhonetic(item) {
+  return (item.phonetic || '').trim();
+}
+
+function itemNote(item) {
+  if ((item.note || '').trim()) return String(item.note).trim();
+  if ((item.category || '') !== 'verbal vocalization') return freeformNote(item);
+  return '';
+}
+
+function detailFieldsHtml(item, idPrefix) {
+  const cat = (item && item.category) || '';
+  const mode = cat === 'verbal vocalization' ? 'verbal' : (cat ? 'note' : '');
+  const word = itemWord(item || {});
+  const phonetic = itemPhonetic(item || {});
+  const note = itemNote(item || {});
+  return `<div class="detail-fields" data-mode="${esc(mode)}" data-detail-root="${esc(idPrefix)}">
+    <div class="verbal-fields">
+      <input class="note-input" type="text" data-field="word" value="${esc(word)}" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
+      <input class="note-input" type="text" data-field="phonetic" value="${esc(phonetic)}" placeholder="Phonetic (optional) — e.g. na nen zo" autocomplete="off"/>
+    </div>
+    <div class="note-fields">
+      <input class="note-input" type="text" data-field="note" value="${esc(note)}" placeholder="Optional note (e.g. sneeze, cough)" autocomplete="off"/>
+    </div>
+  </div>`;
+}
+
+function syncDetailFields(scope) {
+  if (!scope) return;
+  const cat = (scope.querySelector('[data-field="category"], .category-select, #categoryInput')?.value || '').trim();
+  const root = scope.querySelector('.detail-fields');
+  if (!root) return;
+  root.dataset.mode = cat === 'verbal vocalization' ? 'verbal' : (cat ? 'note' : '');
+}
+
+function wireCategoryDetail(scope) {
+  if (!scope) return;
+  const sel = scope.querySelector('[data-field="category"], .category-select, #categoryInput');
+  if (!sel) return;
+  sel.addEventListener('change', () => syncDetailFields(scope));
+  syncDetailFields(scope);
 }
 
 function readTaxonomyFrom(scope) {
   const category = (scope.querySelector('[data-field="category"], .category-select, #categoryInput')?.value || '').trim();
   const speaker = (scope.querySelector('[data-field="speaker"]')?.value || '').trim();
+  const word = (scope.querySelector('[data-field="word"]')?.value || '').trim();
+  const phonetic = (scope.querySelector('[data-field="phonetic"]')?.value || '').trim();
   const note = (scope.querySelector('[data-field="note"]')?.value || '').trim();
-  return { category, speaker, note };
+  return { category, speaker, word, phonetic, note };
+}
+
+function validateTaxonomy(tax) {
+  if (!tax.category) return 'Pick a category';
+  if (tax.category === 'verbal vocalization' && !tax.word) {
+    return 'Enter the word (what he’s trying to say) for verbal vocalization';
+  }
+  return null;
+}
+
+function taxonomyPayload(tax) {
+  const payload = {
+    category: tax.category,
+    speaker: tax.speaker,
+  };
+  if (tax.category === 'verbal vocalization') {
+    payload.word = tax.word;
+    payload.phonetic = tax.phonetic;
+  } else {
+    payload.note = tax.note;
+  }
+  return payload;
 }
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -960,10 +1086,15 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/** Tokenize tag labels into lowercase words (letters/numbers/apostrophes). */
+/** Prefer explicit `word` when present; else tokenize label. */
 function wordsFromTags(tags) {
   const counts = new Map();
   for (const t of tags || []) {
+    const intended = (t.word || '').trim().toLowerCase();
+    if (intended) {
+      counts.set(intended, (counts.get(intended) || 0) + 1);
+      continue;
+    }
     const parts = String(t.label || '').toLowerCase().match(/[a-z0-9']+/g) || [];
     for (const w of parts) {
       if (!w) continue;
@@ -1340,7 +1471,8 @@ function renderShell() {
   if (!k) return;
   document.getElementById('panel').innerHTML = `
     <div class="help">
-      <strong>How to tag:</strong> click to set playhead · drag to select a snippet · pick a <strong>category</strong> · optional <strong>speaker</strong> · Add tag.
+      <strong>How to tag:</strong> click to set playhead · drag to select a snippet · pick a <strong>category</strong> · optional <strong>speaker</strong>.
+      For <strong>verbal vocalization</strong>, enter the <strong>word</strong> (required) and optional <strong>phonetic</strong> sketch; other categories take an optional note · Add tag.
       Existing tags show as orange bands on the waveform (and overview strip).
       <strong>Play:</strong> with no selection, plays from the playhead; with a selection, loops that snippet only.
       Drag the blue handles to adjust snippet ends (pauses if playing). Scroll to zoom · Shift-drag to pan.
@@ -1399,7 +1531,15 @@ function renderShell() {
           <button type="button" class="chip" data-speaker="Other">Other</button>
           <input id="speakerInput" data-field="speaker" type="text" placeholder="Speaker (optional)" autocomplete="off"/>
         </div>
-        <input id="noteInput" class="note-input" data-field="note" type="text" placeholder="Optional note (e.g. mama, sneeze)"/>
+        <div class="detail-fields" id="addDetailFields" data-mode="">
+          <div class="verbal-fields">
+            <input id="wordInput" class="note-input" data-field="word" type="text" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
+            <input id="phoneticInput" class="note-input" data-field="phonetic" type="text" placeholder="Phonetic (optional) — e.g. na nen zo" autocomplete="off"/>
+          </div>
+          <div class="note-fields">
+            <input id="noteInput" class="note-input" data-field="note" type="text" placeholder="Optional note (e.g. sneeze, cough)"/>
+          </div>
+        </div>
       </div>
       <input id="startInput" type="number" step="0.01" min="0" placeholder="Start s"/>
       <input id="endInput" type="number" step="0.01" min="0" placeholder="End s"/>
@@ -1419,7 +1559,8 @@ function renderShell() {
       <h3>ML candidates</h3>
       <p class="muted sans" style="margin:0 0 8px">
         Find speech-like spans with local VAD (merge gaps ≤0.4s, drop &lt;0.3s).
-        VAD does not know who spoke — on confirm, assign a <strong>category</strong> and optional <strong>speaker</strong>.
+        VAD does not know who spoke — on confirm, assign a <strong>category</strong> and optional <strong>speaker</strong>
+        (plus <strong>word</strong> / optional <strong>phonetic</strong> for verbal vocalization).
         Confirm promotes into tags; dismiss hides. Re-run replaces provisional VAD/ml_v0 suggestions only.
       </p>
       <div class="meta-actions" style="margin:0 0 10px">
@@ -1457,6 +1598,7 @@ function renderShell() {
   wireMetaForm();
   wireVad();
   wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
+  wireCategoryDetail(document.querySelector('.tag-form'));
   renderLists();
   updateVocabBar();
 }
@@ -1946,11 +2088,12 @@ function renderLists() {
       <span class="pill user">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}
         ${t.category ? `<span class="sub">${esc(t.category)}</span>` : ''}
         ${t.speaker ? `<span class="sub">${esc(t.speaker)}</span>` : ''}
+        ${t.word ? `<span class="sub">${esc(t.word)}${t.phonetic ? ' · ' + esc(t.phonetic) : ''}</span>` : ''}
       </span>
       <div class="row-fields">
         <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
         ${speakerChipsHtml(t.speaker || '', 'spk-' + t.uuid)}
-        <input class="note-input" type="text" data-field="note" value="${esc(freeformNote(t))}" placeholder="Optional note"/>
+        ${detailFieldsHtml(t, 'tag-' + t.uuid)}
         <div class="controls">
           <button data-act="seek">Seek</button>
           <button data-act="save">Save</button>
@@ -1965,6 +2108,7 @@ function renderLists() {
       spInput.dataset.field = 'speaker';
       wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
     }
+    wireCategoryDetail(row);
     row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
       const uuid = row.dataset.uuid;
       const tag = tags.find(t => t.uuid === uuid);
@@ -1991,13 +2135,12 @@ function renderLists() {
       }
       if (act === 'save') {
         const tax = readTaxonomyFrom(row);
-        if (!tax.category) { alert('Pick a category'); return; }
+        const errMsg = validateTaxonomy(tax);
+        if (errMsg) { alert(errMsg); return; }
         try {
           const data = await postJson('/api/tag/update', {
             kit: k.folder, uuid,
-            category: tax.category,
-            speaker: tax.speaker,
-            note: tax.note,
+            ...taxonomyPayload(tax),
             startMs: tag.startMs, endMs: tag.endMs
           });
           await softRefreshCurrent();
@@ -2016,11 +2159,12 @@ function renderLists() {
       <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}${a.status==='confirmed'?' · confirmed':''}
         ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
+        ${a.word ? `<span class="sub">${esc(a.word)}${a.phonetic ? ' · ' + esc(a.phonetic) : ''}</span>` : ''}
       </span>
       <div class="row-fields">
         <select class="category-select" data-field="category">${categoryOptionsHtml(a.category || '')}</select>
         ${speakerChipsHtml(a.speaker || '', 'ann-spk-' + a.uuid)}
-        <input class="note-input" type="text" data-field="note" value="${esc(freeformNote(a))}" placeholder="Optional note"/>
+        ${detailFieldsHtml(a, 'ann-' + a.uuid)}
         <div class="controls">
           <button data-act="seek">Seek</button>
           <button data-act="confirm">Confirm</button>
@@ -2035,6 +2179,7 @@ function renderLists() {
       spInput.dataset.field = 'speaker';
       wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
     }
+    wireCategoryDetail(row);
     row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
       const uuid = row.dataset.uuid;
       const ann = anns.find(a => a.uuid === uuid);
@@ -2050,16 +2195,14 @@ function renderLists() {
         return;
       }
       const tax = readTaxonomyFrom(row);
-      if (act === 'confirm' && !tax.category) {
-        alert('Pick a category before confirming');
-        return;
+      if (act === 'confirm') {
+        const errMsg = validateTaxonomy(tax);
+        if (errMsg) { alert(errMsg); return; }
       }
       try {
         await postJson('/api/annotation/update', {
           kit: k.folder, uuid, action: act,
-          category: tax.category,
-          speaker: tax.speaker,
-          note: tax.note,
+          ...taxonomyPayload(tax),
         });
         await softRefreshCurrent();
         if (act === 'confirm') flashSaveStatus(`Confirmed → tags.json`);
@@ -2076,7 +2219,8 @@ async function addTag() {
   const tax = readTaxonomyFrom(form || document);
   let start = parseFloat(document.getElementById('startInput').value);
   let end = parseFloat(document.getElementById('endInput').value);
-  if (!tax.category) { alert('Pick a category'); return; }
+  const errMsg = validateTaxonomy(tax);
+  if (errMsg) { alert(errMsg); return; }
   if (Number.isNaN(start)) start = playheadSec;
   if (Number.isNaN(end)) end = start;
   if (end < start) { const t = start; start = end; end = t; }
@@ -2086,16 +2230,20 @@ async function addTag() {
   try {
     const data = await postJson('/api/tag/add', {
       kit: current.folder,
-      category: tax.category,
-      speaker: tax.speaker,
-      note: tax.note,
+      ...taxonomyPayload(tax),
       startMs: Math.round(start * 1000),
       endMs: Math.round(end * 1000),
     });
     document.getElementById('categoryInput').value = '';
     document.getElementById('speakerInput').value = '';
-    document.getElementById('noteInput').value = '';
+    const wordEl = document.getElementById('wordInput');
+    const phoneticEl = document.getElementById('phoneticInput');
+    const noteEl = document.getElementById('noteInput');
+    if (wordEl) wordEl.value = '';
+    if (phoneticEl) phoneticEl.value = '';
+    if (noteEl) noteEl.value = '';
     wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
+    syncDetailFields(form || document);
     selStart = selEnd = null;
     setPlayhead(parkAt);
     syncSelInputs();
@@ -2281,11 +2429,10 @@ class Handler(BaseHTTPRequestHandler):
             start_ms = int(body.get("startMs") or 0)
             end_ms = body.get("endMs")
             end_ms = int(end_ms) if end_ms is not None else start_ms
-            if "category" in body or "speaker" in body or "note" in body:
-                if not normalize_category(body.get("category")):
-                    self._send_json(
-                        400, {"ok": False, "error": "category required"}
-                    )
+            if any(k in body for k in ("category", "speaker", "note", "word", "phonetic")):
+                err = taxonomy_validation_error(body)
+                if err:
+                    self._send_json(400, {"ok": False, "error": err})
                     return
             elif not (body.get("label") or "").strip():
                 self._send_json(
@@ -2319,11 +2466,10 @@ class Handler(BaseHTTPRequestHandler):
             for t in tags:
                 if t.get("uuid") != body.get("uuid"):
                     continue
-                if "category" in body or "speaker" in body or "note" in body:
-                    if not normalize_category(body.get("category")):
-                        self._send_json(
-                            400, {"ok": False, "error": "category required"}
-                        )
+                if any(k in body for k in ("category", "speaker", "note", "word", "phonetic")):
+                    err = taxonomy_validation_error(body)
+                    if err:
+                        self._send_json(400, {"ok": False, "error": err})
                         return
                 apply_taxonomy_fields(t, body)
                 if body.get("startMs") is not None:
@@ -2364,11 +2510,15 @@ class Handler(BaseHTTPRequestHandler):
                     continue
                 action = body.get("action")
                 if action == "confirm":
-                    if "category" in body or "speaker" in body or "note" in body:
-                        if not normalize_category(body.get("category")):
+                    if any(
+                        k in body
+                        for k in ("category", "speaker", "note", "word", "phonetic")
+                    ):
+                        err = taxonomy_validation_error(body)
+                        if err:
                             self._send_json(
                                 400,
-                                {"ok": False, "error": "category required to confirm"},
+                                {"ok": False, "error": err},
                             )
                             return
                     apply_taxonomy_fields(a, body)
@@ -2390,11 +2540,16 @@ class Handler(BaseHTTPRequestHandler):
                         "source": "ml_confirmed",
                         "status": "confirmed",
                     }
-                    if a.get("category"):
-                        payload["category"] = a["category"]
-                    if a.get("speaker"):
-                        payload["speaker"] = a["speaker"]
+                    for key in ("category", "speaker", "word", "phonetic", "note"):
+                        if a.get(key):
+                            payload[key] = a[key]
+                        elif existing and key in existing:
+                            existing.pop(key, None)
                     if existing:
+                        # Drop stale detail fields when category flips.
+                        for key in ("word", "phonetic", "note"):
+                            if key not in payload:
+                                existing.pop(key, None)
                         existing.update(payload)
                     else:
                         tags.append(payload)
