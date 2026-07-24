@@ -200,6 +200,38 @@ HTML = r"""<!DOCTYPE html>
     cursor: pointer; border-radius: 6px; font: inherit;
   }
   #kitList button.active { border-color: var(--ink); background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,0.06); }
+  #kitList .year-group { margin: 0 0 14px; }
+  #kitList .year-label {
+    font-size: 13px; font-weight: 700; color: var(--ink);
+    margin: 0 0 6px; letter-spacing: 0.02em;
+  }
+  #kitList .month-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin: 10px 0 6px;
+  }
+  #sessionTitle {
+    cursor: text; border-radius: 6px; padding: 2px 6px; margin-left: -6px;
+    outline: none;
+  }
+  #sessionTitle:hover { background: rgba(0,0,0,0.04); }
+  #sessionTitle.editing {
+    background: #fff; border: 1px solid var(--line);
+    box-shadow: 0 0 0 2px rgba(47,111,237,0.15);
+  }
+  #sessionTitleInput {
+    font: inherit; font-size: 1.5rem; font-weight: 600;
+    width: min(100%, 420px); padding: 4px 8px;
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  .title-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin: 0 0 4px;
+  }
+  .title-row button.ghost {
+    border: 1px solid var(--line); background: #fff; padding: 5px 10px;
+    border-radius: 6px; cursor: pointer; font: inherit; font-size: 12px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
   #panel { padding: 18px 22px 40px; max-width: 1100px; }
   #cloudPane {
     margin: 18px 0 8px;
@@ -334,6 +366,55 @@ HTML = r"""<!DOCTYPE html>
   }
   .section { margin-top: 22px; }
   .section h3 { margin: 0 0 8px; font-size: 16px; }
+  .meta-form {
+    display: grid;
+    gap: 12px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    max-width: 640px;
+  }
+  .meta-form label {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .meta-form label span.field-name {
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .meta-form input,
+  .meta-form textarea {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .meta-form textarea {
+    min-height: 88px;
+    resize: vertical;
+    line-height: 1.4;
+  }
+  .meta-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .meta-actions button.primary {
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+  }
   .row {
     display: grid;
     grid-template-columns: 130px 1fr auto auto auto;
@@ -828,17 +909,188 @@ async function postJson(url, payload) {
   return data || { ok: true };
 }
 
+function kitCreatedAt(k) {
+  const t = k && k.manifest && k.manifest.createdAt;
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** YY_MM_DD__HH:MM:SS from createdAt (local time). */
+function stampNameFromMs(ms) {
+  const d = new Date(ms || Date.now());
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${yy}_${mm}_${dd}__${hh}:${mi}:${ss}`;
+}
+
+function displayName(k) {
+  return (k.manifest && (k.manifest.sessionName || k.manifest.originalSessionName)) || k.folder;
+}
+
+function originalName(k) {
+  const m = k.manifest || {};
+  return m.originalSessionName || null;
+}
+
+function setActiveKit(i) {
+  document.querySelectorAll('#kitList button').forEach((b) => {
+    b.classList.toggle('active', Number(b.dataset.i) === i);
+  });
+}
+
+async function renameCurrentKit(newName) {
+  const name = String(newName || '').trim();
+  if (!current || !name) return;
+  const data = await postJson('/api/kit/rename', {
+    kit: current.folder,
+    sessionName: name,
+  });
+  if (data.manifest) current.manifest = data.manifest;
+  flashSaveStatus(`Renamed to “${name}”`);
+  await softRefreshCurrent();
+  const title = document.getElementById('sessionTitle');
+  if (title) title.textContent = name;
+  const orig = document.getElementById('originalNameLine');
+  if (orig) {
+    const o = originalName(current);
+    orig.textContent = o && o !== name ? `Original: ${o}` : '';
+  }
+}
+
+function wireSessionTitle() {
+  const title = document.getElementById('sessionTitle');
+  const btnStamp = document.getElementById('btnStampName');
+  if (!title || !current) return;
+
+  const startEdit = () => {
+    if (document.getElementById('sessionTitleInput')) return;
+    const input = document.createElement('input');
+    input.id = 'sessionTitleInput';
+    input.type = 'text';
+    input.value = displayName(current);
+    title.replaceWith(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = async (save) => {
+      if (done) return;
+      done = true;
+      const prev = displayName(current);
+      const val = String(input.value || '').trim();
+      const h2 = document.createElement('h2');
+      h2.id = 'sessionTitle';
+      h2.title = 'Click to rename';
+      h2.textContent = save && val ? val : prev;
+      if (input.parentNode) input.replaceWith(h2);
+      wireSessionTitle();
+      if (save && val && val !== prev) {
+        try { await renameCurrentKit(val); }
+        catch (err) { flashSaveStatus('Rename failed: ' + err.message, false); }
+      }
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); void finish(true); }
+      if (e.key === 'Escape') { e.preventDefault(); void finish(false); }
+    };
+    input.onblur = () => { void finish(true); };
+  };
+
+  title.onclick = startEdit;
+  if (btnStamp) {
+    btnStamp.onclick = async () => {
+      const stamp = stampNameFromMs(kitCreatedAt(current));
+      try { await renameCurrentKit(stamp); }
+      catch (err) { flashSaveStatus('Rename failed: ' + err.message, false); }
+    };
+  }
+}
+
+function readMetaFormValues() {
+  return {
+    voiceNotesOriginalFilename: (document.getElementById('metaVoiceNotes')?.value || '').trim(),
+    recordingLocation: (document.getElementById('metaLocation')?.value || '').trim(),
+    contextNotes: (document.getElementById('metaContext')?.value || '').trim(),
+  };
+}
+
+async function saveMetaForm() {
+  if (!current) return;
+  const fields = readMetaFormValues();
+  const data = await postJson('/api/kit/metadata', {
+    kit: current.folder,
+    ...fields,
+  });
+  if (data.manifest) current.manifest = data.manifest;
+  const hint = document.getElementById('metaSaveHint');
+  if (hint) hint.textContent = 'Saved';
+  flashSaveStatus('Session notes saved');
+  await softRefreshCurrent();
+  // softRefresh does not rebuild the panel — keep form values as typed.
+  if (hint) {
+    setTimeout(() => { if (hint.textContent === 'Saved') hint.textContent = ''; }, 2000);
+  }
+}
+
+function wireMetaForm() {
+  const btn = document.getElementById('btnSaveMeta');
+  if (!btn || !current) return;
+  btn.onclick = async () => {
+    try { await saveMetaForm(); }
+    catch (err) { flashSaveStatus('Notes save failed: ' + err.message, false); }
+  };
+}
+
 async function refresh() {
   const res = await fetch('/api/kits');
   kits = await res.json();
   const el = document.getElementById('kitList');
   if (!el) return;
-  el.innerHTML = kits.map((k,i) => {
-    const nTags = (k.tags||[]).length;
-    const nOpen = (k.annotations||[]).filter(a => a.status !== 'confirmed' && a.status !== 'dismissed').length;
-    return `<button data-i="${i}">${esc(k.manifest.sessionName || k.folder)}<br/>
-      <span class="muted">${((k.manifest.durationMs||0)/1000).toFixed(1)}s · ${nTags} tags · ${nOpen} candidates</span></button>`;
-  }).join('') || '<p class="muted">No kits found.</p>';
+
+  // Group by year → month (local), newest first.
+  const groups = new Map(); // year -> Map(monthIndex -> kits[])
+  kits.forEach((k, i) => {
+    k._i = i;
+    const d = new Date(kitCreatedAt(k) || Date.now());
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    if (!groups.has(y)) groups.set(y, new Map());
+    const months = groups.get(y);
+    if (!months.has(m)) months.set(m, []);
+    months.get(m).push(k);
+  });
+  const years = [...groups.keys()].sort((a, b) => b - a);
+  const monthNames = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+
+  let html = '';
+  for (const y of years) {
+    html += `<div class="year-group"><div class="year-label">${y}</div>`;
+    const months = groups.get(y);
+    const monthIdxs = [...months.keys()].sort((a, b) => b - a);
+    for (const mi of monthIdxs) {
+      html += `<div class="month-label">${monthNames[mi]}</div>`;
+      const list = months.get(mi).slice().sort((a, b) => kitCreatedAt(b) - kitCreatedAt(a));
+      for (const k of list) {
+        const nTags = (k.tags || []).length;
+        const nOpen = (k.annotations || []).filter(a => a.status !== 'confirmed' && a.status !== 'dismissed').length;
+        const name = displayName(k);
+        const orig = originalName(k);
+        const origBit = orig && orig !== name
+          ? `<br/><span class="muted">was ${esc(orig)}</span>`
+          : '';
+        html += `<button data-i="${k._i}">${esc(name)}${origBit}<br/>
+          <span class="muted">${((k.manifest.durationMs||0)/1000).toFixed(1)}s · ${nTags} tags · ${nOpen} candidates</span></button>`;
+      }
+    }
+    html += `</div>`;
+  }
+  el.innerHTML = html || '<p class="muted">No kits found.</p>';
   el.querySelectorAll('button').forEach(b => b.onclick = () => select(+b.dataset.i));
   updateVocabBar();
 }
@@ -851,7 +1103,7 @@ async function softRefreshCurrent() {
   const i = kits.findIndex(x => x.folder === folder);
   if (i < 0) return;
   current = kits[i];
-  document.querySelectorAll('#kitList button').forEach((b, idx) => b.classList.toggle('active', idx === i));
+  setActiveKit(i);
   renderLists();
   drawOverview();
   paintOverlays();
@@ -860,7 +1112,7 @@ async function softRefreshCurrent() {
 
 async function select(i) {
   current = kits[i];
-  document.querySelectorAll('#kitList button').forEach((b,idx) => b.classList.toggle('active', idx===i));
+  setActiveKit(i);
   selStart = null; selEnd = null;
   audioBuf = null;
   resetView();
@@ -880,7 +1132,15 @@ function renderShell() {
       Drag the blue handles to adjust snippet ends (pauses if playing). Scroll to zoom · Shift-drag to pan.
       Space plays/pauses. Use <strong>Sync with iPhone</strong> (USB) to pull kits and push tags — open the app on the phone so tags auto-import.
     </div>
-    <h2>${esc(k.manifest.sessionName || k.folder)}</h2>
+    <div class="title-row">
+      <h2 id="sessionTitle" title="Click to rename">${esc(displayName(k))}</h2>
+      <button type="button" class="ghost" id="btnStampName" title="Set name to YY_MM_DD__HH:MM:SS from recording time">Use date stamp</button>
+    </div>
+    <p class="muted sans" id="originalNameLine">${(() => {
+      const o = originalName(k);
+      const n = displayName(k);
+      return o && o !== n ? `Original: ${esc(o)}` : '';
+    })()}</p>
     <p class="muted sans">${esc(k.manifest.recordingUuid)} · hash ${esc(String(k.manifest.audioContentHash||'').slice(0,12))}…</p>
     <p class="muted sans" id="tagsPathLine">Saving to <code>${esc(k.tagsPath || (k.folder + '/tags.json'))}</code></p>
     <div class="transport sans">
@@ -931,9 +1191,33 @@ function renderShell() {
       <h3>ML candidates</h3>
       <div id="annList"></div>
     </div>
+    <div class="section" id="metaSection">
+      <h3>Session notes</h3>
+      <p class="muted sans" style="margin:0 0 10px">Optional context for this recording. Saved into <code>manifest.json</code>.</p>
+      <div class="meta-form">
+        <label>
+          <span class="field-name">Voice Notes / original filename</span>
+          <input id="metaVoiceNotes" type="text" placeholder="e.g. New Recording 3" value="${esc(k.manifest.voiceNotesOriginalFilename || k.manifest.originalSessionName || '')}"/>
+        </label>
+        <label>
+          <span class="field-name">Location</span>
+          <input id="metaLocation" type="text" placeholder="e.g. kitchen, park, car" value="${esc(k.manifest.recordingLocation || '')}"/>
+        </label>
+        <label>
+          <span class="field-name">Context</span>
+          <textarea id="metaContext" placeholder="e.g. eating breakfast · reading before bedtime · walking around the neighborhood">${esc(k.manifest.contextNotes || '')}</textarea>
+        </label>
+        <div class="meta-actions">
+          <button type="button" class="primary" id="btnSaveMeta">Save notes</button>
+          <span class="muted" id="metaSaveHint"></span>
+        </div>
+      </div>
+    </div>
   `;
   wireTransport();
   wireWordCloud();
+  wireSessionTitle();
+  wireMetaForm();
   renderLists();
   updateVocabBar();
 }
@@ -1633,6 +1917,44 @@ class Handler(BaseHTTPRequestHandler):
             kit = resolve_kit(body.get("kit", ""))
         except Exception as e:
             self._send(400, str(e).encode("utf-8"), "text/plain")
+            return
+
+        if parsed.path == "/api/kit/rename":
+            manifest = load_json(kit / "manifest.json")
+            new_name = (body.get("sessionName") or "").strip()
+            if not new_name:
+                self._send(400, b'{"error":"sessionName required"}', "application/json")
+                return
+            # Preserve the first known human name as originalSessionName.
+            prev = (manifest.get("sessionName") or "").strip()
+            if not manifest.get("originalSessionName"):
+                seed = prev or (manifest.get("filename") or kit.name)
+                if seed and seed != new_name:
+                    manifest["originalSessionName"] = seed
+            manifest["sessionName"] = new_name
+            write_json(kit / "manifest.json", manifest)
+            self._send_json(200, {"ok": True, "manifest": manifest})
+            return
+
+        if parsed.path == "/api/kit/metadata":
+            manifest = load_json(kit / "manifest.json")
+            # Empty string clears the field; missing key leaves it unchanged.
+            for key in (
+                "voiceNotesOriginalFilename",
+                "recordingLocation",
+                "contextNotes",
+            ):
+                if key in body:
+                    val = body.get(key)
+                    if val is None:
+                        continue
+                    text = str(val).strip()
+                    if text:
+                        manifest[key] = text
+                    else:
+                        manifest.pop(key, None)
+            write_json(kit / "manifest.json", manifest)
+            self._send_json(200, {"ok": True, "manifest": manifest})
             return
 
         if parsed.path == "/api/tag/add":
