@@ -14,16 +14,13 @@ import {
 import { format } from 'date-fns';
 import { getAllRecordings, updateSessionName, getRecordingsByTagLabel, deleteRecording } from '../db';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { importInboxAnnotations, prepareBackup } from '../export/backup';
 import { RECORDINGS_CHANGED_EVENT, runAutoImportAnnotations } from '../export/autoImport';
-import { buildExportBatch } from '../export/sessionKit';
 import {
     importAudioFromInbox,
     pickAndImportAudioFiles,
 } from '../audio/importAudio';
 import { resolveAudioUri } from '../waveform/audioPath';
 import RNFS from 'react-native-fs';
-import Share from 'react-native-share';
 
 type Recording = {
     id: number;
@@ -57,9 +54,9 @@ const groupRecordingsByDate = (recordings: Recording[]): Section[] => {
 export default function RecordingListScreen() {
     const [recordings, setRecordings] = useState<Recording[]>([]);
     const [filteredRecordings, setFilteredRecordings] = useState<Recording[]>([]);
-    const [searchQuery, setSearchQuery] = useState('');
     const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'duration_desc' | 'duration_asc'>('date_desc');
     const [tagQuery, setTagQuery] = useState('');
+    const [exportingAll, setExportingAll] = useState(false);
 
     const navigation = useNavigation();
 
@@ -85,7 +82,7 @@ export default function RecordingListScreen() {
 
     useEffect(() => {
         applyFilters();
-    }, [recordings, searchQuery, sortOption]);
+    }, [recordings, sortOption]);
 
     const fetchData = async () => {
         try {
@@ -108,9 +105,7 @@ export default function RecordingListScreen() {
     };
 
     const applyFilters = () => {
-        let filtered = recordings.filter((r) =>
-            (r.session_name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        let filtered = [...recordings];
 
         console.log('🔍 Applying filters to:', recordings.length);
 
@@ -130,71 +125,6 @@ export default function RecordingListScreen() {
         }
 
         setFilteredRecordings(filtered);
-    };
-
-    const [exportingAll, setExportingAll] = useState(false);
-
-    const handleExportAll = async () => {
-        if (filteredRecordings.length === 0) return;
-        setExportingAll(true);
-        try {
-            const parent = `${RNFS.CachesDirectoryPath}/export_all_${Date.now()}`;
-            await buildExportBatch(
-                filteredRecordings.map((r) => r.id),
-                parent,
-            );
-            Alert.alert(
-                'Export ready',
-                `Built ${filteredRecordings.length} session kit(s) as a folder. Prepare USB Backup writes the same kits under Documents/Backups for Finder.`,
-            );
-            // Also offer share of the batch manifest as a pointer.
-            await Share.open({
-                title: 'Export All Session Kits',
-                message: `Exported ${filteredRecordings.length} session kit(s)`,
-                urls: [`file://${parent}/export_manifest.json`],
-                failOnCancel: false,
-            });
-        } catch (err) {
-            console.error('❌ Export all failed:', err);
-            Alert.alert('Export failed', String(err));
-        } finally {
-            setExportingAll(false);
-        }
-    };
-
-    const handlePrepareBackup = async () => {
-        if (filteredRecordings.length === 0) return;
-        setExportingAll(true);
-        try {
-            const dest = await prepareBackup(filteredRecordings.map((r) => r.id));
-            Alert.alert(
-                'Backup ready',
-                `Copied ${filteredRecordings.length} kit(s) to Documents/Backups.\nPlug into your Mac → Finder → your iPhone → babytalkApp → Backups.\n\n${dest.replace(/.*\/Documents\//, 'Documents/')}`,
-            );
-        } catch (err) {
-            console.error('❌ Backup failed:', err);
-            Alert.alert('Backup failed', String(err));
-        } finally {
-            setExportingAll(false);
-        }
-    };
-
-    const handleImportAnnotations = async () => {
-        setExportingAll(true);
-        try {
-            const summary = await importInboxAnnotations();
-            Alert.alert(
-                'Import complete',
-                `Scanned ${summary.scanned}: +${summary.inserted} new, ${summary.updated} updated, ${summary.skipped} skipped, ${summary.unmatched} unmatched.` +
-                    (summary.errors.length ? `\n\n${summary.errors.slice(0, 3).join('\n')}` : ''),
-            );
-            fetchData();
-        } catch (err) {
-            console.error('❌ Import failed:', err);
-            Alert.alert('Import failed', String(err));
-        } finally {
-            setExportingAll(false);
-        }
     };
 
     const handleImportVoiceMemos = async () => {
@@ -229,28 +159,6 @@ export default function RecordingListScreen() {
         } catch (err) {
             console.error('❌ Audio import failed:', err);
             Alert.alert('Audio import failed', String(err));
-        } finally {
-            setExportingAll(false);
-        }
-    };
-
-    const handleImportInboxAudio = async () => {
-        setExportingAll(true);
-        try {
-            const result = await importAudioFromInbox();
-            const errTail = result.errors.length
-                ? `\n\n${result.errors.slice(0, 3).join('\n')}`
-                : '';
-            Alert.alert(
-                'Inbox audio',
-                result.imported.length
-                    ? `Imported ${result.imported.length} file(s) from Documents/Import (and system Inbox if present).${errTail}`
-                    : `No audio files found in Documents/Import or Inbox.${errTail}\n\nFrom Voice Memos: use Import Voice Memos / Audio, or Share → Open in babytalkApp.`,
-            );
-            fetchData();
-        } catch (err) {
-            console.error('❌ Inbox audio import failed:', err);
-            Alert.alert('Inbox import failed', String(err));
         } finally {
             setExportingAll(false);
         }
@@ -341,13 +249,6 @@ export default function RecordingListScreen() {
     return (
         <View style={styles.container}>
             <TextInput
-                placeholder="Search session names..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                style={styles.searchInput}
-            />
-
-            <TextInput
                 placeholder="Search tags..."
                 value={tagQuery}
                 onChangeText={setTagQuery}
@@ -357,30 +258,6 @@ export default function RecordingListScreen() {
             <Button
                 title={exportingAll ? 'Working…' : '🎙 Import Voice Memos / Audio'}
                 onPress={handleImportVoiceMemos}
-                disabled={exportingAll}
-            />
-            <View style={{ height: 8 }} />
-            <Button
-                title={exportingAll ? 'Working…' : '📂 Import Inbox Audio'}
-                onPress={handleImportInboxAudio}
-                disabled={exportingAll}
-            />
-            <View style={{ height: 8 }} />
-            <Button
-                title={exportingAll ? 'Working…' : '📤 Export All Session Kits'}
-                onPress={handleExportAll}
-                disabled={filteredRecordings.length === 0 || exportingAll}
-            />
-            <View style={{ height: 8 }} />
-            <Button
-                title={exportingAll ? 'Working…' : '💾 Prepare USB Backup'}
-                onPress={handlePrepareBackup}
-                disabled={filteredRecordings.length === 0 || exportingAll}
-            />
-            <View style={{ height: 8 }} />
-            <Button
-                title={exportingAll ? 'Working…' : '📥 Retry Import Annotations'}
-                onPress={handleImportAnnotations}
                 disabled={exportingAll}
             />
 
