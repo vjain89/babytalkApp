@@ -1,1 +1,4 @@
 pymobiledevice3>=9.0.0
+# Speech VAD / ML candidates (review_server Find speech segments, vad_segments.py, propose_candidates.py)
+numpy>=1.24
+soundfile>=0.12

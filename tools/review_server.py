@@ -4,6 +4,7 @@ Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
   - drag on the waveform to select a span
   - add / edit / delete free-form tags with start+end times
+  - find speech segments (VAD) → provisional ML candidates
   - confirm or dismiss ML candidates
   - Sync with iPhone (USB) to pull kits and push tags.json
 
@@ -13,6 +14,7 @@ Usage:
   open http://127.0.0.1:8765
 
 USB sync needs tools/.venv (pymobiledevice3). See tools/README.md.
+Speech VAD needs: pip install numpy soundfile
 """
 
 from __future__ import annotations
@@ -112,6 +114,45 @@ def read_annotations(kit: Path) -> list:
 
 def write_annotations(kit: Path, anns: list) -> None:
     write_json(kit / "annotations.json", {"annotations": anns})
+
+
+def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
+    """Run energy-based VAD and merge results into annotations.json."""
+    body = body or {}
+    try:
+        from vad_segments import (
+            MERGE_GAP_MS,
+            MIN_DUR_MS,
+            SPEECH_DELTA_DB,
+            process_kit,
+        )
+    except ImportError as e:
+        return {
+            "ok": False,
+            "error": "VAD deps missing. Install with: pip install numpy soundfile",
+            "detail": str(e),
+        }
+
+    def _num(key: str, default: float) -> float:
+        val = body.get(key)
+        if val is None or val == "":
+            return default
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return default
+
+    try:
+        result = process_kit(
+            kit,
+            merge_gap_ms=_num("mergeGapMs", MERGE_GAP_MS),
+            min_dur_ms=_num("minDurMs", MIN_DUR_MS),
+            speech_delta_db=_num("speechDeltaDb", SPEECH_DELTA_DB),
+            write=True,
+        )
+    except Exception as e:  # noqa: BLE001 — surface to UI
+        return {"ok": False, "error": str(e), "kit": kit.name}
+    return result
 
 
 HTML = r"""<!DOCTYPE html>
@@ -1189,6 +1230,14 @@ function renderShell() {
     </div>
     <div class="section">
       <h3>ML candidates</h3>
+      <p class="muted sans" style="margin:0 0 8px">
+        Find speech-like spans with local VAD (merge gaps ≤0.4s, drop &lt;0.3s).
+        Confirm promotes into tags; dismiss hides. Re-run replaces provisional VAD/ml_v0 suggestions only.
+      </p>
+      <div class="meta-actions" style="margin:0 0 10px">
+        <button type="button" class="primary" id="btnVad">Find speech segments</button>
+        <span class="muted" id="vadHint"></span>
+      </div>
       <div id="annList"></div>
     </div>
     <div class="section" id="metaSection">
@@ -1218,8 +1267,39 @@ function renderShell() {
   wireWordCloud();
   wireSessionTitle();
   wireMetaForm();
+  wireVad();
   renderLists();
   updateVocabBar();
+}
+
+function wireVad() {
+  const btn = document.getElementById('btnVad');
+  const hint = document.getElementById('vadHint');
+  if (!btn) return;
+  btn.onclick = async () => {
+    if (!current) return;
+    btn.disabled = true;
+    btn.textContent = 'Finding…';
+    if (hint) hint.textContent = 'Running local VAD…';
+    try {
+      const data = await postJson('/api/vad/run', { kit: current.folder });
+      if (!data.ok) {
+        flashSaveStatus('VAD failed: ' + (data.error || 'unknown'), false);
+        if (hint) hint.textContent = data.error || 'failed';
+        return;
+      }
+      await softRefreshCurrent();
+      const n = data.added != null ? data.added : 0;
+      flashSaveStatus(`Found ${n} speech segment(s) → annotations.json`);
+      if (hint) hint.textContent = `${n} new · ${data.total || n} total on disk`;
+    } catch (err) {
+      flashSaveStatus('VAD failed: ' + err.message, false);
+      if (hint) hint.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Find speech segments';
+    }
+  };
 }
 
 function wireTransport() {
@@ -1726,12 +1806,12 @@ function renderLists() {
   const annList = document.getElementById('annList');
   annList.innerHTML = anns.length ? anns.map(a => `
     <div class="row" data-uuid="${esc(a.uuid)}">
-      <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}</span>
+      <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}${a.status==='confirmed'?' · confirmed':''}</span>
       <input type="text" value="${esc(a.label||'')}" placeholder="label"/>
       <button data-act="seek">Seek</button>
       <button data-act="confirm">Confirm</button>
       <button data-act="dismiss">Dismiss</button>
-    </div>`).join('') : '<p class="muted">No ML candidates. Optional: run propose_candidates.py first.</p>';
+    </div>`).join('') : '<p class="muted">No ML candidates yet. Click <strong>Find speech segments</strong>, or run <code>vad_segments.py</code> / <code>propose_candidates.py</code>.</p>';
 
   annList.querySelectorAll('.row').forEach(row => {
     row.querySelectorAll('button').forEach(btn => btn.onclick = async () => {
@@ -2053,6 +2133,20 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, b'{"ok":true}', "application/json")
             return
 
+        if parsed.path == "/api/vad/run":
+            result = run_vad_for_kit(kit, body)
+            code = 200 if result.get("ok") else 500
+            # Avoid dumping every annotation uuid into the HTTP response on large kits.
+            slim = {
+                k: v
+                for k, v in result.items()
+                if k != "annotations"
+            }
+            if result.get("ok"):
+                slim["sample"] = (result.get("annotations") or [])[:5]
+            self._send_json(code, slim)
+            return
+
         # Back-compat alias
         if parsed.path == "/api/update":
             body["action"] = body.get("action") or "confirm"
@@ -2125,6 +2219,15 @@ def main(argv: list[str]) -> int:
         print(f"Seeded {seeded} kit(s) into {LIBRARY_DIR}")
     print(f"Library: {LIBRARY_DIR}")
     print("Sync with iPhone uses USB (pymobiledevice3). Open the app on the phone to auto-import tags.")
+    try:
+        import numpy  # noqa: F401
+        import soundfile  # noqa: F401
+        print("Speech VAD: ready (numpy + soundfile). Use Find speech segments in the UI.")
+    except ImportError:
+        print(
+            "Speech VAD: install deps first — "
+            "tools/.venv/bin/pip install numpy soundfile"
+        )
     server.serve_forever()
     return 0
 

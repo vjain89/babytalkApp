@@ -52,8 +52,22 @@ Override: `--bundle-id your.bundle.id`
 
 ## Optional ML candidates
 
+Energy-based **speech segments** (recommended for Review Browser):
+
 ```bash
-pip install numpy soundfile   # system or another venv
+tools/.venv/bin/pip install numpy soundfile   # if not already in the venv
+python3 tools/vad_segments.py ~/Documents/BabyTalk/Library
+# or per kit:
+python3 tools/vad_segments.py ~/Documents/BabyTalk/Library/<kit-folder>
+```
+
+Defaults: merge gaps ≤ **400 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
+
+In the Review UI, open a session and click **Find speech segments** (same pipeline via `POST /api/vad/run`). Confirm / dismiss works like other ML candidates.
+
+Legacy short-burst onset detector:
+
+```bash
 python3 tools/propose_candidates.py ~/Documents/BabyTalk/Library
 python3 tools/validate_export.py ~/Documents/BabyTalk/Library
 ```
