@@ -4,10 +4,14 @@ Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
   - drag on the waveform to select a span
   - add / edit / delete tags with category + optional speaker
-  - verbal: word (required) + optional phonetic
-  - non-verbal vocalization: optional phonetic (+ optional note); vegetative: optional note
-  - find speech segments (VAD) → provisional ML candidates
-  - confirm or dismiss ML candidates (assign category + speaker / word+phonetic)
+  - verbal: word (required) + optional phonetic + optional language
+  - non-verbal vocalization: optional phonetic (+ optional note) + optional language
+  - vegetative: optional note (no language)
+  - language defaults to Swiss German dialect; also Spanish / English
+  - find speech segments (VAD → speaker diarization) → provisional ML candidates
+  - confirm or dismiss ML candidates (assign category + speaker / word+phonetic / language)
+  - optional local Whisper suggestion per snippet (never overwrites your labels)
+  - Clustering tab: group similar spans, review confidence, label clusters
   - Sync with iPhone (USB) to pull kits and push tags.json
 
 Usage:
@@ -17,12 +21,14 @@ Usage:
 
 USB sync needs tools/.venv (pymobiledevice3). See tools/README.md.
 Speech VAD needs: pip install numpy soundfile
+Speaker diarization (optional, recommended): pip install torch torchaudio speechbrain
 """
 
 from __future__ import annotations
 
 import json
 import mimetypes
+import socket
 import subprocess
 import sys
 import uuid
@@ -125,6 +131,12 @@ CATEGORIES = (
     "non-vocal vegetative sound",
 )
 SPEAKER_PRESETS = ("Baby", "Parent", "Other")
+LANGUAGES = (
+    "Swiss German dialect",
+    "Spanish",
+    "English",
+)
+DEFAULT_LANGUAGE = "Swiss German dialect"
 
 
 def normalize_category(value) -> str:
@@ -138,33 +150,45 @@ def normalize_speaker(value) -> str:
     return (value or "").strip()
 
 
+def normalize_language(value) -> str:
+    text = (value or "").strip()
+    if text in LANGUAGES:
+        return text
+    return ""
+
+
 def compose_label(
     category: str = "",
     speaker: str = "",
+    language: str = "",
     word: str = "",
     note: str = "",
 ) -> str:
     """Keep `label` a useful string for older UI / phone import.
 
-    Format: ``category · speaker · detail`` where detail is the intended
-    ``word`` (verbal) or free-form ``note`` (non-verbal / vegetative).
+    Format: ``category · speaker · language · detail`` where detail is the
+    intended ``word`` (verbal) or free-form ``note`` (non-verbal / vegetative).
     Phonetic is never folded into label — it lives in its own field.
+    Language is included for vocalizations when set.
     """
     category = (category or "").strip()
     speaker = (speaker or "").strip()
+    language = (language or "").strip()
     detail = (word or "").strip() or (note or "").strip()
-    parts = [p for p in (category, speaker, detail) if p]
+    parts = [p for p in (category, speaker, language, detail) if p]
     return " · ".join(parts) if parts else "untitled"
 
 
 def apply_taxonomy_fields(item: dict, body: dict) -> None:
-    """Set category / speaker / word / phonetic / note / label from a request body."""
+    """Set category / speaker / language / word / phonetic / note / label from a request body."""
     has_tax = any(
-        k in body for k in ("category", "speaker", "note", "word", "phonetic")
+        k in body
+        for k in ("category", "speaker", "language", "note", "word", "phonetic")
     )
     if has_tax:
         category = normalize_category(body.get("category"))
         speaker = normalize_speaker(body.get("speaker"))
+        language = normalize_language(body.get("language"))
         word = str(body.get("word") or "").strip()
         phonetic = str(body.get("phonetic") or "").strip()
         note = str(body.get("note") or "").strip()
@@ -177,6 +201,18 @@ def apply_taxonomy_fields(item: dict, body: dict) -> None:
         else:
             item.pop("speaker", None)
 
+        is_vocal = category in (
+            "verbal vocalization",
+            "non-verbal vocalization",
+        )
+        if is_vocal:
+            if not language:
+                language = DEFAULT_LANGUAGE
+            item["language"] = language
+        else:
+            item.pop("language", None)
+            language = ""
+
         if category == "verbal vocalization":
             if word:
                 item["word"] = word
@@ -187,7 +223,9 @@ def apply_taxonomy_fields(item: dict, body: dict) -> None:
             else:
                 item.pop("phonetic", None)
             item.pop("note", None)
-            item["label"] = compose_label(category, speaker, word=word)
+            item["label"] = compose_label(
+                category, speaker, language=language, word=word
+            )
         elif category == "non-verbal vocalization":
             item.pop("word", None)
             if phonetic:
@@ -199,7 +237,9 @@ def apply_taxonomy_fields(item: dict, body: dict) -> None:
             else:
                 item.pop("note", None)
             # Phonetic stays in its own field; label uses optional note only.
-            item["label"] = compose_label(category, speaker, note=note)
+            item["label"] = compose_label(
+                category, speaker, language=language, note=note
+            )
         else:
             item.pop("word", None)
             item.pop("phonetic", None)
@@ -226,13 +266,20 @@ def taxonomy_validation_error(body: dict) -> str | None:
 
 
 def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
-    """Run energy-based VAD and merge results into annotations.json."""
+    """Run the ML-candidate pipeline (VAD → diarization → candidates) and
+    merge the results into annotations.json.
+
+    Diarization is best-effort: if no backend is installed the pipeline still
+    returns VAD-only candidates and reports why stage 2 was skipped, so the
+    button never fails outright over a missing optional model.
+    """
     body = body or {}
     try:
         from vad_segments import (
             MERGE_GAP_MS,
             MIN_DUR_MS,
             SPEECH_DELTA_DB,
+            SPLIT_TARGET_MS,
             process_kit,
         )
     except ImportError as e:
@@ -251,17 +298,104 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
         except (TypeError, ValueError):
             return default
 
+    diarization = (body.get("diarization") or "auto").strip() or "auto"
+    if body.get("diarize") is False:
+        diarization = "none"
+    num_speakers = body.get("numSpeakers")
+    try:
+        num_speakers = int(num_speakers) if num_speakers not in (None, "", 0, "0") else None
+    except (TypeError, ValueError):
+        num_speakers = None
+
     try:
         result = process_kit(
             kit,
             merge_gap_ms=_num("mergeGapMs", MERGE_GAP_MS),
             min_dur_ms=_num("minDurMs", MIN_DUR_MS),
             speech_delta_db=_num("speechDeltaDb", SPEECH_DELTA_DB),
+            split_target_ms=_num("splitTargetMs", SPLIT_TARGET_MS),
+            reject_non_speech=bool(body.get("rejectNonSpeech", True)),
+            diarization=diarization,
+            num_speakers=num_speakers,
             write=True,
         )
     except Exception as e:  # noqa: BLE001 — surface to UI
         return {"ok": False, "error": str(e), "kit": kit.name}
     return result
+
+
+def diarization_status() -> dict:
+    """Which stage-2 backends are usable right now (for the UI hint)."""
+    try:
+        from diarize import backend_status, resolve_backend
+    except ImportError as e:
+        return {"available": False, "active": "none", "error": str(e), "backends": []}
+    backends = backend_status()
+    active = resolve_backend("auto")
+    return {
+        "available": active != "none",
+        "active": active,
+        "backends": backends,
+    }
+
+
+def run_asr_for_item(kit: Path, body: dict | None = None) -> dict:
+    """Run local Whisper on one annotation/tag span; store suggestion under ``asr``."""
+    body = body or {}
+    uuid = (body.get("uuid") or "").strip()
+    if not uuid:
+        return {"ok": False, "error": "uuid required"}
+    try:
+        from asr_suggest import suggest_for_kit_uuid
+    except ImportError as e:
+        return {
+            "ok": False,
+            "error": "ASR deps missing. Install with: tools/.venv/bin/pip install faster-whisper",
+            "detail": str(e),
+        }
+    language_hint = (body.get("language") or "").strip() or None
+    model = (body.get("model") or "").strip() or None
+    try:
+        kwargs = {
+            "language_hint": language_hint,
+            "persist": True,
+        }
+        if model:
+            kwargs["model_size"] = model
+        return suggest_for_kit_uuid(kit, uuid, **kwargs)
+    except Exception as e:  # noqa: BLE001 — surface to UI
+        return {"ok": False, "error": str(e), "kit": kit.name, "uuid": uuid}
+
+
+def run_cluster_for_kit(kit: Path, body: dict | None = None) -> dict:
+    """Run acoustic clustering into clusters.json."""
+    body = body or {}
+    try:
+        from cluster_sounds import DEFAULT_DISTANCE, process_kit
+    except ImportError as e:
+        return {
+            "ok": False,
+            "error": "Cluster deps missing. Install with: tools/.venv/bin/pip install scikit-learn",
+            "detail": str(e),
+        }
+    distance = body.get("distance")
+    try:
+        distance_f = float(distance) if distance not in (None, "") else DEFAULT_DISTANCE
+    except (TypeError, ValueError):
+        distance_f = DEFAULT_DISTANCE
+    include_singletons = body.get("includeSingletons")
+    if include_singletons is None:
+        include_singletons = True
+    try:
+        result = process_kit(
+            kit,
+            distance_threshold=distance_f,
+            write=True,
+            include_singletons=bool(include_singletons),
+        )
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "kit": kit.name}
+    return {k: v for k, v in result.items() if k != "doc"}
 
 
 HTML = r"""<!DOCTYPE html>
@@ -541,6 +675,91 @@ HTML = r"""<!DOCTYPE html>
     color: #fff;
     border-color: var(--ink);
   }
+  .asr-line {
+    font-size: 12px;
+    margin-top: 4px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .main-tabs {
+    display: flex; gap: 8px; margin: 0 0 14px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .main-tabs button {
+    border: 1px solid var(--line); background: #fff; padding: 8px 14px;
+    border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px;
+  }
+  .main-tabs button.active {
+    background: var(--ink); color: #fff; border-color: var(--ink);
+  }
+  #clusterTab { display: none; }
+  #clusterTab.active { display: block; }
+  #reviewTab.hidden { display: none; }
+  .cluster-toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin: 0 0 14px; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .cluster-list { display: grid; gap: 10px; }
+  .cluster-card {
+    border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    padding: 12px 14px; cursor: pointer;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .cluster-card.active { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(0,0,0,0.06); }
+  .cluster-card .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .conf-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+    margin: 10px 0; font-size: 12px;
+  }
+  .conf-grid div {
+    background: #f7f4ef; border-radius: 8px; padding: 8px;
+  }
+  .conf-grid strong { display: block; font-size: 14px; color: var(--ink); }
+  .spec-row {
+    display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0;
+  }
+  .spec-cell {
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px;
+    background: #1a1a1a; width: 160px;
+  }
+  .spec-cell canvas { display: block; width: 100%; height: 72px; }
+  .spec-cell .cap { color: #ccc; font-size: 11px; margin-top: 4px; font-family: ui-sans-serif, system-ui, sans-serif; }
+  .spec-cell.outlier { outline: 2px solid #c26430; }
+  .cluster-members { display: grid; gap: 6px; margin: 10px 0; }
+  .cluster-member {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .cluster-label-form {
+    display: grid; gap: 8px; max-width: 520px; margin-top: 12px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .cluster-label-form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .cluster-label-form input, .cluster-label-form select {
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    font: inherit; color: var(--ink); background: #fff;
+  }
+  .add-snippet-box {
+    border: 1px solid var(--line); border-radius: 8px; background: #fff;
+    padding: 8px; display: grid; gap: 8px;
+  }
+  .add-snippet-box input[type="search"] {
+    width: 100%; box-sizing: border-box;
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
+  }
+  .add-snippet-results {
+    max-height: 180px; overflow: auto; display: grid; gap: 4px;
+  }
+  .add-snippet-results button {
+    text-align: left; border: 1px solid transparent; background: #f7f4ef;
+    border-radius: 6px; padding: 6px 8px; cursor: pointer; font: inherit; font-size: 12px;
+  }
+  .add-snippet-results button:hover { border-color: var(--line); }
+  .add-snippet-results button.selected {
+    border-color: var(--ink); background: #fff;
+  }
+  .add-snippet-results .empty { color: var(--muted); font-size: 12px; padding: 6px; }
   .note-input {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
   }
@@ -551,10 +770,12 @@ HTML = r"""<!DOCTYPE html>
   .detail-fields[data-mode="verbal"] .note-field { display: none; }
   .detail-fields[data-mode="nonverbal"] .word-field { display: none; }
   .detail-fields[data-mode="note"] .word-field,
-  .detail-fields[data-mode="note"] .phonetic-field { display: none; }
+  .detail-fields[data-mode="note"] .phonetic-field,
+  .detail-fields[data-mode="note"] .language-field { display: none; }
   .detail-fields[data-mode=""] .word-field,
   .detail-fields[data-mode=""] .phonetic-field,
-  .detail-fields[data-mode=""] .note-field { display: none; }
+  .detail-fields[data-mode=""] .note-field,
+  .detail-fields[data-mode=""] .language-field { display: none; }
   .help {
     background: #e7f0ff; border: 1px solid #c5d7f5; border-radius: 8px;
     padding: 10px 12px; margin: 0 0 14px;
@@ -638,6 +859,8 @@ HTML = r"""<!DOCTYPE html>
   .pill.user { background: #f3d9c8; color: #7a3410; }
   .pill.ml { background: #d9e6d9; color: #2f4f2f; }
   .pill .sub { display: block; color: inherit; opacity: 0.85; font-weight: 500; }
+  .pill .sub.prov-ml { font-weight: 700; opacity: 1; }
+  .pill .sub.prov-user { opacity: 0.6; }
   audio { display: none; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; }
@@ -669,6 +892,9 @@ HTML = r"""<!DOCTYPE html>
 <script>
 let kits = [];
 let current = null;
+let clusterDoc = null;
+let activeClusterId = null;
+let showSingletonClusters = false;
 let audioBuf = null;
 let durationSec = 0;
 let selStart = null; // seconds (lo after normalize)
@@ -704,12 +930,23 @@ const CATEGORIES = [
   'non-vocal vegetative sound',
 ];
 const SPEAKER_PRESETS = ['Baby', 'Parent', 'Other'];
+const LANGUAGES = ['Swiss German dialect', 'Spanish', 'English'];
+const DEFAULT_LANGUAGE = 'Swiss German dialect';
 
 function categoryOptionsHtml(selected) {
   const sel = selected || '';
   let html = `<option value="">Category…</option>`;
   for (const c of CATEGORIES) {
     html += `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`;
+  }
+  return html;
+}
+
+function languageOptionsHtml(selected) {
+  const sel = (selected || DEFAULT_LANGUAGE);
+  let html = '';
+  for (const lang of LANGUAGES) {
+    html += `<option value="${esc(lang)}"${lang === sel ? ' selected' : ''}>${esc(lang)}</option>`;
   }
   return html;
 }
@@ -807,10 +1044,14 @@ function detailFieldsHtml(item, idPrefix) {
   const word = itemWord(item || {});
   const phonetic = itemPhonetic(item || {});
   const note = itemNote(item || {});
+  const lang = (item && item.language) || DEFAULT_LANGUAGE;
   const notePh = cat === 'non-verbal vocalization'
     ? 'Optional note (e.g. squeal, rasp)'
     : 'Optional note (e.g. sneeze, cough)';
   return `<div class="detail-fields" data-mode="${esc(mode)}" data-detail-root="${esc(idPrefix)}">
+    <div class="language-field">
+      <select class="note-input" data-field="language" title="Language">${languageOptionsHtml(lang)}</select>
+    </div>
     <div class="word-field">
       <input class="note-input" type="text" data-field="word" value="${esc(word)}" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
     </div>
@@ -829,6 +1070,10 @@ function syncDetailFields(scope) {
   const root = scope.querySelector('.detail-fields');
   if (!root) return;
   root.dataset.mode = detailModeForCategory(cat);
+  const langSel = root.querySelector('[data-field="language"]');
+  if (langSel && (cat === 'verbal vocalization' || cat === 'non-verbal vocalization')) {
+    if (!langSel.value) langSel.value = DEFAULT_LANGUAGE;
+  }
 }
 
 function wireCategoryDetail(scope) {
@@ -842,10 +1087,11 @@ function wireCategoryDetail(scope) {
 function readTaxonomyFrom(scope) {
   const category = (scope.querySelector('[data-field="category"], .category-select, #categoryInput')?.value || '').trim();
   const speaker = (scope.querySelector('[data-field="speaker"]')?.value || '').trim();
+  const language = (scope.querySelector('[data-field="language"]')?.value || '').trim();
   const word = (scope.querySelector('[data-field="word"]')?.value || '').trim();
   const phonetic = (scope.querySelector('[data-field="phonetic"]')?.value || '').trim();
   const note = (scope.querySelector('[data-field="note"]')?.value || '').trim();
-  return { category, speaker, word, phonetic, note };
+  return { category, speaker, language, word, phonetic, note };
 }
 
 function validateTaxonomy(tax) {
@@ -856,11 +1102,25 @@ function validateTaxonomy(tax) {
   return null;
 }
 
+function asrSummaryHtml(item) {
+  const asr = item && item.asr;
+  if (!asr || !(asr.text || '').trim()) {
+    return `<div class="asr-line muted">Model: —</div>`;
+  }
+  const lang = (asr.language || '').trim();
+  const model = (asr.model || '').trim();
+  const meta = [lang, model].filter(Boolean).join(' · ');
+  return `<div class="asr-line"><span class="muted">Model:</span> ${esc(String(asr.text).trim())}${meta ? ` <span class="sub">(${esc(meta)})</span>` : ''}</div>`;
+}
+
 function taxonomyPayload(tax) {
   const payload = {
     category: tax.category,
     speaker: tax.speaker,
   };
+  if (tax.category === 'verbal vocalization' || tax.category === 'non-verbal vocalization') {
+    payload.language = tax.language || DEFAULT_LANGUAGE;
+  }
   if (tax.category === 'verbal vocalization') {
     payload.word = tax.word;
     payload.phonetic = tax.phonetic;
@@ -1496,10 +1756,13 @@ async function softRefreshCurrent() {
   drawOverview();
   paintOverlays();
   updateVocabBar();
+  void loadClusters();
 }
 
 async function select(i) {
   current = kits[i];
+  clusterDoc = null;
+  activeClusterId = null;
   setActiveKit(i);
   selStart = null; selEnd = null;
   audioBuf = null;
@@ -1513,6 +1776,11 @@ function renderShell() {
   const k = current;
   if (!k) return;
   document.getElementById('panel').innerHTML = `
+    <div class="main-tabs">
+      <button type="button" class="active" data-tab="review">Review</button>
+      <button type="button" data-tab="cluster">Clustering</button>
+    </div>
+    <div id="reviewTab">
     <div class="help">
       <strong>How to tag:</strong> click to set playhead · drag to select a snippet · pick a <strong>category</strong> · optional <strong>speaker</strong>.
       For <strong>verbal vocalization</strong>, enter the <strong>word</strong> (required) and optional <strong>phonetic</strong>;
@@ -1577,6 +1845,13 @@ function renderShell() {
           <input id="speakerInput" data-field="speaker" type="text" placeholder="Speaker (optional)" autocomplete="off"/>
         </div>
         <div class="detail-fields" id="addDetailFields" data-mode="">
+          <div class="language-field">
+            <select id="languageInput" class="note-input" data-field="language" title="Language">
+              <option value="Swiss German dialect" selected>Swiss German dialect</option>
+              <option value="Spanish">Spanish</option>
+              <option value="English">English</option>
+            </select>
+          </div>
           <div class="word-field">
             <input id="wordInput" class="note-input" data-field="word" type="text" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
           </div>
@@ -1605,13 +1880,35 @@ function renderShell() {
     <div class="section">
       <h3>ML candidates</h3>
       <p class="muted sans" style="margin:0 0 8px">
-        Find speech-like spans with local VAD (merge gaps ≤0.4s, drop &lt;0.3s).
-        VAD does not know who spoke — on confirm, assign a <strong>category</strong> and optional <strong>speaker</strong>
-        (verbal: <strong>word</strong> + optional <strong>phonetic</strong>; non-verbal: optional <strong>phonetic</strong>).
-        Confirm promotes into tags; dismiss hides. Re-run replaces provisional VAD/ml_v0 suggestions only.
+        Two stages. <strong>1 · VAD</strong> finds speech-like spans (merge gaps ≤0.2s, drop
+        &lt;0.3s) and drops short bursts that look broadband/impulsive relative to this
+        session's other candidates (taps, door closes) — a heuristic, not a trained
+        classifier, so it can miss things.
+        <strong>2 · Diarization</strong> takes speaker embeddings across the whole session,
+        clusters them, and cuts each span wherever the speaker changes, so a parent/baby/parent
+        stretch becomes separate candidates tagged <span class="sub">SPEAKER_00</span> etc.
+        Same-speaker spans still over 4s are then split at their deepest internal pause.
+        Speaker ids are a <em>guess and unnamed</em> — they group turns, they don't know
+        who's the baby — so on confirm you still assign a <strong>category</strong> and
+        <strong>speaker</strong> (verbal: <strong>word</strong> + optional <strong>phonetic</strong>;
+        non-verbal: optional <strong>phonetic</strong>).
+        <span class="sub">Limits</span> overlapping speech goes to one speaker only, and a
+        toddler imitating a parent can land in the wrong cluster.
+        Use <strong>Suggest</strong> for a local Whisper draft (comparison only; never auto-fills your labels).
+        Confirm removes it from this list and adds it to Tags; dismiss hides it here.
+        Re-run replaces provisional VAD/ml_v0 suggestions only, and skips spans already tagged.
       </p>
       <div class="meta-actions" style="margin:0 0 10px">
         <button type="button" class="primary" id="btnVad">Find speech segments</button>
+        <label class="muted"><input type="checkbox" id="chkDiarize" checked/> Split by speaker</label>
+        <label class="muted">Speakers
+          <select id="vadNumSpeakers">
+            <option value="">Auto</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
         <span class="muted" id="vadHint"></span>
       </div>
       <div id="annList"></div>
@@ -1638,29 +1935,96 @@ function renderShell() {
         </div>
       </div>
     </div>
+    </div>
+    <div id="clusterTab">
+      <p class="muted sans" style="margin:0 0 10px">
+        Groups similar spans in this session (tags + non-dismissed VAD). Labels are stored on the
+        <strong>cluster</strong> only (not auto-copied onto tags). <code>conceptIds</code> reserved for
+        future many↔many developmental concepts. Exclude outliers before trusting a group.
+      </p>
+      <div class="cluster-toolbar">
+        <button type="button" class="primary" id="btnClusterRun">Run clustering</button>
+        <label class="muted">Sensitivity
+          <select id="clusterDistance">
+            <option value="0.40">Tight (fewer merges)</option>
+            <option value="0.45" selected>Default</option>
+            <option value="0.55">Loose (larger groups)</option>
+            <option value="0.65">Very loose</option>
+          </select>
+        </label>
+        <label class="muted"><input type="checkbox" id="chkSingletons"/> Show size-1 clusters</label>
+        <span class="muted" id="clusterStatus">Loading…</span>
+      </div>
+      <div id="clusterList" class="cluster-list"></div>
+      <div id="clusterDetail" class="section"></div>
+      <div class="section" id="unassignedSection">
+        <h3>Unassigned tags</h3>
+        <p class="muted sans" style="margin:0 0 8px">
+          Tags (and non-dismissed VAD) not in any cluster. Search, multi-select, then create a new curated cluster.
+        </p>
+        <div class="add-snippet-box">
+          <input type="search" id="unassignedSearch" placeholder="Search time, speaker, word…" autocomplete="off"/>
+          <div class="add-snippet-results" id="unassignedResults"></div>
+          <div class="cluster-label-form" style="margin-top:8px">
+            <label><span>Word</span><input id="newClWord" type="text" placeholder="e.g. boot"/></label>
+            <label><span>Phonetic</span><input id="newClPhonetic" type="text" placeholder="optional"/></label>
+            <label><span>Language</span><select id="newClLanguage"></select></label>
+            <label><span>Category</span><select id="newClCategory"></select></label>
+          </div>
+          <div class="meta-actions">
+            <button type="button" class="primary" id="btnCreateCluster" disabled>Create cluster from selected</button>
+            <span class="muted" id="unassignedHint">Select one or more rows</span>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
+  wireMainTabs();
   wireTransport();
   wireWordCloud();
   wireSessionTitle();
   wireMetaForm();
   wireVad();
+  wireClusterTab();
   wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
   wireCategoryDetail(document.querySelector('.tag-form'));
   renderLists();
   updateVocabBar();
+  void loadClusters();
 }
 
 function wireVad() {
   const btn = document.getElementById('btnVad');
   const hint = document.getElementById('vadHint');
+  const chk = document.getElementById('chkDiarize');
+  const numSel = document.getElementById('vadNumSpeakers');
   if (!btn) return;
+
+  void (async () => {
+    try {
+      const st = await (await fetch('/api/diarization/status')).json();
+      if (!hint) return;
+      hint.textContent = st.available
+        ? `speaker model: ${st.active}`
+        : 'speaker model not installed — VAD only (see tools/README.md)';
+      if (!st.available && chk) { chk.checked = false; chk.disabled = true; }
+    } catch (_) { /* status is advisory only */ }
+  })();
+
   btn.onclick = async () => {
     if (!current) return;
+    const diarize = chk ? chk.checked : true;
     btn.disabled = true;
     btn.textContent = 'Finding…';
-    if (hint) hint.textContent = 'Running local VAD…';
+    if (hint) hint.textContent = diarize
+      ? 'Running VAD + speaker diarization… (first run downloads the model)'
+      : 'Running local VAD…';
     try {
-      const data = await postJson('/api/vad/run', { kit: current.folder });
+      const data = await postJson('/api/vad/run', {
+        kit: current.folder,
+        diarize,
+        numSpeakers: numSel && numSel.value ? Number(numSel.value) : null
+      });
       if (!data.ok) {
         flashSaveStatus('VAD failed: ' + (data.error || 'unknown'), false);
         if (hint) hint.textContent = data.error || 'failed';
@@ -1669,7 +2033,18 @@ function wireVad() {
       await softRefreshCurrent();
       const n = data.added != null ? data.added : 0;
       flashSaveStatus(`Found ${n} speech segment(s) → annotations.json`);
-      if (hint) hint.textContent = `${n} new · ${data.total || n} total on disk`;
+      const vs = data.vadStats || {};
+      const di = data.diarization || {};
+      const parts = [`${n} new · ${data.total || n} total on disk`];
+      if (di.ok) {
+        parts.push(`${di.numSpeakers || 0} speaker(s) via ${di.backend}, +${di.speakerSplits || 0} speaker splits`);
+      } else if (diarize) {
+        parts.push(`no diarization (${di.error || 'unavailable'}) — VAD only`);
+      }
+      if (vs.pauseSplit) parts.push(`+${vs.pauseSplit} pause splits`);
+      if (vs.nonSpeechRejected) parts.push(`${vs.nonSpeechRejected} non-speech rejected`);
+      if (vs.tagOverlapSuppressed) parts.push(`${vs.tagOverlapSuppressed} skipped (already tagged)`);
+      if (hint) hint.textContent = parts.join(' · ');
     } catch (err) {
       flashSaveStatus('VAD failed: ' + err.message, false);
       if (hint) hint.textContent = err.message;
@@ -1678,6 +2053,644 @@ function wireVad() {
       btn.textContent = 'Find speech segments';
     }
   };
+}
+
+function wireMainTabs() {
+  document.querySelectorAll('.main-tabs button').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.main-tabs button').forEach(b => b.classList.toggle('active', b === btn));
+      const tab = btn.dataset.tab;
+      const review = document.getElementById('reviewTab');
+      const cluster = document.getElementById('clusterTab');
+      if (review) review.classList.toggle('hidden', tab !== 'review');
+      if (cluster) cluster.classList.toggle('active', tab === 'cluster');
+      if (tab === 'cluster') void loadClusters();
+    };
+  });
+}
+
+function wireClusterTab() {
+  const runBtn = document.getElementById('btnClusterRun');
+  const chk = document.getElementById('chkSingletons');
+  if (chk) {
+    chk.checked = showSingletonClusters;
+    chk.onchange = () => {
+      showSingletonClusters = chk.checked;
+      renderClusterList();
+    };
+  }
+  if (runBtn) {
+    runBtn.onclick = async () => {
+      if (!current) return;
+      runBtn.disabled = true;
+      runBtn.textContent = 'Clustering…';
+      const st = document.getElementById('clusterStatus');
+      const distEl = document.getElementById('clusterDistance');
+      const distance = distEl ? Number(distEl.value) : 0.45;
+      if (st) st.textContent = 'Fingerprinting spans…';
+      try {
+        const labeled = (clusterDoc && clusterDoc.clusters || []).filter(cl =>
+          cl.curated || cl.word || cl.phonetic || cl.category || cl.note || cl.language
+        );
+        if (labeled.length) {
+          const ok = confirm(
+            `Keep ${labeled.length} labeled/curated cluster(s) as-is, and only re-group the remaining unlabeled spans?\n\n` +
+            `Your labeled clusters will not be wiped. A backup (clusters.json.bak) is saved first.`
+          );
+          if (!ok) {
+            runBtn.disabled = false;
+            runBtn.textContent = 'Run clustering';
+            return;
+          }
+        } else if (clusterDoc && (clusterDoc.clusters || []).length) {
+          const ok = confirm('Re-run clustering? A backup will be saved first (clusters.json.bak).');
+          if (!ok) {
+            runBtn.disabled = false;
+            runBtn.textContent = 'Run clustering';
+            return;
+          }
+        }
+        const data = await postJson('/api/cluster/run', {
+          kit: current.folder,
+          distance,
+        });
+        if (!data.ok) throw new Error(data.error || 'cluster failed');
+        flashSaveStatus(
+          `Clustering: ${data.multiMember || 0} multi · ${data.clusters || 0} total` +
+          (data.lockedClusters != null ? ` · kept ${data.lockedClusters} curated` : '')
+        );
+        await loadClusters();
+      } catch (err) {
+        flashSaveStatus('Clustering failed: ' + err.message, false);
+        if (st) st.textContent = err.message;
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = 'Run clustering';
+      }
+    };
+  }
+}
+
+async function loadClusters() {
+  if (!current) return;
+  const st = document.getElementById('clusterStatus');
+  try {
+    const res = await fetch('/api/cluster/list?kit=' + encodeURIComponent(current.folder));
+    const data = await res.json();
+    if (!res.ok || data.ok === false) {
+      clusterDoc = null;
+      if (st) st.textContent = data.error || 'No clusters yet — click Run clustering';
+      renderClusterList();
+      return;
+    }
+    clusterDoc = data;
+    const multi = (data.clusters || []).filter(c => (c.confidence && c.confidence.size) >= 2).length;
+    if (st) st.textContent = `${(data.clusters || []).length} clusters · ${multi} with repeats · ${data.spanCount || '?'} spans`;
+    renderClusterList();
+    renderUnassignedPanel();
+    if (activeClusterId) renderClusterDetail(activeClusterId);
+  } catch (err) {
+    if (st) st.textContent = err.message;
+  }
+}
+
+function renderClusterList() {
+  const el = document.getElementById('clusterList');
+  if (!el) return;
+  if (!clusterDoc || !(clusterDoc.clusters || []).length) {
+    el.innerHTML = '<p class="muted">No clusters yet. Click <strong>Run clustering</strong>, or create one from unassigned tags below.</p>';
+    renderUnassignedPanel();
+    return;
+  }
+  let list = clusterDoc.clusters.slice();
+  if (!showSingletonClusters) list = list.filter(c => (c.confidence && c.confidence.size) >= 2);
+  if (!list.length) {
+    el.innerHTML = '<p class="muted">No multi-member clusters. Enable “Show size-1 clusters” or create from unassigned tags below.</p>';
+    renderUnassignedPanel();
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const conf = c.confidence || {};
+    const label = [c.word, c.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
+    const speakers = [...new Set((c.members || []).map(m => m.speaker || '?'))].join(', ');
+    return `<div class="cluster-card${c.id === activeClusterId ? ' active' : ''}" data-cid="${esc(c.id)}">
+      <strong>${esc(label)}</strong> · ${conf.size || 0} members
+      <div class="meta">tight ${Number(conf.tightness || 0).toFixed(2)} · sep ${Number(conf.separation || 0).toFixed(2)} · speakers ${esc(speakers)}</div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.cluster-card').forEach(card => {
+    card.onclick = () => {
+      activeClusterId = card.dataset.cid;
+      renderClusterList();
+      renderClusterDetail(activeClusterId);
+    };
+  });
+  renderUnassignedPanel();
+}
+
+function renderUnassignedPanel() {
+  const results = document.getElementById('unassignedResults');
+  const search = document.getElementById('unassignedSearch');
+  const btn = document.getElementById('btnCreateCluster');
+  const hint = document.getElementById('unassignedHint');
+  const langSel = document.getElementById('newClLanguage');
+  const catSel = document.getElementById('newClCategory');
+  if (!results || !current) return;
+  if (langSel && !langSel.options.length) {
+    langSel.innerHTML = languageOptionsHtml(DEFAULT_LANGUAGE);
+  }
+  if (catSel && !catSel.options.length) {
+    catSel.innerHTML = categoryOptionsHtml('verbal vocalization');
+  }
+  if (!renderUnassignedPanel._selected) renderUnassignedPanel._selected = new Set();
+  const selected = renderUnassignedPanel._selected;
+  // Always rebuilt from the live clusterDoc/current globals (not a one-time
+  // snapshot) so this stays correct even though the DOM handlers below are
+  // only wired once per element and could otherwise close over stale data.
+  function buildCandidates() {
+    // Map memberId/uuid → cluster info, same pattern as the add-snippet
+    // search in renderClusterDetail. Members of a *labeled* cluster (has a
+    // word or phonetic) stay excluded — those are moved via "Add" on that
+    // cluster's detail. Members of an *unlabeled* cluster (e.g. a size-1
+    // leftover from clustering) are still shown here so they can be pulled
+    // into a newly curated cluster; create-cluster already detaches them
+    // server-side (create_cluster_from_members strips selected ids from all
+    // clusters) and the optimistic update below mirrors that.
+    const membership = new Map();
+    for (const cl of ((clusterDoc && clusterDoc.clusters) || [])) {
+      const isUnlabeled = !(cl.word || '').trim() && !(cl.phonetic || '').trim();
+      const size = (cl.confidence && cl.confidence.size) || (cl.members || []).length;
+      for (const m of (cl.members || [])) {
+        const info = { isUnlabeled, size };
+        if (m.memberId) membership.set(m.memberId, info);
+        if (m.uuid) membership.set(m.uuid, info);
+      }
+    }
+    const list = [];
+    for (const t of (current.tags || [])) {
+      if (!t.uuid) continue;
+      const mem = membership.get(t.uuid);
+      if (mem && !mem.isUnlabeled) continue;
+      const sp = t.speaker || '?';
+      const w = (t.word || '').trim();
+      const ph = (t.phonetic || '').trim();
+      const start = t.startMs || 0;
+      const end = t.endMs != null ? t.endMs : start;
+      const where = mem ? ` (in unlabeled cluster · ${mem.size})` : '';
+      const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp}${w ? ' · '+w : ''}${ph ? ' · '+ph : ''} (tag)${where}`;
+      const hay = `${label} ${t.category || ''} ${t.language || ''}`.toLowerCase();
+      list.push({ id: t.uuid, label, hay, start });
+    }
+    for (const a of (current.annotations || []).filter(x => x.status !== 'dismissed')) {
+      if (!a.uuid) continue;
+      const mem = membership.get(a.uuid);
+      if (mem && !mem.isUnlabeled) continue;
+      const sp = a.speaker || '?';
+      const start = a.startMs != null ? a.startMs : (a.tMs || 0);
+      const end = a.endMs != null ? a.endMs : start;
+      const where = mem ? ` (in unlabeled cluster · ${mem.size})` : '';
+      const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp} (VAD)${where}`;
+      list.push({ id: a.uuid, label, hay: label.toLowerCase(), start });
+    }
+    list.sort((a, b) => a.start - b.start);
+    return list;
+  }
+  function sync(candidates) {
+    if (btn) btn.disabled = selected.size === 0;
+    if (hint) hint.textContent = selected.size ? `${selected.size} selected` : `${candidates.length} available — select rows`;
+  }
+  function paint() {
+    const candidates = buildCandidates();
+    // Drop selections that are no longer candidates.
+    for (const id of [...selected]) {
+      if (!candidates.some(c => c.id === id)) selected.delete(id);
+    }
+    const q = (search && search.value || '').trim().toLowerCase();
+    const hits = !q ? candidates.slice(0, 80) : candidates.filter(o => o.hay.includes(q)).slice(0, 80);
+    if (!hits.length) {
+      results.innerHTML = `<div class="empty">${candidates.length ? 'No matches' : 'All tags are in a labeled cluster'}</div>`;
+      sync(candidates);
+      return;
+    }
+    results.innerHTML = hits.map(o =>
+      `<button type="button" data-id="${esc(o.id)}" class="${selected.has(o.id) ? 'selected' : ''}">${esc(o.label)}</button>`
+    ).join('');
+    results.querySelectorAll('button[data-id]').forEach(b => {
+      b.onclick = () => {
+        const id = b.dataset.id;
+        if (selected.has(id)) selected.delete(id);
+        else selected.add(id);
+        paint();
+      };
+    });
+    sync(candidates);
+  }
+  // Reassign on every render (rather than a "_wired once" guard) so these
+  // handlers always run the current paint/state, never a stale closure.
+  if (search) search.oninput = () => paint();
+  if (btn) {
+    btn.onclick = async () => {
+      const ids = [...selected];
+      if (!ids.length) return;
+      try {
+        const data = await postJson('/api/cluster/create', {
+          kit: current.folder,
+          memberIds: ids,
+          word: document.getElementById('newClWord')?.value || '',
+          phonetic: document.getElementById('newClPhonetic')?.value || '',
+          language: document.getElementById('newClLanguage')?.value || '',
+          category: document.getElementById('newClCategory')?.value || '',
+        });
+        if (!data.ok) throw new Error(data.error || 'create failed');
+        // Optimistically fold the new cluster into clusterDoc so the
+        // unassigned panel reflects reality immediately, without waiting
+        // on the loadClusters() round-trip below.
+        if (data.cluster) {
+          if (!clusterDoc) clusterDoc = { schemaVersion: 1, clusters: [] };
+          const clusters = clusterDoc.clusters || (clusterDoc.clusters = []);
+          const idSet = new Set(ids);
+          for (const cl of clusters) {
+            const before = (cl.members || []).length;
+            cl.members = (cl.members || []).filter(m => !idSet.has(m.memberId) && !idSet.has(m.uuid));
+            if (cl.members.length !== before) {
+              cl.confidence = cl.confidence || {};
+              cl.confidence.size = cl.members.length;
+            }
+          }
+          clusters.push(data.cluster);
+        }
+        selected.clear();
+        if (search) search.value = '';
+        const w = document.getElementById('newClWord');
+        const ph = document.getElementById('newClPhonetic');
+        if (w) w.value = '';
+        if (ph) ph.value = '';
+        flashSaveStatus(`Created cluster with ${ids.length} member(s)`);
+        activeClusterId = data.cluster && data.cluster.id;
+        renderUnassignedPanel();
+        renderClusterList();
+        await loadClusters();
+        if (activeClusterId) renderClusterDetail(activeClusterId);
+      } catch (err) {
+        flashSaveStatus('Create cluster failed: ' + err.message, false);
+      }
+    };
+  }
+  paint();
+}
+
+function drawMelCanvas(canvas, mel) {
+  if (!canvas || !mel || !mel.length) return;
+  const w = canvas.width = 160;
+  const h = canvas.height = 72;
+  const ctx = canvas.getContext('2d');
+  const nT = mel.length;
+  const nM = mel[0].length;
+  let lo = Infinity, hi = -Infinity;
+  for (const row of mel) for (const v of row) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const span = Math.max(1e-6, hi - lo);
+  const img = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const mi = Math.min(nM - 1, Math.floor((1 - y / h) * nM));
+    for (let x = 0; x < w; x++) {
+      const ti = Math.min(nT - 1, Math.floor(x / w * nT));
+      const t = (mel[ti][mi] - lo) / span;
+      const i = (y * w + x) * 4;
+      const g = Math.floor(40 + t * 200);
+      img.data[i] = g;
+      img.data[i + 1] = Math.floor(30 + t * 160);
+      img.data[i + 2] = Math.floor(20 + t * 80);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+async function renderClusterDetail(cid) {
+  const el = document.getElementById('clusterDetail');
+  if (!el || !clusterDoc) return;
+  const c = (clusterDoc.clusters || []).find(x => x.id === cid);
+  if (!c) { el.innerHTML = ''; return; }
+  const conf = c.confidence || {};
+  el.innerHTML = `
+    <h3>Cluster detail</h3>
+    <div class="conf-grid">
+      <div><span class="muted">Tightness</span><strong>${Number(conf.tightness || 0).toFixed(3)}</strong></div>
+      <div><span class="muted">Size</span><strong>${conf.size || 0}</strong></div>
+      <div><span class="muted">Separation</span><strong>${Number(conf.separation || 0).toFixed(3)}</strong></div>
+      <div><span class="muted">Outliers</span><strong>${(c.members || []).filter(m => m.outlier).length}</strong></div>
+    </div>
+    <div class="spec-row" id="specRow"><span class="muted">Loading spectrograms…</span></div>
+    <div class="cluster-members" id="clusterMembers"></div>
+    <div class="cluster-label-form">
+      <label><span>Category</span>
+        <select id="clCategory">${categoryOptionsHtml(c.category || '')}</select>
+      </label>
+      <label><span>Language</span>
+        <select id="clLanguage">${languageOptionsHtml(c.language || DEFAULT_LANGUAGE)}</select>
+      </label>
+      <label><span>Word (cluster only)</span>
+        <input id="clWord" type="text" value="${esc(c.word || '')}" placeholder="e.g. Lorenzo"/>
+      </label>
+      <label><span>Phonetic (cluster only)</span>
+        <input id="clPhonetic" type="text" value="${esc(c.phonetic || '')}" placeholder="e.g. na nen zo"/>
+      </label>
+      <div class="meta-actions">
+        <button type="button" class="primary" id="btnClSave">Save cluster labels</button>
+        <span class="muted">Does not rewrite tag fields</span>
+      </div>
+      <div class="cluster-label-form" style="margin-top:16px">
+        <span class="field-name" style="color:var(--ink);font-weight:600;font-size:13px">Add a snippet to this cluster</span>
+        <p class="muted" style="margin:0">Search tags/VAD not already in <em>this</em> cluster. Singletons and other clusters are listed so you can move them here (still one cluster per snippet).</p>
+        <div class="add-snippet-box">
+          <input type="search" id="clAddSearch" placeholder="Search time, speaker, word…" autocomplete="off"/>
+          <div class="add-snippet-results" id="clAddResults"></div>
+          <div class="meta-actions">
+            <button type="button" id="btnClAddMember" disabled>Add selected</button>
+            <span class="muted" id="clAddHint">Click rows to multi-select (Cmd/Ctrl-click not needed — toggle)</span>
+          </div>
+        </div>
+      </div>
+      <div class="cluster-label-form" style="margin-top:16px">
+        <label><span>Merge this cluster into an existing one</span>
+          <select id="clMergeInto"><option value="">Choose target cluster…</option>${
+            (clusterDoc.clusters || []).filter(x => x.id !== c.id).map(o => {
+              const lab = [o.word, o.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
+              const n = (o.confidence && o.confidence.size) || (o.members || []).length;
+              const mark = (o.word || o.phonetic || o.curated) ? '★ ' : '';
+              return `<option value="${esc(o.id)}">${mark}${esc(lab)} (${n})</option>`;
+            }).join('')
+          }</select>
+        </label>
+        <div class="meta-actions">
+          <button type="button" class="primary" id="btnClMergeInto">Merge into selected</button>
+          <span class="muted">Moves these members into the target; this cluster is removed (★ = labeled/curated)</span>
+        </div>
+      </div>
+      <div class="cluster-label-form" style="margin-top:16px">
+        <label><span>Merge another cluster into this one</span>
+          <select id="clMergeOther"><option value="">Choose cluster…</option>${
+            (clusterDoc.clusters || []).filter(x => x.id !== c.id).map(o => {
+              const lab = [o.word, o.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
+              const n = (o.confidence && o.confidence.size) || (o.members || []).length;
+              const mark = (o.word || o.phonetic || o.curated) ? '★ ' : '';
+              return `<option value="${esc(o.id)}">${mark}${esc(lab)} (${n})</option>`;
+            }).join('')
+          }</select>
+        </label>
+        <div class="meta-actions">
+          <button type="button" id="btnClMerge">Merge into this cluster</button>
+          <span class="muted">Absorb another cluster here; keeps this cluster’s labels</span>
+        </div>
+      </div>
+    </div>
+  `;
+  const memEl = document.getElementById('clusterMembers');
+  memEl.innerHTML = (c.members || []).map(m => `
+    <div class="cluster-member" data-mid="${esc(m.memberId)}">
+      <span>${(m.startMs/1000).toFixed(2)}s–${(m.endMs/1000).toFixed(2)}s</span>
+      <span class="pill">${esc(m.speaker || '?')}</span>
+      <span class="muted">${esc(m.refType)} · ${esc(m.source || '')}${m.outlier ? ' · outlier' : ''}</span>
+      <button type="button" data-act="play">Play</button>
+      <button type="button" data-act="exclude">Exclude</button>
+      ${m.refType === 'annotation' ? '<button type="button" data-act="promote">Promote to tag</button>' : ''}
+    </div>
+  `).join('');
+  memEl.querySelectorAll('.cluster-member').forEach(row => {
+    const mid = row.dataset.mid;
+    const m = (c.members || []).find(x => x.memberId === mid);
+    row.querySelectorAll('button[data-act]').forEach(btn => {
+      btn.onclick = async () => {
+        const act = btn.dataset.act;
+        if (act === 'play' && m) {
+          pauseIfPlaying();
+          selStart = m.startMs / 1000;
+          selEnd = m.endMs / 1000;
+          normalizeSel();
+          setPlayhead(selStart);
+          syncSelInputs();
+          startBufferPlayback(selStart, selEnd);
+          return;
+        }
+        if (act === 'exclude') {
+          try {
+            await postJson('/api/cluster/exclude', { kit: current.folder, clusterId: c.id, memberId: mid });
+            flashSaveStatus('Excluded from cluster');
+            await loadClusters();
+            renderClusterDetail(c.id);
+          } catch (err) {
+            flashSaveStatus('Exclude failed: ' + err.message, false);
+          }
+          return;
+        }
+        if (act === 'promote') {
+          try {
+            const data = await postJson('/api/cluster/promote', { kit: current.folder, clusterId: c.id, memberId: mid });
+            flashSaveStatus(data.alreadyTag ? 'Already a tag' : 'Promoted to tags.json');
+            await softRefreshCurrent();
+            await loadClusters();
+            renderClusterDetail(c.id);
+          } catch (err) {
+            flashSaveStatus('Promote failed: ' + err.message, false);
+          }
+        }
+      };
+    });
+  });
+  document.getElementById('btnClSave').onclick = async () => {
+    try {
+      await postJson('/api/cluster/update', {
+        kit: current.folder,
+        clusterId: c.id,
+        word: document.getElementById('clWord').value,
+        phonetic: document.getElementById('clPhonetic').value,
+        language: document.getElementById('clLanguage').value,
+        category: document.getElementById('clCategory').value,
+      });
+      flashSaveStatus('Cluster labels saved');
+      await loadClusters();
+      renderClusterDetail(c.id);
+    } catch (err) {
+      flashSaveStatus('Save failed: ' + err.message, false);
+    }
+  };
+  const mergeBtn = document.getElementById('btnClMerge');
+  if (mergeBtn) {
+    mergeBtn.onclick = async () => {
+      const otherId = (document.getElementById('clMergeOther')?.value || '').trim();
+      if (!otherId) { alert('Pick a cluster to merge in'); return; }
+      const other = (clusterDoc.clusters || []).find(x => x.id === otherId);
+      const otherLab = other ? ([other.word, other.phonetic].filter(Boolean).join(' · ') || 'Unlabeled') : otherId;
+      if (!confirm(`Merge “${otherLab}” into this cluster? The other cluster will be removed.`)) return;
+      try {
+        await postJson('/api/cluster/merge', {
+          kit: current.folder,
+          keepId: c.id,
+          mergeId: otherId,
+        });
+        flashSaveStatus('Clusters merged');
+        activeClusterId = c.id;
+        await loadClusters();
+        renderClusterDetail(c.id);
+      } catch (err) {
+        flashSaveStatus('Merge failed: ' + err.message, false);
+      }
+    };
+  }
+  const mergeIntoBtn = document.getElementById('btnClMergeInto');
+  if (mergeIntoBtn) {
+    mergeIntoBtn.onclick = async () => {
+      const keepId = (document.getElementById('clMergeInto')?.value || '').trim();
+      if (!keepId) { alert('Pick a target cluster'); return; }
+      const target = (clusterDoc.clusters || []).find(x => x.id === keepId);
+      const targetLab = target ? ([target.word, target.phonetic].filter(Boolean).join(' · ') || 'Unlabeled') : keepId;
+      const thisLab = [c.word, c.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
+      if (!confirm(`Merge “${thisLab}” into “${targetLab}”? This cluster will be removed.`)) return;
+      try {
+        await postJson('/api/cluster/merge', {
+          kit: current.folder,
+          keepId,
+          mergeId: c.id,
+        });
+        flashSaveStatus(`Merged into “${targetLab}”`);
+        activeClusterId = keepId;
+        await loadClusters();
+        renderClusterDetail(keepId);
+      } catch (err) {
+        flashSaveStatus('Merge failed: ' + err.message, false);
+      }
+    };
+  }
+  const addMemBtn = document.getElementById('btnClAddMember');
+  const addSearch = document.getElementById('clAddSearch');
+  const addResults = document.getElementById('clAddResults');
+  const addHint = document.getElementById('clAddHint');
+  const selectedAddIds = new Set();
+  // Map memberId → cluster summary for spans already grouped elsewhere.
+  const membership = new Map();
+  for (const cl of (clusterDoc.clusters || [])) {
+    const lab = [cl.word, cl.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
+    const n = (cl.confidence && cl.confidence.size) || (cl.members || []).length;
+    for (const m of (cl.members || [])) {
+      if (!m.memberId) continue;
+      membership.set(m.memberId, {
+        clusterId: cl.id,
+        label: lab,
+        size: n,
+        isCurrent: cl.id === c.id,
+      });
+    }
+  }
+  const addCandidates = [];
+  for (const t of (current.tags || [])) {
+    if (!t.uuid) continue;
+    const mem = membership.get(t.uuid);
+    if (mem && mem.isCurrent) continue; // already in this cluster
+    const sp = t.speaker || '?';
+    const w = (t.word || '').trim();
+    const ph = (t.phonetic || '').trim();
+    const start = t.startMs || 0;
+    const end = t.endMs != null ? t.endMs : start;
+    let where = 'unassigned';
+    if (mem) where = mem.size <= 1 ? `singleton · ${mem.label}` : `in “${mem.label}” (${mem.size})`;
+    const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp}${w ? ' · '+w : ''}${ph ? ' · '+ph : ''} (tag) · ${where}`;
+    const hay = `${label} ${t.category || ''} ${t.language || ''} ${w} ${ph}`.toLowerCase();
+    addCandidates.push({ id: t.uuid, label, hay, start, assignedElsewhere: !!mem });
+  }
+  for (const a of (current.annotations || []).filter(x => x.status !== 'dismissed')) {
+    if (!a.uuid) continue;
+    const mem = membership.get(a.uuid);
+    if (mem && mem.isCurrent) continue;
+    const sp = a.speaker || '?';
+    const start = a.startMs != null ? a.startMs : (a.tMs || 0);
+    const end = a.endMs != null ? a.endMs : start;
+    let where = 'unassigned';
+    if (mem) where = mem.size <= 1 ? `singleton · ${mem.label}` : `in “${mem.label}” (${mem.size})`;
+    const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp} (VAD) · ${where}`;
+    const hay = `${label}`.toLowerCase();
+    addCandidates.push({ id: a.uuid, label, hay, start, assignedElsewhere: !!mem });
+  }
+  addCandidates.sort((a, b) => a.start - b.start);
+  function syncAddButton() {
+    if (addMemBtn) addMemBtn.disabled = selectedAddIds.size === 0;
+    if (addHint) {
+      const n = selectedAddIds.size;
+      if (!n) addHint.textContent = 'Click rows to multi-select, then Add selected';
+      else addHint.textContent = `${n} selected — click Add selected`;
+    }
+  }
+  function renderAddResults() {
+    if (!addResults) return;
+    const q = (addSearch && addSearch.value || '').trim().toLowerCase();
+    const hits = !q ? addCandidates.slice(0, 50) : addCandidates.filter(o => o.hay.includes(q)).slice(0, 50);
+    if (!hits.length) {
+      addResults.innerHTML = `<div class="empty">${addCandidates.length ? 'No matches' : 'Nothing left to add'}</div>`;
+      return;
+    }
+    addResults.innerHTML = hits.map(o =>
+      `<button type="button" data-id="${esc(o.id)}" class="${selectedAddIds.has(o.id) ? 'selected' : ''}">${esc(o.label)}</button>`
+    ).join('');
+    addResults.querySelectorAll('button[data-id]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        if (selectedAddIds.has(id)) selectedAddIds.delete(id);
+        else selectedAddIds.add(id);
+        syncAddButton();
+        renderAddResults();
+      };
+    });
+  }
+  if (addSearch) addSearch.oninput = () => renderAddResults();
+  syncAddButton();
+  renderAddResults();
+  if (addMemBtn) {
+    addMemBtn.onclick = async () => {
+      const ids = [...selectedAddIds];
+      if (!ids.length) { alert('Select one or more snippets from the list'); return; }
+      const moving = ids.filter(id => {
+        const hit = addCandidates.find(x => x.id === id);
+        return hit && hit.assignedElsewhere;
+      });
+      if (moving.length) {
+        if (!confirm(`${moving.length} snippet(s) are in another cluster. Move them into this one?`)) return;
+      }
+      addMemBtn.disabled = true;
+      let ok = 0;
+      try {
+        for (const mid of ids) {
+          await postJson('/api/cluster/add-member', {
+            kit: current.folder,
+            clusterId: c.id,
+            memberId: mid,
+          });
+          ok += 1;
+        }
+        flashSaveStatus(`Added ${ok} snippet(s) to cluster`);
+        activeClusterId = c.id;
+        await loadClusters();
+        renderClusterDetail(c.id);
+      } catch (err) {
+        flashSaveStatus(`Add failed after ${ok}: ` + err.message, false);
+        await loadClusters();
+        renderClusterDetail(c.id);
+      }
+    };
+  }
+  // Spectrograms (up to 8 members)
+  const specRow = document.getElementById('specRow');
+  const sample = (c.members || []).slice(0, 8);
+  specRow.innerHTML = '';
+  for (const m of sample) {
+    const cell = document.createElement('div');
+    cell.className = 'spec-cell' + (m.outlier ? ' outlier' : '');
+    cell.innerHTML = `<canvas></canvas><div class="cap">${(m.startMs/1000).toFixed(1)}s · ${esc(m.speaker || '?')}</div>`;
+    specRow.appendChild(cell);
+    try {
+      const res = await fetch(`/api/cluster/mel?kit=${encodeURIComponent(current.folder)}&startMs=${m.startMs}&endMs=${m.endMs}`);
+      const data = await res.json();
+      if (data.mel) drawMelCanvas(cell.querySelector('canvas'), data.mel);
+    } catch (e) {}
+  }
 }
 
 function wireTransport() {
@@ -2126,16 +3139,30 @@ function drawOverview() {
   paintOverviewWindow();
 }
 
+// Tags created straight from the waveform have source "user"; tags promoted
+// from an ML candidate keep a non-"user" source (e.g. "ml_confirmed",
+// "cluster_promote") so provenance survives the confirm/promote step.
+function isMlSourced(source) {
+  return !!source && source !== 'user';
+}
+function tagProvenanceHtml(t) {
+  const ml = isMlSourced(t.source);
+  return `<span class="sub prov ${ml ? 'prov-ml' : 'prov-user'}">${ml ? 'ML candidate' : 'Manual'}</span>`;
+}
+
 function renderLists() {
   const k = current;
   const tags = k.tags || [];
   const tagList = document.getElementById('tagList');
   tagList.innerHTML = tags.length ? tags.map(t => `
     <div class="row" data-uuid="${esc(t.uuid)}">
-      <span class="pill user">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}
+      <span class="pill ${isMlSourced(t.source) ? 'ml' : 'user'}">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}
+        ${tagProvenanceHtml(t)}
         ${t.category ? `<span class="sub">${esc(t.category)}</span>` : ''}
         ${t.speaker ? `<span class="sub">${esc(t.speaker)}</span>` : ''}
+        ${t.language ? `<span class="sub">${esc(t.language)}</span>` : ''}
         ${detailSummaryHtml(t)}
+        ${asrSummaryHtml(t)}
       </span>
       <div class="row-fields">
         <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
@@ -2143,6 +3170,8 @@ function renderLists() {
         ${detailFieldsHtml(t, 'tag-' + t.uuid)}
         <div class="controls">
           <button data-act="seek">Seek</button>
+          <button data-act="asr">Suggest</button>
+          <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
           <button data-act="save">Save</button>
           <button data-act="delete">Delete</button>
         </div>
@@ -2168,6 +3197,36 @@ function renderLists() {
         setPlayhead(selStart);
         syncSelInputs();
         startBufferPlayback(selStart, selEnd);
+        return;
+      }
+      if (act === 'copyAsr' && tag) {
+        const text = (tag.asr && tag.asr.text || '').trim();
+        if (!text) { flashSaveStatus('No model suggestion yet — click Suggest first', false); return; }
+        const wordEl = row.querySelector('[data-field="word"]');
+        const catEl = row.querySelector('[data-field="category"]');
+        if (catEl && !catEl.value) catEl.value = 'verbal vocalization';
+        syncDetailFields(row);
+        if (wordEl) wordEl.value = text;
+        flashSaveStatus('Copied model text into Word (not saved yet)');
+        return;
+      }
+      if (act === 'asr') {
+        btn.disabled = true;
+        const prev = btn.textContent;
+        btn.textContent = '…';
+        try {
+          const tax = readTaxonomyFrom(row);
+          const data = await postJson('/api/asr/run', {
+            kit: k.folder, uuid, language: tax.language || '',
+          });
+          if (data.asr) flashSaveStatus(`Model: “${data.asr.text || '(empty)'}”`);
+          await softRefreshCurrent();
+        } catch (err) {
+          flashSaveStatus('Suggest failed: ' + err.message, false);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = prev || 'Suggest';
+        }
         return;
       }
       if (act === 'delete') {
@@ -2199,14 +3258,23 @@ function renderLists() {
     });
   });
 
-  const anns = (k.annotations||[]).filter(a => a.status !== 'dismissed');
+  // Confirmed candidates are promoted into Tags and should disappear from
+  // here; dismissed ones are hidden too. Only still-provisional VAD/ml_v0
+  // candidates await a decision.
+  const anns = (k.annotations||[]).filter(a => a.status !== 'dismissed' && a.status !== 'confirmed');
   const annList = document.getElementById('annList');
   annList.innerHTML = anns.length ? anns.map(a => `
     <div class="row" data-uuid="${esc(a.uuid)}">
-      <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}${a.status==='confirmed'?' · confirmed':''}
+      <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}
         ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
+        ${a.language ? `<span class="sub">${esc(a.language)}</span>` : ''}
+        ${a.speakerCluster ? `<span class="sub" title="Diarization cluster — a guess, not a named person">${esc(a.speakerCluster)}</span>` : ''}
+        ${a.splitBy ? `<span class="sub">split · ${esc(a.splitBy === 'speaker_change' ? 'speaker change' : a.splitBy)}</span>` : ''}
+        ${(a.flags||[]).includes('possible_non_speech') ? '<span class="sub">possible non-speech (noise-like)</span>' : ''}
+        ${(a.flags||[]).includes('hard_capped') ? '<span class="sub">cap: long span, no clean split found</span>' : ''}
         ${detailSummaryHtml(a)}
+        ${asrSummaryHtml(a)}
       </span>
       <div class="row-fields">
         <select class="category-select" data-field="category">${categoryOptionsHtml(a.category || '')}</select>
@@ -2214,6 +3282,8 @@ function renderLists() {
         ${detailFieldsHtml(a, 'ann-' + a.uuid)}
         <div class="controls">
           <button data-act="seek">Seek</button>
+          <button data-act="asr">Suggest</button>
+          <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
           <button data-act="confirm">Confirm</button>
           <button data-act="dismiss">Dismiss</button>
         </div>
@@ -2239,6 +3309,36 @@ function renderLists() {
         setPlayhead(selStart);
         syncSelInputs();
         startBufferPlayback(selStart, selEnd);
+        return;
+      }
+      if (act === 'copyAsr' && ann) {
+        const text = (ann.asr && ann.asr.text || '').trim();
+        if (!text) { flashSaveStatus('No model suggestion yet — click Suggest first', false); return; }
+        const wordEl = row.querySelector('[data-field="word"]');
+        const catEl = row.querySelector('[data-field="category"]');
+        if (catEl && !catEl.value) catEl.value = 'verbal vocalization';
+        syncDetailFields(row);
+        if (wordEl) wordEl.value = text;
+        flashSaveStatus('Copied model text into Word (not saved yet)');
+        return;
+      }
+      if (act === 'asr') {
+        btn.disabled = true;
+        const prev = btn.textContent;
+        btn.textContent = '…';
+        try {
+          const tax = readTaxonomyFrom(row);
+          const data = await postJson('/api/asr/run', {
+            kit: k.folder, uuid, language: tax.language || '',
+          });
+          if (data.asr) flashSaveStatus(`Model: “${data.asr.text || '(empty)'}”`);
+          await softRefreshCurrent();
+        } catch (err) {
+          flashSaveStatus('Suggest failed: ' + err.message, false);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = prev || 'Suggest';
+        }
         return;
       }
       const tax = readTaxonomyFrom(row);
@@ -2401,6 +3501,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/sync/status":
             self._send_json(200, run_iphone_sync("status"))
             return
+        if parsed.path == "/api/diarization/status":
+            self._send_json(200, diarization_status())
+            return
         if parsed.path == "/audio":
             qs = parse_qs(parsed.query)
             name = (qs.get("kit") or [""])[0]
@@ -2417,6 +3520,53 @@ class Handler(BaseHTTPRequestHandler):
             data = audio.read_bytes()
             ctype = mimetypes.guess_type(str(audio))[0] or "audio/wav"
             self._send(200, data, ctype)
+            return
+        if parsed.path == "/api/cluster/list":
+            qs = parse_qs(parsed.query)
+            name = (qs.get("kit") or [""])[0]
+            try:
+                kit = resolve_kit(name)
+            except FileNotFoundError:
+                self._send_json(404, {"ok": False, "error": "kit not found"})
+                return
+            path = kit / "clusters.json"
+            if not path.exists():
+                self._send_json(
+                    200,
+                    {
+                        "ok": False,
+                        "error": "No clusters yet — click Run clustering",
+                        "clusters": [],
+                    },
+                )
+                return
+            doc = load_json(path)
+            doc["ok"] = True
+            self._send_json(200, doc)
+            return
+        if parsed.path == "/api/cluster/mel":
+            qs = parse_qs(parsed.query)
+            name = (qs.get("kit") or [""])[0]
+            try:
+                start_ms = int((qs.get("startMs") or ["0"])[0])
+                end_ms = int((qs.get("endMs") or ["0"])[0])
+                kit = resolve_kit(name)
+            except (FileNotFoundError, ValueError) as e:
+                self._send_json(400, {"ok": False, "error": str(e)})
+                return
+            try:
+                import numpy as np
+                import soundfile as sf
+                from cluster_sounds import mel_matrix_for_slice, resolve_audio
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            audio_path = resolve_audio(kit)
+            audio, sr = sf.read(str(audio_path), always_2d=False)
+            if getattr(audio, "ndim", 1) > 1:
+                audio = audio.mean(axis=1)
+            mel = mel_matrix_for_slice(np.asarray(audio), int(sr), start_ms, end_ms)
+            self._send_json(200, {"ok": True, "mel": mel, "startMs": start_ms, "endMs": end_ms})
             return
         self._send(404, b"not found", "text/plain")
 
@@ -2621,6 +3771,100 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(code, slim)
             return
 
+        if parsed.path == "/api/asr/run":
+            result = run_asr_for_item(kit, body)
+            code = 200 if result.get("ok") else 500
+            # Don't echo the full item blob if huge; asr + uuid is enough for UI refresh.
+            slim = {k: v for k, v in result.items() if k != "item"}
+            self._send_json(code, slim)
+            return
+
+        if parsed.path == "/api/cluster/run":
+            result = run_cluster_for_kit(kit, body)
+            code = 200 if result.get("ok") else 500
+            self._send_json(code, result)
+            return
+
+        if parsed.path == "/api/cluster/update":
+            try:
+                from cluster_sounds import update_cluster_labels
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            cluster_id = (body.get("clusterId") or "").strip()
+            result = update_cluster_labels(kit, cluster_id, body)
+            self._send_json(200 if result.get("ok") else 400, result)
+            return
+
+        if parsed.path == "/api/cluster/exclude":
+            try:
+                from cluster_sounds import exclude_member
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            result = exclude_member(
+                kit,
+                (body.get("clusterId") or "").strip(),
+                (body.get("memberId") or "").strip(),
+            )
+            self._send_json(200 if result.get("ok") else 400, result)
+            return
+
+        if parsed.path == "/api/cluster/merge":
+            try:
+                from cluster_sounds import merge_clusters
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            result = merge_clusters(
+                kit,
+                (body.get("keepId") or body.get("clusterId") or "").strip(),
+                (body.get("mergeId") or "").strip(),
+            )
+            self._send_json(200 if result.get("ok") else 400, result)
+            return
+
+        if parsed.path == "/api/cluster/add-member":
+            try:
+                from cluster_sounds import add_member_to_cluster
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            result = add_member_to_cluster(
+                kit,
+                (body.get("clusterId") or "").strip(),
+                (body.get("memberId") or "").strip(),
+            )
+            self._send_json(200 if result.get("ok") else 400, result)
+            return
+
+        if parsed.path == "/api/cluster/create":
+            try:
+                from cluster_sounds import create_cluster_from_members
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            member_ids = body.get("memberIds") or []
+            if isinstance(member_ids, str):
+                member_ids = [member_ids]
+            result = create_cluster_from_members(kit, list(member_ids), body)
+            self._send_json(200 if result.get("ok") else 400, result)
+            return
+
+        if parsed.path == "/api/cluster/promote":
+            try:
+                from cluster_sounds import promote_member_to_tag
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            result = promote_member_to_tag(
+                kit,
+                (body.get("clusterId") or "").strip(),
+                (body.get("memberId") or "").strip(),
+            )
+            self._send_json(200 if result.get("ok") else 400, result)
+            return
+
         # Back-compat alias
         if parsed.path == "/api/update":
             body["action"] = body.get("action") or "confirm"
@@ -2686,8 +3930,27 @@ def main(argv: list[str]) -> int:
         port = int(argv[1])
         ROOT = LIBRARY_DIR.resolve()
 
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    # Dual-stack (::) so both http://127.0.0.1:PORT and http://localhost:PORT work.
+    # Binding only 127.0.0.1 leaves ::1 refused; macOS often resolves localhost to IPv6 first.
+    class DualStackHTTPServer(ThreadingHTTPServer):
+        address_family = socket.AF_INET6
+
+        def server_bind(self) -> None:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            super().server_bind()
+
+    DualStackHTTPServer.allow_reuse_address = True
+    try:
+        server = DualStackHTTPServer(("::", port), Handler)
+    except OSError as e:
+        print(
+            f"Could not bind port {port}: {e}\n"
+            f"Is another review_server still running? Try: lsof -iTCP:{port} -sTCP:LISTEN",
+            file=sys.stderr,
+        )
+        return 1
     print(f"Review UI: http://127.0.0.1:{port}")
+    print(f"Also:       http://localhost:{port}")
     print(f"Kits root: {ROOT}")
     if seeded:
         print(f"Seeded {seeded} kit(s) into {LIBRARY_DIR}")
@@ -2701,6 +3964,30 @@ def main(argv: list[str]) -> int:
         print(
             "Speech VAD: install deps first — "
             "tools/.venv/bin/pip install numpy soundfile"
+        )
+    diar = diarization_status()
+    if diar.get("available"):
+        print(f"Diarization: ready (backend: {diar['active']}). Speech segments get SPEAKER_xx ids.")
+    else:
+        print(
+            "Diarization: not available — Find speech segments will return VAD-only "
+            "candidates. Install with: tools/.venv/bin/pip install torch torchaudio speechbrain"
+        )
+    try:
+        import faster_whisper  # noqa: F401
+        print("Local Whisper: ready (faster-whisper). Use Suggest on a snippet.")
+    except ImportError:
+        print(
+            "Local Whisper: install deps first — "
+            "tools/.venv/bin/pip install faster-whisper"
+        )
+    try:
+        import sklearn  # noqa: F401
+        print("Clustering: ready (scikit-learn). Use the Clustering tab.")
+    except ImportError:
+        print(
+            "Clustering: install deps first — "
+            "tools/.venv/bin/pip install scikit-learn"
         )
     server.serve_forever()
     return 0

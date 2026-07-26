@@ -55,22 +55,105 @@ Open **BabyTalk** on the phone after a push — it auto-imports Import folders w
 Bundle id default: `org.reactjs.native.example.babytalkApp`  
 Override: `--bundle-id your.bundle.id`
 
-## Optional ML candidates
+## ML candidates: VAD → speaker diarization → candidates
 
-Energy-based **speech segments** (recommended for Review Browser):
+Clicking **Find speech segments** (or running `vad_segments.py`) runs three stages:
+
+| Stage | Where | What it does |
+| --- | --- | --- |
+| 1 · VAD | `vad_segments.py` | energy + spectral-shape detection of speech-like regions; drops silence and impulsive noise |
+| 2 · Diarization | `diarize.py` | speaker embeddings + clustering across the session; cuts each region where the speaker changes |
+| 3 · Refine | `vad_segments.py` | pause-splits any same-speaker span still over 4s, applies the duration cap, writes `annotations.json` |
 
 ```bash
-tools/.venv/bin/pip install numpy soundfile   # if not already in the venv
+tools/.venv/bin/pip install -r tools/requirements.txt
 python3 tools/vad_segments.py ~/Documents/BabyTalk/Library
 # or per kit:
 python3 tools/vad_segments.py ~/Documents/BabyTalk/Library/<kit-folder>
+tools/.venv/bin/python tools/vad_segments.py --list-backends   # what's installed
 ```
 
-Defaults: merge gaps ≤ **400 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
+Defaults: merge gaps ≤ **200 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
 
-In the Review UI, open a session and click **Find speech segments** (same pipeline via `POST /api/vad/run`). On confirm, assign a category (+ optional speaker; verbal: word + optional phonetic; non-verbal: optional phonetic); dismiss works like other ML candidates.
+### Stage 1 — VAD
 
-VAD is energy-based only — it detects speech-like activity, not who spoke (no diarization).
+Finds speech-like regions and rejects **non-speech impulses** (table taps, door closes, clicks): each short (≤700ms) region gets a composite "sounds like noise" z-score (spectral flatness + zero-crossing rate + how spiky vs. sustained its energy envelope is) computed **relative to the other regions in that same recording** — device/room acoustics shift absolute thresholds too much to use one fixed cutoff. Outliers get dropped (default) or, with `--keep-noise` / `rejectNonSpeech: false`, kept but down-ranked and flagged `possible_non_speech`. This is heuristic signal-processing, not a trained classifier.
+
+Stage 1 says nothing about *who* is talking, so a 5–10s region can hold several turns. That's stage 2's job.
+
+### Stage 2 — speaker diarization
+
+Sliding 1.5s windows inside each VAD region are turned into **speaker embeddings**, clustered across the whole recording with cosine agglomerative clustering, and each region is cut wherever the winning cluster changes. Every candidate carries the cluster id as `speakerCluster` (`SPEAKER_00`, `SPEAKER_01`, …) and shows it as a badge in the UI.
+
+`speakerCluster` is deliberately **not** written into the reviewer-facing `speaker` field: clusters group turns, they don't know which one is the baby, so Confirm still asks you.
+
+Backends, picked automatically in this order:
+
+- **`ecapa` (recommended)** — SpeechBrain ECAPA-TDNN embeddings. Needs `torch torchaudio speechbrain` (already in `requirements.txt`, ~1 GB of wheels). First run downloads the ~80 MB model to `~/.cache/babytalk/spkrec-ecapa-voxceleb` and takes an extra ~20s; after that a 12-minute session diarizes in ~20s. **No HuggingFace token needed.**
+- **`melstats` (fallback)** — pure numpy/sklearn MFCC mean+std features with per-recording normalization. No downloads, always available, runs in ~3s, but noticeably weaker: on the test session it split one child into three "speakers". Fine for adult-vs-baby, unreliable for adult-vs-adult.
+- **`pyannote` (opt-in)** — the full `pyannote.audio` speaker-diarization-3.1 pipeline. Best quality and some overlap handling, but you must `pip install pyannote.audio`, accept the model terms on huggingface.co, and export a token:
+
+```bash
+export BABYTALK_HF_TOKEN=hf_xxx
+tools/.venv/bin/python tools/vad_segments.py <kit> --diarization pyannote
+```
+
+It is never selected automatically (slow on CPU, needs setup) — ask for it by name.
+
+Useful flags:
+
+```bash
+--diarization auto|ecapa|melstats|pyannote|none   # backend choice
+--no-diarization                                  # stage 1 + pause splitting only
+--num-speakers 2                                  # force the speaker count
+--speaker-distance 0.5                            # clustering cut (lower = more speakers)
+--list-backends                                   # availability report
+--dry-run                                         # counts only, don't write
+```
+
+**Graceful degradation:** if no backend is usable, or the model download fails, the pipeline still returns VAD-only candidates and reports why stage 2 was skipped — in the CLI output, and in the hint text next to the button. The Review Server never fails the request over a missing optional model.
+
+### Stage 3 — refinement
+
+Same-speaker spans still longer than **4s** are re-split at their deepest internal relative energy dip (one person, several sentences — a pause is a reasonable utterance boundary). An absolute 15s hard cap is the last resort if no split point is found, flagged `hard_capped`.
+
+Finally, any candidate that overlaps an existing entry in `tags.json` (± a **75ms** margin) is dropped — re-running VAD never re-proposes something already reviewed. Point tags (no `endMs`) are treated as covering a short **500ms** window from their timestamp for this check. The number suppressed is reported as `tagOverlapSuppressed` in the API response and shown in the UI hint ("N skipped (already tagged)").
+
+Re-run **Find speech segments** (or `vad_segments.py`) after changing any of this; it only replaces still-provisional VAD candidates, so confirmed/dismissed decisions **and existing tags** are preserved and skips spans already tagged.
+
+**Known limits:** overlapping speech is assigned to a single speaker; a toddler imitating a caregiver's pitch can land in the wrong cluster; clusters are per-session, so `SPEAKER_00` in one kit is unrelated to `SPEAKER_00` in another.
+
+Diarization is a separate job from the **Clustering tab** — that groups *similar sounds/words* regardless of who said them, and is unaffected by any of this.
+
+### Local Whisper suggestions (optional)
+
+On each ML candidate or tag, **Suggest** runs offline Whisper (`faster-whisper`) on that time slice and stores the result under `asr` (never overwrites your `word` / `phonetic`). **Copy→word** pastes the model text into the Word field for you to edit before Save/Confirm.
+
+```bash
+tools/.venv/bin/pip install faster-whisper   # first time; downloads model weights on first Suggest
+# optional: BABYTALK_WHISPER_MODEL=small tools/.venv/bin/python tools/review_server.py
+```
+
+CLI:
+
+```bash
+tools/.venv/bin/python tools/asr_suggest.py ~/Documents/BabyTalk/Library/<kit> --uuid <uuid>
+tools/.venv/bin/python tools/asr_suggest.py ~/Documents/BabyTalk/Library/<kit> --start-ms 1200 --end-ms 2100
+```
+
+Expect weak results on toddler speech and Swiss German — useful for comparison, not as truth.
+
+### Acoustic clustering (Review Browser tab)
+
+Groups similar spans in one kit (confirmed tags + non-dismissed VAD). Labels live on the **cluster** only; members stay linked for training and future concepts.
+
+```bash
+tools/.venv/bin/pip install scikit-learn
+tools/.venv/bin/python tools/cluster_sounds.py ~/Documents/BabyTalk/Library/<kit>
+# or in the UI: Clustering tab → Run clustering
+```
+
+Writes `clusters.json` (+ optional `cluster_embeddings.npz` cache). Confidence shows tightness / size / separation / outliers. Exclude members; optionally promote annotation members to tags.
 
 Legacy short-burst onset detector:
 

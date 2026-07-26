@@ -2,3 +2,13 @@ pymobiledevice3>=9.0.0
 # Speech VAD / ML candidates (review_server Find speech segments, vad_segments.py, propose_candidates.py)
 numpy>=1.24
 soundfile>=0.12
+# Local Whisper suggestions for Review Browser snippets (asr_suggest.py)
+faster-whisper>=1.0.0
+# Acoustic clustering (cluster_sounds.py)
+scikit-learn>=1.3
+# Speaker diarization stage 2 (diarize.py, ecapa backend). Optional but
+# recommended: ~1 GB of wheels plus an ~80 MB model on first run. Without it
+# the pipeline still works, falling back to the numpy `melstats` backend.
+torch>=2.2
+torchaudio>=2.2
+speechbrain>=1.0
