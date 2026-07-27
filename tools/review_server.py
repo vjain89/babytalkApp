@@ -545,7 +545,7 @@ HTML = r"""<!DOCTYPE html>
     display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
     margin: 12px 0; font-family: ui-sans-serif, system-ui, sans-serif;
   }
-  .transport button, .tag-form button, .row button {
+  .transport button, .tag-form button, .row button, .tag-detail .controls button {
     border: 1px solid var(--line); background: #fff; padding: 7px 12px;
     border-radius: 6px; cursor: pointer; font: inherit;
   }
@@ -600,6 +600,11 @@ HTML = r"""<!DOCTYPE html>
     border-right: none;
     width: 2px !important;
     background: #c26430;
+  }
+  .tag-mark.sel {
+    background: rgba(194, 100, 48, 0.38);
+    border-left-width: 3px;
+    border-right-color: #c26430;
   }
   .tag-mark span {
     position: absolute; top: 3px; left: 4px; right: 2px;
@@ -859,8 +864,61 @@ HTML = r"""<!DOCTYPE html>
   .pill.user { background: #f3d9c8; color: #7a3410; }
   .pill.ml { background: #d9e6d9; color: #2f4f2f; }
   .pill .sub { display: block; color: inherit; opacity: 0.85; font-weight: 500; }
-  .pill .sub.prov-ml { font-weight: 700; opacity: 1; }
-  .pill .sub.prov-user { opacity: 0.6; }
+  /* Compact tag list: one scannable line per tag, full editor on the open row only. */
+  .tag-toolbar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: 0 0 8px;
+  }
+  .tag-toolbar input[type=search] {
+    padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px;
+    font: inherit; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
+    background: #fff; color: var(--ink); width: 200px;
+  }
+  .tag-rows {
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); overflow: hidden;
+  }
+  .tag-item + .tag-item { border-top: 1px solid var(--line); }
+  .tag-line {
+    display: grid;
+    grid-template-columns: 120px 62px 60px minmax(0, 1fr) auto;
+    gap: 10px; align-items: baseline;
+    width: 100%; text-align: left;
+    padding: 6px 10px;
+    border: 0; background: none; cursor: pointer;
+    font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
+    color: var(--ink);
+  }
+  .tag-line:hover { background: #f7f2e9; }
+  .tag-item.open > .tag-line { background: #f1e9dc; box-shadow: inset 3px 0 0 var(--tag); }
+  .tag-time { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+  .tag-badge {
+    font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 2px 5px; border-radius: 3px; justify-self: start;
+  }
+  .tag-badge.ml { background: #d9e6d9; color: #2f4f2f; }
+  .tag-badge.user { background: #f3d9c8; color: #7a3410; }
+  .tag-who { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-label .ph { color: var(--muted); }
+  .tag-label .untitled { color: var(--muted); font-style: italic; }
+  .tag-cat { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .tag-detail {
+    padding: 2px 10px 12px 10px;
+    border-top: 1px dashed var(--line);
+    font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px;
+  }
+  .tag-detail .row-fields { grid-template-columns: 1fr; }
+  .tag-detail select, .tag-detail input[type=text], .tag-detail .note-input {
+    padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+    font: inherit; background: #fff; color: var(--ink);
+  }
+  .tag-detail .category-select { width: 100%; max-width: 280px; }
+  .tag-detail .speaker-row input { padding: 6px 8px; }
+  @media (max-width: 800px) {
+    .tag-line { grid-template-columns: 1fr auto; row-gap: 2px; }
+    .tag-line .tag-who, .tag-line .tag-cat { grid-column: 1 / -1; }
+  }
   audio { display: none; }
   @media (max-width: 800px) {
     main { grid-template-columns: 1fr; }
@@ -895,6 +953,9 @@ let current = null;
 let clusterDoc = null;
 let activeClusterId = null;
 let showSingletonClusters = false;
+/** Tag whose row is expanded in the compact Tags list (null = all collapsed). */
+let selectedTagUuid = null;
+let tagFilterText = '';
 let audioBuf = null;
 let durationSec = 0;
 let selStart = null; // seconds (lo after normalize)
@@ -1763,6 +1824,8 @@ async function select(i) {
   current = kits[i];
   clusterDoc = null;
   activeClusterId = null;
+  selectedTagUuid = null;
+  tagFilterText = '';
   setActiveKit(i);
   selStart = null; selEnd = null;
   audioBuf = null;
@@ -1875,15 +1938,24 @@ function renderShell() {
     </div>
     <div class="section">
       <h3>Tags</h3>
+      <div class="tag-toolbar">
+        <span class="muted" id="tagCount"></span>
+        <input type="search" id="tagFilter" placeholder="Filter word, speaker, category…" autocomplete="off"/>
+        <span class="muted">Click a row to select it on the waveform and open its editor.</span>
+      </div>
       <div id="tagList"></div>
     </div>
     <div class="section">
       <h3>ML candidates</h3>
       <p class="muted sans" style="margin:0 0 8px">
-        Two stages. <strong>1 · VAD</strong> finds speech-like spans (merge gaps ≤0.2s, drop
-        &lt;0.3s) and drops short bursts that look broadband/impulsive relative to this
-        session's other candidates (taps, door closes) — a heuristic, not a trained
-        classifier, so it can miss things.
+        Two stages. <strong>1 · VAD</strong> finds louder-than-the-room spans (merge gaps ≤0.2s,
+        drop &lt;0.3s), then a <strong>speech gate</strong> scores each one on whether it
+        actually sounds like a voice — periodic/voiced, energy in the 300–3400 Hz voice
+        band, not sub-250 Hz rumble — and drops taps, door closes, thumps and running
+        water. Borderline spans are kept but marked
+        <span class="sub">possible non-speech</span>. It's a signal-processing gate, not a
+        trained classifier, so it both misses junk and occasionally drops a very quiet or
+        whispered utterance.
         <strong>2 · Diarization</strong> takes speaker embeddings across the whole session,
         clusters them, and cuts each span wherever the speaker changes, so a parent/baby/parent
         stretch becomes separate candidates tagged <span class="sub">SPEAKER_00</span> etc.
@@ -2042,7 +2114,9 @@ function wireVad() {
         parts.push(`no diarization (${di.error || 'unavailable'}) — VAD only`);
       }
       if (vs.pauseSplit) parts.push(`+${vs.pauseSplit} pause splits`);
-      if (vs.nonSpeechRejected) parts.push(`${vs.nonSpeechRejected} non-speech rejected`);
+      const dropped = (vs.speechGateRejected || 0) + (vs.regionsScreened || 0) + (vs.nonSpeechRejected || 0);
+      if (dropped) parts.push(`${dropped} dropped as non-speech`);
+      if (vs.speechGateFlagged) parts.push(`${vs.speechGateFlagged} flagged possible non-speech`);
       if (vs.tagOverlapSuppressed) parts.push(`${vs.tagOverlapSuppressed} skipped (already tagged)`);
       if (hint) hint.textContent = parts.join(' · ');
     } catch (err) {
@@ -2226,7 +2300,14 @@ function renderUnassignedPanel() {
         if (m.uuid) membership.set(m.uuid, info);
       }
     }
-    const list = [];
+    // Dedupe by uuid: a confirmed annotation is promoted into tags.json but
+    // stays in annotations.json (status "confirmed", not "dismissed"), so the
+    // same uuid can otherwise appear once from each loop below — rendering
+    // two rows with the same data-id and making a single click toggle both.
+    // The tags-loop entry is kept (it carries the richer word/phonetic/
+    // category detail); the annotation-loop entry is skipped when already
+    // present.
+    const byId = new Map();
     for (const t of (current.tags || [])) {
       if (!t.uuid) continue;
       const mem = membership.get(t.uuid);
@@ -2239,10 +2320,10 @@ function renderUnassignedPanel() {
       const where = mem ? ` (in unlabeled cluster · ${mem.size})` : '';
       const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp}${w ? ' · '+w : ''}${ph ? ' · '+ph : ''} (tag)${where}`;
       const hay = `${label} ${t.category || ''} ${t.language || ''}`.toLowerCase();
-      list.push({ id: t.uuid, label, hay, start });
+      byId.set(t.uuid, { id: t.uuid, label, hay, start });
     }
     for (const a of (current.annotations || []).filter(x => x.status !== 'dismissed')) {
-      if (!a.uuid) continue;
+      if (!a.uuid || byId.has(a.uuid)) continue;
       const mem = membership.get(a.uuid);
       if (mem && !mem.isUnlabeled) continue;
       const sp = a.speaker || '?';
@@ -2250,8 +2331,9 @@ function renderUnassignedPanel() {
       const end = a.endMs != null ? a.endMs : start;
       const where = mem ? ` (in unlabeled cluster · ${mem.size})` : '';
       const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp} (VAD)${where}`;
-      list.push({ id: a.uuid, label, hay: label.toLowerCase(), start });
+      byId.set(a.uuid, { id: a.uuid, label, hay: label.toLowerCase(), start });
     }
+    const list = [...byId.values()];
     list.sort((a, b) => a.start - b.start);
     return list;
   }
@@ -2581,7 +2663,14 @@ async function renderClusterDetail(cid) {
       });
     }
   }
-  const addCandidates = [];
+  // Dedupe by uuid, same pattern as renderUnassignedPanel's buildCandidates:
+  // a confirmed annotation is promoted into tags.json but stays in
+  // annotations.json (status "confirmed", not "dismissed"), so the same
+  // uuid can otherwise appear once from each loop below — rendering two
+  // buttons with the same data-id and making a single click toggle both
+  // rows. The tags-loop entry is kept (richer word/phonetic/category
+  // detail); the annotation-loop entry is skipped when already present.
+  const addCandidatesById = new Map();
   for (const t of (current.tags || [])) {
     if (!t.uuid) continue;
     const mem = membership.get(t.uuid);
@@ -2595,10 +2684,10 @@ async function renderClusterDetail(cid) {
     if (mem) where = mem.size <= 1 ? `singleton · ${mem.label}` : `in “${mem.label}” (${mem.size})`;
     const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp}${w ? ' · '+w : ''}${ph ? ' · '+ph : ''} (tag) · ${where}`;
     const hay = `${label} ${t.category || ''} ${t.language || ''} ${w} ${ph}`.toLowerCase();
-    addCandidates.push({ id: t.uuid, label, hay, start, assignedElsewhere: !!mem });
+    addCandidatesById.set(t.uuid, { id: t.uuid, label, hay, start, assignedElsewhere: !!mem });
   }
   for (const a of (current.annotations || []).filter(x => x.status !== 'dismissed')) {
-    if (!a.uuid) continue;
+    if (!a.uuid || addCandidatesById.has(a.uuid)) continue;
     const mem = membership.get(a.uuid);
     if (mem && mem.isCurrent) continue;
     const sp = a.speaker || '?';
@@ -2608,8 +2697,9 @@ async function renderClusterDetail(cid) {
     if (mem) where = mem.size <= 1 ? `singleton · ${mem.label}` : `in “${mem.label}” (${mem.size})`;
     const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp} (VAD) · ${where}`;
     const hay = `${label}`.toLowerCase();
-    addCandidates.push({ id: a.uuid, label, hay, start, assignedElsewhere: !!mem });
+    addCandidatesById.set(a.uuid, { id: a.uuid, label, hay, start, assignedElsewhere: !!mem });
   }
+  const addCandidates = [...addCandidatesById.values()];
   addCandidates.sort((a, b) => a.start - b.start);
   function syncAddButton() {
     if (addMemBtn) addMemBtn.disabled = selectedAddIds.size === 0;
@@ -2822,7 +2912,8 @@ function paintTagMarks() {
     const width = Math.max(2, right - left);
     const label = esc(tag.label || '(untitled)');
     const tip = `${label} · ${lo.toFixed(2)}s${isPoint ? '' : ('–' + hi.toFixed(2) + 's')}`;
-    const cls = isPoint ? 'tag-mark point' : 'tag-mark';
+    const sel = tag.uuid === selectedTagUuid ? ' sel' : '';
+    const cls = (isPoint ? 'tag-mark point' : 'tag-mark') + sel;
     const labelHtml = isPoint || width < 18 ? '' : `<span>${label}</span>`;
     return `<div class="${cls}" style="left:${left}px;width:${width}px" title="${tip}">${labelHtml}</div>`;
   }).join('');
@@ -3145,67 +3236,165 @@ function drawOverview() {
 function isMlSourced(source) {
   return !!source && source !== 'user';
 }
-function tagProvenanceHtml(t) {
-  const ml = isMlSourced(t.source);
-  return `<span class="sub prov ${ml ? 'prov-ml' : 'prov-user'}">${ml ? 'ML candidate' : 'Manual'}</span>`;
+const TAG_CATEGORY_SHORT = {
+  'verbal vocalization': 'verbal',
+  'non-verbal vocalization': 'non-verbal',
+  'non-vocal vegetative sound': 'vegetative',
+};
+
+function tagSpanSec(t) {
+  const a = (t.startMs || 0) / 1000;
+  const b = t.endMs != null ? t.endMs / 1000 : a;
+  return [Math.min(a, b), Math.max(a, b)];
 }
 
-function renderLists() {
-  const k = current;
-  const tags = k.tags || [];
-  const tagList = document.getElementById('tagList');
-  tagList.innerHTML = tags.length ? tags.map(t => `
-    <div class="row" data-uuid="${esc(t.uuid)}">
-      <span class="pill ${isMlSourced(t.source) ? 'ml' : 'user'}">${((t.startMs||0)/1000).toFixed(2)}s${t.endMs!=null?('–'+(t.endMs/1000).toFixed(2)+'s'):''}
-        ${tagProvenanceHtml(t)}
-        ${t.category ? `<span class="sub">${esc(t.category)}</span>` : ''}
-        ${t.speaker ? `<span class="sub">${esc(t.speaker)}</span>` : ''}
-        ${t.language ? `<span class="sub">${esc(t.language)}</span>` : ''}
-        ${detailSummaryHtml(t)}
-        ${asrSummaryHtml(t)}
-      </span>
-      <div class="row-fields">
-        <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
-        ${speakerChipsHtml(t.speaker || '', 'spk-' + t.uuid)}
-        ${detailFieldsHtml(t, 'tag-' + t.uuid)}
-        <div class="controls">
-          <button data-act="seek">Seek</button>
-          <button data-act="asr">Suggest</button>
-          <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
-          <button data-act="save">Save</button>
-          <button data-act="delete">Delete</button>
-        </div>
-      </div>
-    </div>`).join('') : '<p class="muted">No tags yet.</p>';
+function tagTimeLabel(t) {
+  const [a, b] = tagSpanSec(t);
+  return b > a ? `${a.toFixed(2)}–${b.toFixed(2)}s` : `${a.toFixed(2)}s`;
+}
 
-  tagList.querySelectorAll('.row').forEach(row => {
-    const spInput = row.querySelector('input[id^="spk-"]');
+/** One-line gist: the word, falling back to phonetic / note / composed label. */
+function tagShortLabel(t) {
+  const word = (t.word || '').trim();
+  const phonetic = (t.phonetic || '').trim();
+  const note = (t.note || '').trim();
+  if (word) return esc(word) + (phonetic ? ` <span class="ph">· ${esc(phonetic)}</span>` : '');
+  if (phonetic) return `<span class="ph">${esc(phonetic)}</span>`;
+  if (note) return `<span class="ph">${esc(note)}</span>`;
+  const label = (t.label || '').trim();
+  return label ? esc(label) : '<span class="untitled">(no word)</span>';
+}
+
+function tagSearchText(t) {
+  return [t.word, t.phonetic, t.note, t.speaker, t.category, t.language, t.label]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+
+/** Pan without changing zoom so a span picked from the list is on screen. */
+function revealSpan(a, b) {
+  if (!durationSec || !viewDur) return;
+  if (a >= viewStart && b <= viewEnd()) return;
+  viewStart = (a + b) / 2 - viewDur / 2;
+  clampView();
+  updateZoomLabel();
+  drawWave();
+  drawOverview();
+}
+
+/**
+ * Open one tag: put its span on the waveform, park the playhead at its start,
+ * and expand its editor. Clicking the open row again collapses it.
+ */
+function selectTag(uuid, opts) {
+  const opt = opts || {};
+  const tag = ((current && current.tags) || []).find(t => t.uuid === uuid);
+  if (!tag) return;
+  if (opt.toggle && selectedTagUuid === uuid) {
+    selectedTagUuid = null;
+    renderTagList();
+    paintOverlays();
+    return;
+  }
+  selectedTagUuid = uuid;
+  const [a, b] = tagSpanSec(tag);
+  selStart = a;
+  selEnd = b > a ? b : a + 0.3;
+  normalizeSel();
+  revealSpan(selStart, selEnd);
+  setPlayhead(selStart);
+  syncSelInputs();
+  renderTagList();
+  paintOverlays();
+  if (opt.play) startBufferPlayback(selStart, selEnd);
+}
+
+function renderTagList() {
+  const k = current;
+  const tagList = document.getElementById('tagList');
+  if (!k || !tagList) return;
+
+  const filterEl = document.getElementById('tagFilter');
+  if (filterEl && !filterEl.dataset.wired) {
+    filterEl.dataset.wired = '1';
+    filterEl.value = tagFilterText;
+    filterEl.addEventListener('input', () => {
+      tagFilterText = filterEl.value;
+      renderTagList();
+    });
+  }
+
+  const all = (k.tags || []).slice().sort((x, y) => (x.startMs || 0) - (y.startMs || 0));
+  if (selectedTagUuid && !all.some(t => t.uuid === selectedTagUuid)) selectedTagUuid = null;
+  const q = tagFilterText.trim().toLowerCase();
+  const tags = q ? all.filter(t => tagSearchText(t).includes(q)) : all;
+
+  const countEl = document.getElementById('tagCount');
+  if (countEl) {
+    countEl.textContent = !all.length
+      ? 'No tags yet'
+      : (q ? `${tags.length} of ${all.length} tags` : `${all.length} tags`);
+  }
+
+  if (!all.length) { tagList.innerHTML = '<p class="muted">No tags yet.</p>'; return; }
+  if (!tags.length) { tagList.innerHTML = '<p class="muted">No tags match this filter.</p>'; return; }
+
+  tagList.innerHTML = `<div class="tag-rows">${tags.map(t => {
+    const open = t.uuid === selectedTagUuid;
+    const ml = isMlSourced(t.source);
+    return `<div class="tag-item${open ? ' open' : ''}" data-uuid="${esc(t.uuid)}">
+      <button type="button" class="tag-line" aria-expanded="${open ? 'true' : 'false'}">
+        <span class="tag-time">${tagTimeLabel(t)}</span>
+        <span class="tag-badge ${ml ? 'ml' : 'user'}">${ml ? 'ML' : 'Manual'}</span>
+        <span class="tag-who">${esc(t.speaker || '—')}</span>
+        <span class="tag-label">${tagShortLabel(t)}</span>
+        <span class="tag-cat">${esc(TAG_CATEGORY_SHORT[t.category] || t.category || '')}</span>
+      </button>
+      ${open ? `<div class="tag-detail">
+        <div class="row-fields">
+          <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
+          ${speakerChipsHtml(t.speaker || '', 'spk-' + t.uuid)}
+          ${detailFieldsHtml(t, 'tag-' + t.uuid)}
+          ${asrSummaryHtml(t)}
+          <div class="controls">
+            <button data-act="play">Play</button>
+            <button data-act="asr">Suggest</button>
+            <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
+            <button data-act="save">Save</button>
+            <button data-act="delete">Delete</button>
+          </div>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('')}</div>`;
+
+  tagList.querySelectorAll('.tag-item').forEach(item => {
+    const uuid = item.dataset.uuid;
+    const line = item.querySelector('.tag-line');
+    if (line) line.onclick = () => selectTag(uuid, { toggle: true });
+
+    const detail = item.querySelector('.tag-detail');
+    if (!detail) return;
+    const spInput = detail.querySelector('input[id^="spk-"]');
     if (spInput) {
       spInput.dataset.field = 'speaker';
-      wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
+      wireSpeakerChips(detail.querySelector('.speaker-row'), spInput);
     }
-    wireCategoryDetail(row);
-    row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
-      const uuid = row.dataset.uuid;
-      const tag = tags.find(t => t.uuid === uuid);
+    wireCategoryDetail(detail);
+    detail.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
+      const tag = all.find(t => t.uuid === uuid);
       const act = btn.dataset.act;
-      if (act === 'seek' && tag) {
+      if (act === 'play' && tag) {
         pauseIfPlaying();
-        const a = (tag.startMs||0)/1000;
-        const b = tag.endMs != null ? tag.endMs/1000 : a + 0.3;
-        selStart = a; selEnd = b; normalizeSel();
-        setPlayhead(selStart);
-        syncSelInputs();
-        startBufferPlayback(selStart, selEnd);
+        selectTag(uuid, { play: true });
         return;
       }
       if (act === 'copyAsr' && tag) {
         const text = (tag.asr && tag.asr.text || '').trim();
         if (!text) { flashSaveStatus('No model suggestion yet — click Suggest first', false); return; }
-        const wordEl = row.querySelector('[data-field="word"]');
-        const catEl = row.querySelector('[data-field="category"]');
+        const wordEl = detail.querySelector('[data-field="word"]');
+        const catEl = detail.querySelector('[data-field="category"]');
         if (catEl && !catEl.value) catEl.value = 'verbal vocalization';
-        syncDetailFields(row);
+        syncDetailFields(detail);
         if (wordEl) wordEl.value = text;
         flashSaveStatus('Copied model text into Word (not saved yet)');
         return;
@@ -3215,7 +3404,7 @@ function renderLists() {
         const prev = btn.textContent;
         btn.textContent = '…';
         try {
-          const tax = readTaxonomyFrom(row);
+          const tax = readTaxonomyFrom(detail);
           const data = await postJson('/api/asr/run', {
             kit: k.folder, uuid, language: tax.language || '',
           });
@@ -3232,6 +3421,7 @@ function renderLists() {
       if (act === 'delete') {
         try {
           const data = await postJson('/api/tag/delete', { kit: k.folder, uuid });
+          selectedTagUuid = null;
           await softRefreshCurrent();
           flashSaveStatus(`Deleted · wrote ${data.tagsPath || (current && current.tagsPath) || 'tags.json'} · ${(current.tags||[]).length} tags on disk`);
         } catch (err) {
@@ -3240,7 +3430,7 @@ function renderLists() {
         return;
       }
       if (act === 'save') {
-        const tax = readTaxonomyFrom(row);
+        const tax = readTaxonomyFrom(detail);
         const errMsg = validateTaxonomy(tax);
         if (errMsg) { alert(errMsg); return; }
         try {
@@ -3257,6 +3447,11 @@ function renderLists() {
       }
     });
   });
+}
+
+function renderLists() {
+  const k = current;
+  renderTagList();
 
   // Confirmed candidates are promoted into Tags and should disappear from
   // here; dismissed ones are hidden too. Only still-provisional VAD/ml_v0
@@ -3271,7 +3466,8 @@ function renderLists() {
         ${a.language ? `<span class="sub">${esc(a.language)}</span>` : ''}
         ${a.speakerCluster ? `<span class="sub" title="Diarization cluster — a guess, not a named person">${esc(a.speakerCluster)}</span>` : ''}
         ${a.splitBy ? `<span class="sub">split · ${esc(a.splitBy === 'speaker_change' ? 'speaker change' : a.splitBy)}</span>` : ''}
-        ${(a.flags||[]).includes('possible_non_speech') ? '<span class="sub">possible non-speech (noise-like)</span>' : ''}
+        ${a.speechScore != null ? `<span class="sub" title="Speech-likeness 0–1: voicing + voice-band energy − low-frequency rumble. Below 0.55 is dropped.">speech ${a.speechScore.toFixed(2)}</span>` : ''}
+        ${(a.flags||[]).includes('possible_non_speech') ? `<span class="sub" title="${esc(a.nonSpeechReason || 'scored low on the speech gate')}">possible non-speech${a.nonSpeechReason ? ' · ' + esc(a.nonSpeechReason) : ''}</span>` : ''}
         ${(a.flags||[]).includes('hard_capped') ? '<span class="sub">cap: long span, no clean split found</span>' : ''}
         ${detailSummaryHtml(a)}
         ${asrSummaryHtml(a)}

@@ -61,9 +61,9 @@ Clicking **Find speech segments** (or running `vad_segments.py`) runs three stag
 
 | Stage | Where | What it does |
 | --- | --- | --- |
-| 1 · VAD | `vad_segments.py` | energy + spectral-shape detection of speech-like regions; drops silence and impulsive noise |
+| 1 · VAD + speech gate | `vad_segments.py`, `speechlike.py` | energy detection of louder-than-the-room regions, then an absolute "does this sound like a voice?" score that drops taps, doors, thumps and running water |
 | 2 · Diarization | `diarize.py` | speaker embeddings + clustering across the session; cuts each region where the speaker changes |
-| 3 · Refine | `vad_segments.py` | pause-splits any same-speaker span still over 4s, applies the duration cap, writes `annotations.json` |
+| 3 · Refine + re-gate | `vad_segments.py` | pause-splits any same-speaker span still over 4s, applies the duration cap, re-scores each final candidate through the speech gate, writes `annotations.json` |
 
 ```bash
 tools/.venv/bin/pip install -r tools/requirements.txt
@@ -75,9 +75,25 @@ tools/.venv/bin/python tools/vad_segments.py --list-backends   # what's installe
 
 Defaults: merge gaps ≤ **200 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
 
-### Stage 1 — VAD
+Each run gets a flat **80ms** pad on both edges so soft onsets/offsets aren't clipped by the threshold crossing. On top of that, edges are extended through neighboring frames that clear a second, lower threshold (half the speech delta, capped at **120ms**) before the flat pad is added — a gradual attack/decay often sits above the noise floor for a while before it's "confidently" loud, and a single fixed threshold would otherwise cut into it. This is still level-based (not a derivative/onset detector), just two thresholds instead of one, and the reach is clamped so it can never cross into a neighboring run.
 
-Finds speech-like regions and rejects **non-speech impulses** (table taps, door closes, clicks): each short (≤700ms) region gets a composite "sounds like noise" z-score (spectral flatness + zero-crossing rate + how spiky vs. sustained its energy envelope is) computed **relative to the other regions in that same recording** — device/room acoustics shift absolute thresholds too much to use one fixed cutoff. Outliers get dropped (default) or, with `--keep-noise` / `rejectNonSpeech: false`, kept but down-ranked and flagged `possible_non_speech`. This is heuristic signal-processing, not a trained classifier.
+### Stage 1 — VAD + the speech gate
+
+The energy VAD only answers *"is something louder than the room here?"*, which is equally true of a tap running and a door closing. Every region it finds is therefore scored by `speechlike.py` on whether it sounds like it came out of a **vocal tract**:
+
+| Feature | Speech | Junk |
+| --- | --- | --- |
+| `voicing_peak_med` / `voiced_fraction` | periodic — clear autocorrelation peak at 70–600 Hz f0 | impacts and water are aperiodic |
+| `speech_band_ratio` | most energy in 300–3400 Hz | thumps and hiss sit outside it |
+| `low_band_ratio` | little sub-250 Hz | rumble dominates handling noise, footsteps, doors |
+
+Score = `0.40·speech_band + 0.25·voicing_peak + 0.15·voiced_fraction + 0.20·(1 − low_band)`, and it is applied twice: leniently (< **0.42**) on whole regions before diarization, then per candidate after splitting — below **0.55** dropped, **0.55–0.68** kept but flagged `possible_non_speech` with a reason and down-ranked. Every candidate carries its `speechScore`, shown as a badge in the UI. `--keep-noise` / `rejectNonSpeech: false` turns dropping off and flags instead.
+
+**Calibration.** Thresholds come from 457 spans this project's reviewer had already confirmed (206) or dismissed (251) across their own sessions, not from eyeballed constants: AUC **0.81** overall and stable per kit (0.77 / 0.83 / 0.88). Two things were tried and rejected — fitting logistic weights (best leave-one-kit-out AUC 0.79, i.e. *worse* than the fixed weights above, so the interpretable ones ship), and a 2–10 Hz syllabic-modulation feature (textbook speech cue, AUC 0.46 here — these segments are single short utterances, not continuous speech).
+
+The older **relative** impulsive check (flatness + zero-crossing + spikiness z-scored against the same recording's other short segments) still runs as a second opinion on ≤700ms bursts. It stays secondary because a z-score can only ever flag a fixed slice of each session as "most noise-like" — on real kits it removed just 2 of 131 and 5 of 300 candidates, which is why noisy sessions still felt noisy.
+
+This is signal processing, not a trained classifier: expect it to keep some junk and to occasionally drop a very quiet, whispered or heavily-clipped utterance.
 
 Stage 1 says nothing about *who* is talking, so a 5–10s region can hold several turns. That's stage 2's job.
 
@@ -117,11 +133,18 @@ Useful flags:
 
 Same-speaker spans still longer than **4s** are re-split at their deepest internal relative energy dip (one person, several sentences — a pause is a reasonable utterance boundary). An absolute 15s hard cap is the last resort if no split point is found, flagged `hard_capped`.
 
+Each resulting candidate then goes back through the **speech gate** one more time. Stage 1 screened whole regions, which often mix a sentence with the clatter right after it; only now is each piece a single turn that can be judged on its own, so this is the pass that does most of the filtering. Measured on two of the reviewer's kits (candidates → junk they had previously dismissed that got re-proposed):
+
+| Kit | Before | After |
+| --- | --- | --- |
+| `…_St_78` (5.6 min) | 131 candidates, 98% of known junk re-proposed | 59 candidates, 35% of known junk re-proposed, 85% of known speech still found |
+| `…_St_75` (11.5 min) | 300 candidates, 98% of known junk re-proposed | 172 candidates, 52% of known junk re-proposed, 86% of known speech still found |
+
 Finally, any candidate that overlaps an existing entry in `tags.json` (± a **75ms** margin) is dropped — re-running VAD never re-proposes something already reviewed. Point tags (no `endMs`) are treated as covering a short **500ms** window from their timestamp for this check. The number suppressed is reported as `tagOverlapSuppressed` in the API response and shown in the UI hint ("N skipped (already tagged)").
 
 Re-run **Find speech segments** (or `vad_segments.py`) after changing any of this; it only replaces still-provisional VAD candidates, so confirmed/dismissed decisions **and existing tags** are preserved and skips spans already tagged.
 
-**Known limits:** overlapping speech is assigned to a single speaker; a toddler imitating a caregiver's pitch can land in the wrong cluster; clusters are per-session, so `SPEAKER_00` in one kit is unrelated to `SPEAKER_00` in another.
+**Known limits:** the speech gate still lets through roughly a third to a half of what a reviewer would dismiss, and costs ~14% of real speech at the current threshold — mostly quiet or breathy segments; overlapping speech is assigned to a single speaker; a toddler imitating a caregiver's pitch can land in the wrong cluster; clusters are per-session, so `SPEAKER_00` in one kit is unrelated to `SPEAKER_00` in another. `speakerCluster` groups turns by voice — it is **not** speaker identification and never decides who is the baby.
 
 Diarization is a separate job from the **Clustering tab** — that groups *similar sounds/words* regardless of who said them, and is unaffected by any of this.
 

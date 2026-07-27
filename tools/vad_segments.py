@@ -3,10 +3,12 @@
 Three clearly separated stages turn a raw session recording into provisional
 annotations for Review Browser:
 
-  1. **VAD (this module)** — energy + spectral-shape detection of speech-like
-     regions. Drops silence, and drops/flags short bursts that look like an
-     impulsive non-speech event (table tap, door close, click) relative to the
-     other candidates in the same recording.
+  1. **VAD (this module)** — energy detection of louder-than-the-room regions,
+     then a *speech-likeness* gate (``speechlike.py``) that asks whether each
+     region actually sounds like a vocal tract — voicing, voice-band energy,
+     low-frequency rumble — rather than a tap, a door or a chair scrape.
+     Silence is dropped, obvious non-speech is dropped before diarization, and
+     each final candidate is re-judged individually.
   2. **Speaker diarization (``diarize.py``)** — speaker embeddings over sliding
      windows inside those regions, clustered across the whole recording, then
      each region is cut wherever the speaker changes. This is what stops a
@@ -53,6 +55,8 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
+import speechlike
+
 # Defaults tuned for baby/caregiver utterances reviewed in the Mac UI.
 FRAME_MS = 30
 HOP_MS = 10
@@ -60,6 +64,22 @@ HOP_MS = 10
 SPEECH_DELTA_DB = 6.0
 # Pad each run so soft onsets/offsets aren't clipped.
 PAD_MS = 80
+# --- Onset/offset hysteresis -----------------------------------------------
+# A run only *starts* once a frame clears SPEECH_DELTA_DB (that's what keeps
+# the gate from false-triggering on room noise), but a real attack or release
+# ramps up/down gradually — several frames right next to the run are often
+# already well above the noise floor without (yet) being "confidently loud".
+# A single fixed threshold treats all of that ramp as silence and only PAD_MS
+# stands between the detected edge and the true one, which is exactly the
+# "starts after the word starts / ends before it ends" clipping this guards
+# against. So before padding, each run's edges are walked back/forward
+# through neighboring frames that clear a *lower* threshold — still a level
+# gate, just a second, more lenient one, not a derivative/onset detector —
+# so a slow onset can "reach back" to where the sound actually left the
+# floor. Bounded in both distance and by the previous/next run's own edge so
+# this can never stretch through a real gap into a neighboring utterance.
+ONSET_LOW_DELTA_DB = 3.0
+ONSET_MAX_EXTEND_MS = 120
 # Merge segments separated by ≤ this gap (same utterance).
 # Keep short so parent/baby turn-taking doesn't glue into one candidate.
 MERGE_GAP_MS = 200
@@ -76,13 +96,19 @@ SPLIT_MIN_PROMINENCE_DB = 5.0
 # Absolute last resort if nothing above could split a long stretch (e.g. one
 # continuous monologue with no clean pause) — keep first N ms only.
 HARD_MAX_DUR_MS = 15_000
-# --- Non-speech (impulsive noise) rejection -------------------------------
-# Absolute spectral-flatness / recording-device characteristics vary a lot
-# between phones/rooms, so instead of one fixed cutoff we z-score each
-# segment's flatness/ZCR/"spikiness" against the *other candidates in the
-# same recording* and flag outliers. This is intentionally conservative
-# (down-ranks by default rather than dropping) since we have no labeled
-# tap/door examples to calibrate an absolute threshold against.
+# --- Non-speech rejection --------------------------------------------------
+# Two independent checks, because they catch different things:
+#
+#   * The *absolute* speech-likeness gate in speechlike.py is the primary one.
+#     It judges each segment on its own acoustics (voicing, voice-band energy,
+#     sub-250 Hz rumble) and is calibrated against spans this project's
+#     reviewer actually confirmed vs dismissed.
+#   * The *relative* impulsive check below stays as a second opinion for very
+#     short bursts, where a click can still land inside the voice band. It
+#     z-scores flatness/ZCR/"spikiness" against the other candidates in the
+#     same recording, so it only ever flags a recording's own outliers — that
+#     narrowness is exactly why it can't be the primary gate.
+#
 # Only consider rejecting segments this short as "impulsive" (taps/door
 # closes are brief; genuine multi-syllable speech usually runs longer).
 NONSPEECH_MAX_DUR_MS = 700
@@ -307,6 +333,17 @@ def _segment_shape_features(audio: np.ndarray, sr: int, start_ms: float, end_ms:
     }
 
 
+def _speech_score_for_span(
+    audio: np.ndarray, sr: int, start_ms: float, end_ms: float
+) -> tuple[float, dict]:
+    """Absolute speech-likeness of one span (see ``speechlike.py``)."""
+    s = max(0, int(start_ms / 1000.0 * sr))
+    e = min(len(audio), int(end_ms / 1000.0 * sr))
+    if e <= s:
+        return 0.0, {}
+    return speechlike.speech_likeness(audio[s:e], sr)
+
+
 def _non_speech_scores(shapes: list[dict], durations: list[float]) -> list[float]:
     """Composite "sounds like an impulsive non-speech event" z-score per
     segment, relative to the *other candidates in this same recording*
@@ -353,6 +390,8 @@ def detect_speech_regions(
     sr: int | None = None,
     speech_delta_db: float = SPEECH_DELTA_DB,
     pad_ms: float = PAD_MS,
+    onset_low_delta_db: float = ONSET_LOW_DELTA_DB,
+    onset_max_extend_ms: float = ONSET_MAX_EXTEND_MS,
     merge_gap_ms: float = MERGE_GAP_MS,
     min_dur_ms: float = MIN_DUR_MS,
     reject_non_speech: bool = True,
@@ -366,17 +405,23 @@ def detect_speech_regions(
     Passing ``audio``/``sr`` enables the spectral-shape non-speech rejection;
     without them this is plain energy-threshold VAD.
     """
-    stats = {"rawRuns": 0, "merged": 0, "nonSpeechRejected": 0}
+    stats = {"rawRuns": 0, "merged": 0, "nonSpeechRejected": 0, "regionsScreened": 0}
     if len(dbs) == 0:
         return [], stats
 
     floor = noise_floor_db(dbs)
     thresh = floor + speech_delta_db
     active = dbs >= thresh
+    # Lenient second threshold used only to extend an already-found run's
+    # edges into its own attack/decay ramp (see ONSET_LOW_DELTA_DB above).
+    low_thresh = floor + max(0.0, speech_delta_db - onset_low_delta_db)
+    elevated = dbs >= low_thresh
+    extend_frames = max(0, int(round(onset_max_extend_ms / HOP_MS)))
 
     raw: list[tuple[float, float, float]] = []
     i = 0
     n = len(active)
+    prev_run_end = -1  # index just past the previous run's extended tail
     while i < n:
         if not active[i]:
             i += 1
@@ -386,10 +431,22 @@ def detect_speech_regions(
         while j < n and active[j]:
             peak = max(peak, float(dbs[j]))
             j += 1
-        start_ms = float(times[i]) - pad_ms
-        end_ms = float(times[min(j - 1, n - 1)]) + FRAME_MS + pad_ms
+
+        onset_i = i
+        onset_limit = max(prev_run_end, i - extend_frames)
+        while onset_i > onset_limit and elevated[onset_i - 1]:
+            onset_i -= 1
+
+        offset_j = j
+        offset_limit = min(n, j + extend_frames)
+        while offset_j < offset_limit and elevated[offset_j]:
+            offset_j += 1
+
+        start_ms = float(times[onset_i]) - pad_ms
+        end_ms = float(times[min(offset_j - 1, n - 1)]) + FRAME_MS + pad_ms
         score = float(min(1.0, max(0.0, (peak - thresh) / 18.0)))
         raw.append((start_ms, end_ms, score))
+        prev_run_end = offset_j
         i = max(j, i + 1)
     stats["rawRuns"] = len(raw)
 
@@ -413,6 +470,20 @@ def detect_speech_regions(
         if dur < min_dur_ms:
             continue
         regions.append({"start": start_ms, "end": end_ms, "dur": dur, "score": score, "meta": {}})
+
+    # Absolute speech-likeness screen, before anything expensive. Lenient on
+    # purpose: a region can hold speech *and* noise, and every surviving piece
+    # is re-judged individually after diarization. The point here is to keep
+    # obvious junk out of the speaker clustering.
+    if audio is not None and sr and reject_non_speech:
+        kept_regions: list[dict] = []
+        for r in regions:
+            score = _speech_score_for_span(audio, sr, r["start"], r["end"])[0]
+            if score < speechlike.SPEECH_SCORE_REGION_REJECT:
+                stats["regionsScreened"] += 1
+                continue
+            kept_regions.append(r)
+        regions = kept_regions
 
     # Non-speech scoring is relative to the other regions found in this same
     # recording (see _non_speech_scores for why it's relative, not absolute).
@@ -587,6 +658,53 @@ def refine_long_spans(
     return out, stats
 
 
+def apply_speech_gate(
+    pieces: list[dict],
+    audio: np.ndarray,
+    sr: int,
+    *,
+    reject: bool = True,
+) -> tuple[list[dict], dict]:
+    """Final per-candidate speech-likeness pass (stage 3).
+
+    Stage 1's screen ran on whole VAD regions, which can mix a sentence with
+    the clatter right after it. Now that diarization and pause-splitting have
+    cut those regions into individual turns, each piece can be judged on its
+    own — this is the pass that does the real filtering.
+
+    Pieces below ``SPEECH_SCORE_REJECT`` are dropped (or flagged, when
+    ``reject`` is False); pieces between there and ``SPEECH_SCORE_WEAK`` are
+    kept but flagged and down-ranked so they sort below confident speech.
+    """
+    stats = {"speechGateRejected": 0, "speechGateFlagged": 0}
+    out: list[dict] = []
+    for piece in pieces:
+        score, features = _speech_score_for_span(audio, sr, piece["start"], piece["end"])
+        meta = dict(piece["meta"])
+        if meta.get("flags"):
+            meta["flags"] = list(meta["flags"])
+        meta["speechScore"] = round(score, 3)
+        if features.get("f0_med"):
+            meta["f0Med"] = int(round(features["f0_med"]))
+
+        if score < speechlike.SPEECH_SCORE_REJECT:
+            if reject:
+                stats["speechGateRejected"] += 1
+                continue
+            meta["flags"] = meta.get("flags", []) + ["possible_non_speech"]
+            meta["nonSpeechReason"] = speechlike.describe(features)
+            stats["speechGateFlagged"] += 1
+            piece = {**piece, "score": min(piece["score"], 0.3)}
+        elif score < speechlike.SPEECH_SCORE_WEAK:
+            meta["flags"] = meta.get("flags", []) + ["possible_non_speech"]
+            meta["nonSpeechReason"] = speechlike.describe(features)
+            stats["speechGateFlagged"] += 1
+            piece = {**piece, "score": min(piece["score"], 0.5)}
+
+        out.append({**piece, "meta": meta})
+    return out, stats
+
+
 def segments_to_annotations(pieces: list[dict]) -> list[dict]:
     anns: list[dict] = []
     for piece in pieces:
@@ -607,6 +725,12 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             ann["splitBy"] = meta["splitBy"]
         if meta.get("flags"):
             ann["flags"] = meta["flags"]
+        if meta.get("speechScore") is not None:
+            ann["speechScore"] = meta["speechScore"]
+        if meta.get("nonSpeechReason"):
+            ann["nonSpeechReason"] = meta["nonSpeechReason"]
+        if meta.get("f0Med"):
+            ann["f0Med"] = meta["f0Med"]
         # Diarization cluster id, not the reviewer-facing speaker field: the
         # UI's `speaker` stays empty so Confirm still asks a human who this is.
         if meta.get("speakerCluster"):
@@ -767,6 +891,9 @@ def build_candidates(
         min_dur_ms=min_dur_ms,
     )
     stats.update(refine_stats)
+
+    pieces, gate_stats = apply_speech_gate(pieces, audio, sr, reject=reject_non_speech)
+    stats.update(gate_stats)
     stats["split"] = int(stats["diarization"].get("speakerSplits", 0)) + refine_stats["pauseSplit"]
     stats["candidates"] = len(pieces)
     return segments_to_annotations(pieces), stats
@@ -976,8 +1103,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         extra = (
             f" (raw {vs.get('rawRuns', 0)} -> regions {vs.get('regions', 0)}"
-            f", rejected {vs.get('nonSpeechRejected', 0)} non-speech"
+            f", screened {vs.get('regionsScreened', 0)} non-speech regions"
             f", +{vs.get('pauseSplit', 0)} pause splits"
+            f", speech gate dropped {vs.get('speechGateRejected', 0)}"
+            f" / flagged {vs.get('speechGateFlagged', 0)}"
             f", {vs.get('tagOverlapSuppressed', 0)} already-tagged skipped; {diar_txt})"
         )
         print(f"{kit.name}: {verb} {result['added']} speech segments{extra}")
