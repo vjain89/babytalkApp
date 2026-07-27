@@ -282,6 +282,7 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
             SPLIT_TARGET_MS,
             process_kit,
         )
+        from resegment import RESEG_TARGET_MS
     except ImportError as e:
         return {
             "ok": False,
@@ -317,6 +318,8 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
             reject_non_speech=bool(body.get("rejectNonSpeech", True)),
             diarization=diarization,
             num_speakers=num_speakers,
+            resegment=bool(body.get("resegment", True)),
+            reseg_target_ms=_num("resegTargetMs", RESEG_TARGET_MS),
             write=True,
         )
     except Exception as e:  # noqa: BLE001 — surface to UI
@@ -1960,12 +1963,15 @@ function renderShell() {
         clusters them, and cuts each span wherever the speaker changes, so a parent/baby/parent
         stretch becomes separate candidates tagged <span class="sub">SPEAKER_00</span> etc.
         Same-speaker spans still over 4s are then split at their deepest internal pause.
-        Speaker ids are a <em>guess and unnamed</em> — they group turns, they don't know
-        who's the baby — so on confirm you still assign a <strong>category</strong> and
+        Each remaining span is cut into <strong>syllable / short-utterance</strong> pieces
+        via a de Jong &amp; Wempe–style intensity-peak detector (preceding-dip + voiced nuclei,
+        target ~1.2s) so multi-word blobs become tag-sized proposals. Speaker ids are a <em>guess and unnamed</em> — they group turns,
+        they don't know who's the baby — so on confirm you still assign a <strong>category</strong> and
         <strong>speaker</strong> (verbal: <strong>word</strong> + optional <strong>phonetic</strong>;
         non-verbal: optional <strong>phonetic</strong>).
         <span class="sub">Limits</span> overlapping speech goes to one speaker only, and a
-        toddler imitating a parent can land in the wrong cluster.
+        toddler imitating a parent can land in the wrong cluster. Syllable cuts are acoustic
+        (not dictionary words) — run-together words may stay one piece.
         Use <strong>Suggest</strong> for a local Whisper draft (comparison only; never auto-fills your labels).
         Confirm removes it from this list and adds it to Tags; dismiss hides it here.
         Re-run replaces provisional VAD/ml_v0 suggestions only, and skips spans already tagged.
@@ -2114,6 +2120,7 @@ function wireVad() {
         parts.push(`no diarization (${di.error || 'unavailable'}) — VAD only`);
       }
       if (vs.pauseSplit) parts.push(`+${vs.pauseSplit} pause splits`);
+      if (vs.resegSplits) parts.push(`+${vs.resegSplits} syllable splits`);
       const dropped = (vs.speechGateRejected || 0) + (vs.regionsScreened || 0) + (vs.nonSpeechRejected || 0);
       if (dropped) parts.push(`${dropped} dropped as non-speech`);
       if (vs.speechGateFlagged) parts.push(`${vs.speechGateFlagged} flagged possible non-speech`);

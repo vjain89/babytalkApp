@@ -1,7 +1,6 @@
 """ML candidate pipeline for BabyTalk session kits (vad_v0 + diar_v1).
 
-Three clearly separated stages turn a raw session recording into provisional
-annotations for Review Browser:
+Stages turn a raw session recording into provisional annotations for Review:
 
   1. **VAD (this module)** — energy detection of louder-than-the-room regions,
      then a *speech-likeness* gate (``speechlike.py``) that asks whether each
@@ -14,16 +13,16 @@ annotations for Review Browser:
      each region is cut wherever the speaker changes. This is what stops a
      5–10s parent/baby/parent stretch from landing in one candidate, and it
      tags each piece with a ``SPEAKER_xx`` cluster id.
-  3. **Refinement + write-out (this module)** — any still-long single-speaker
-     span is split at its deepest internal pause, an absolute duration cap is
-     applied as a last resort, any candidate that overlaps a span already in
-     ``tags.json`` is dropped (re-running VAD should never re-propose
-     something already reviewed), and the result is written to
-     ``annotations.json`` as provisional candidates.
+  3. **Refine (this module + ``resegment.py``)** — same-speaker spans still
+     over 4s are pause-split; then each span is cut into syllable / short-
+     utterance children (energy peaks + valleys + voicing trim) so multi-word
+     blobs become tag-sized proposals. An absolute duration cap is a last
+     resort. Candidates overlapping ``tags.json`` are dropped. Results write
+     to ``annotations.json`` as provisional candidates.
 
 Stage 2 degrades gracefully: if no diarization backend is usable (or
-``--no-diarization`` is passed) the pipeline falls back to VAD + pause
-splitting only, and says so in the returned stats.
+``--no-diarization`` is passed) the pipeline falls back to VAD + pause /
+syllable splitting only, and says so in the returned stats.
 
 Requires: numpy, soundfile (stage 1) · see diarize.py for stage-2 deps
   pip install numpy soundfile
@@ -32,6 +31,7 @@ Usage:
   python3 tools/vad_segments.py /path/to/kit_or_library
   python3 tools/vad_segments.py /path/to/kit --diarization ecapa --num-speakers 2
   python3 tools/vad_segments.py /path/to/kit --no-diarization --dry-run
+  python3 tools/vad_segments.py /path/to/kit --no-resegment
 """
 
 from __future__ import annotations
@@ -55,6 +55,7 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
+import resegment as reseg_mod
 import speechlike
 
 # Defaults tuned for baby/caregiver utterances reviewed in the Mac UI.
@@ -723,6 +724,8 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
         }
         if meta.get("splitBy"):
             ann["splitBy"] = meta["splitBy"]
+        if meta.get("parentSpanId"):
+            ann["parentSpanId"] = meta["parentSpanId"]
         if meta.get("flags"):
             ann["flags"] = meta["flags"]
         if meta.get("speechScore") is not None:
@@ -849,8 +852,10 @@ def build_candidates(
     diarization: str = "auto",
     num_speakers: int | None = None,
     speaker_distance: float | None = None,
+    resegment: bool = True,
+    reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
 ) -> tuple[list[dict], dict]:
-    """Run all three stages and return ``(annotations, stats)``."""
+    """Run VAD → diarize → pause/syllable refine → speech gate; return anns + stats."""
     times, dbs = frame_rms_db(audio, sr)
     regions, stats = detect_speech_regions(
         times,
@@ -892,9 +897,23 @@ def build_candidates(
     )
     stats.update(refine_stats)
 
+    pieces, reseg_stats = reseg_mod.resegment_pieces(
+        pieces,
+        audio,
+        sr,
+        enabled=resegment,
+        target_ms=reseg_target_ms,
+        min_part_ms=max(min_dur_ms * 0.9, reseg_mod.RESEG_MIN_PART_MS),
+    )
+    stats.update(reseg_stats)
+
     pieces, gate_stats = apply_speech_gate(pieces, audio, sr, reject=reject_non_speech)
     stats.update(gate_stats)
-    stats["split"] = int(stats["diarization"].get("speakerSplits", 0)) + refine_stats["pauseSplit"]
+    stats["split"] = (
+        int(stats["diarization"].get("speakerSplits", 0))
+        + refine_stats["pauseSplit"]
+        + reseg_stats.get("resegSplits", 0)
+    )
     stats["candidates"] = len(pieces)
     return segments_to_annotations(pieces), stats
 
@@ -910,6 +929,8 @@ def run_vad_on_audio(
     diarization: str = "auto",
     num_speakers: int | None = None,
     speaker_distance: float | None = None,
+    resegment: bool = True,
+    reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
 ) -> tuple[list[dict], dict]:
     audio, sr = sf.read(str(audio_path), always_2d=False)
     audio = np.asarray(audio, dtype=np.float64)
@@ -924,6 +945,8 @@ def run_vad_on_audio(
         diarization=diarization,
         num_speakers=num_speakers,
         speaker_distance=speaker_distance,
+        resegment=resegment,
+        reseg_target_ms=reseg_target_ms,
     )
 
 
@@ -938,6 +961,8 @@ def process_kit(
     diarization: str = "auto",
     num_speakers: int | None = None,
     speaker_distance: float | None = None,
+    resegment: bool = True,
+    reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
     write: bool = True,
 ) -> dict:
     manifest_path = kit / "manifest.json"
@@ -960,6 +985,8 @@ def process_kit(
         diarization=diarization,
         num_speakers=num_speakers,
         speaker_distance=speaker_distance,
+        resegment=resegment,
+        reseg_target_ms=reseg_target_ms,
     )
 
     tags = load_tags(kit)
@@ -993,6 +1020,8 @@ def process_kit(
             "rejectNonSpeech": reject_non_speech,
             "diarization": diarization,
             "numSpeakers": num_speakers,
+            "resegment": resegment,
+            "resegTargetMs": reseg_target_ms,
             "source": SOURCE,
         },
     }
@@ -1024,7 +1053,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-diarization",
         action="store_true",
-        help="Skip stage 2 entirely (VAD + pause splitting only)",
+        help="Skip stage 2 entirely (VAD + pause / syllable splitting only)",
     )
     p.add_argument(
         "--num-speakers",
@@ -1037,6 +1066,17 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         default=None,
         help="Cosine-distance cut for speaker clustering (lower = more speakers)",
+    )
+    p.add_argument(
+        "--no-resegment",
+        action="store_true",
+        help="Skip syllable / short-utterance resegmentation (keep coarser spans)",
+    )
+    p.add_argument(
+        "--reseg-target-ms",
+        type=float,
+        default=reseg_mod.RESEG_TARGET_MS,
+        help="Prefer children shorter than this after syllable resegmentation",
     )
     p.add_argument(
         "--list-backends",
@@ -1086,6 +1126,8 @@ def main(argv: list[str] | None = None) -> int:
             diarization=diarization,
             num_speakers=args.num_speakers,
             speaker_distance=args.speaker_distance,
+            resegment=not args.no_resegment,
+            reseg_target_ms=args.reseg_target_ms,
             write=not args.dry_run,
         )
         if not result.get("ok"):
@@ -1105,6 +1147,7 @@ def main(argv: list[str] | None = None) -> int:
             f" (raw {vs.get('rawRuns', 0)} -> regions {vs.get('regions', 0)}"
             f", screened {vs.get('regionsScreened', 0)} non-speech regions"
             f", +{vs.get('pauseSplit', 0)} pause splits"
+            f", +{vs.get('resegSplits', 0)} syllable splits"
             f", speech gate dropped {vs.get('speechGateRejected', 0)}"
             f" / flagged {vs.get('speechGateFlagged', 0)}"
             f", {vs.get('tagOverlapSuppressed', 0)} already-tagged skipped; {diar_txt})"
