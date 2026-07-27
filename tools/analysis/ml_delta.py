@@ -531,7 +531,9 @@ def vintage(anns: list[dict]) -> dict:
     return {"currentGate": cur, "diarizedOnly": diar, "preDiarization": old}
 
 
-def analyse_kit(kit: Path, *, fresh: bool, diarization: str) -> dict:
+def analyse_kit(
+    kit: Path, *, fresh: bool, diarization: str, segmentation: str = "vad"
+) -> dict:
     tags = load(kit / "tags.json", "tags")
     anns = load(kit / "annotations.json", "annotations")
     manifest = json.loads((kit / "manifest.json").read_text())
@@ -577,13 +579,21 @@ def analyse_kit(kit: Path, *, fresh: bool, diarization: str) -> dict:
 
         audio = kit / manifest.get("audioFile", "audio.wav")
         t0 = time.time()
-        cands, stats = run_vad_on_audio(audio, diarization=diarization)
-        stats.pop("diarization", None)
+        cands, stats = run_vad_on_audio(
+            audio, diarization=diarization, segmentation=segmentation
+        )
+        diar = stats.get("diarization") or {}
         result["fresh"] = compare(tags, cands, label="fresh")
+        result["fresh"]["roleAccuracy"] = role_accuracy(tags, cands)
         result["freshStats"] = {
             k: v for k, v in stats.items() if isinstance(v, (int, float, str))
         }
         result["freshStats"]["elapsedSec"] = round(time.time() - t0, 1)
+        result["freshStats"]["segmentation"] = stats.get("segmentation", segmentation)
+        result["freshStats"]["diarBackend"] = diar.get("backend")
+        result["freshStats"]["diarOk"] = diar.get("ok")
+        if diar.get("error"):
+            result["freshStats"]["diarError"] = diar.get("error")
         result["freshCandDur"] = quantiles(
             [span(c)[1] - span(c)[0] for c in cands if span(c)]
         )
@@ -596,6 +606,48 @@ def analyse_kit(kit: Path, *, fresh: bool, diarization: str) -> dict:
             [0.55, 0.6, 0.68, 0.75, 0.85],
         )
     return result
+
+
+def role_accuracy(tags: list[dict], cands: list[dict]) -> dict:
+    """Where a candidate overlaps a tagged speaker, does the prefilled role match?"""
+    pairs = []
+    for tag in tags:
+        ts = span(tag)
+        if not ts or not tag.get("speaker"):
+            continue
+        best = None
+        for cand in cands:
+            cs = span(cand)
+            if not cs:
+                continue
+            score = iou(ts, cs)
+            if score <= 0:
+                continue
+            if best is None or score > best[0]:
+                best = (score, cand)
+        if best is None:
+            continue
+        cand = best[1]
+        pred = cand.get("speaker") or ""
+        if not pred:
+            continue
+        pairs.append((tag.get("speaker"), pred, best[0]))
+    if not pairs:
+        return {"n": 0, "agreePct": 0.0, "byTagSpeaker": {}}
+    agree = sum(1 for t, p, _ in pairs if t == p)
+    by: dict[str, dict] = {}
+    for t, p, _ in pairs:
+        slot = by.setdefault(t, {"n": 0, "agree": 0})
+        slot["n"] += 1
+        if t == p:
+            slot["agree"] += 1
+    return {
+        "n": len(pairs),
+        "agreePct": pct(agree, len(pairs)),
+        "byTagSpeaker": {
+            k: {"n": v["n"], "agreePct": pct(v["agree"], v["n"])} for k, v in by.items()
+        },
+    }
 
 
 def strip_private(obj):
@@ -809,6 +861,12 @@ def main() -> int:
     ap.add_argument("--library", default=str(LIBRARY))
     ap.add_argument("--fresh", action="store_true", help="re-run current VAD pipeline")
     ap.add_argument("--diarization", default="auto")
+    ap.add_argument(
+        "--segmentation",
+        default="vad",
+        choices=["vad", "vtc-first"],
+        help="Parent-span finder for --fresh (default: vad)",
+    )
     ap.add_argument("--min-tags", type=int, default=4)
     ap.add_argument("--out", default=str(OUT_DIR / "ml_delta.json"))
     args = ap.parse_args()
@@ -825,13 +883,26 @@ def main() -> int:
         # honest test set (they were labelled without ever seeing ML output).
         if len(tags) < args.min_tags or (not anns and not args.fresh):
             continue
-        print(f"[analyse] {kit.name}  tags={len(tags)} anns={len(anns)}", flush=True)
-        kits.append(analyse_kit(kit, fresh=args.fresh, diarization=args.diarization))
+        print(
+            f"[analyse] {kit.name}  tags={len(tags)} anns={len(anns)}"
+            f"  seg={args.segmentation} diar={args.diarization}",
+            flush=True,
+        )
+        kits.append(
+            analyse_kit(
+                kit,
+                fresh=args.fresh,
+                diarization=args.diarization,
+                segmentation=args.segmentation,
+            )
+        )
 
     curated = [k for k in kits if k.get("curated")]
     out = {
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "library": str(lib),
+        "segmentation": args.segmentation,
+        "diarization": args.diarization,
         "kits": kits,
         "curatedKits": [k["kit"] for k in curated],
         "pooledArchival": pooled(kits, "archival"),
@@ -840,6 +911,33 @@ def main() -> int:
     if args.fresh:
         out["pooledFresh"] = pooled(kits, "fresh")
         out["pooledFreshCurated"] = pooled(curated, "fresh")
+        # Pool role accuracy across curated kits when VTC prefills speakers.
+        role_ns = [
+            (k.get("fresh") or {}).get("roleAccuracy") or {}
+            for k in curated
+        ]
+        n = sum(r.get("n", 0) for r in role_ns)
+        if n:
+            # Recompute from per-kit tallies when available.
+            agree = 0
+            total = 0
+            by: dict[str, dict] = {}
+            for k in curated:
+                ra = (k.get("fresh") or {}).get("roleAccuracy") or {}
+                for spk, slot in (ra.get("byTagSpeaker") or {}).items():
+                    b = by.setdefault(spk, {"n": 0, "agree": 0})
+                    b["n"] += slot.get("n", 0)
+                    b["agree"] += int(round(slot.get("agreePct", 0) * slot.get("n", 0) / 100.0))
+                total += ra.get("n", 0)
+                agree += int(round(ra.get("agreePct", 0) * ra.get("n", 0) / 100.0))
+            out["pooledRoleAccuracyCurated"] = {
+                "n": total,
+                "agreePct": pct(agree, total),
+                "byTagSpeaker": {
+                    k: {"n": v["n"], "agreePct": pct(v["agree"], v["n"])}
+                    for k, v in by.items()
+                },
+            }
 
     out = strip_private(out)
     out_path = Path(args.out)
@@ -848,6 +946,8 @@ def main() -> int:
     print(json.dumps(out.get("pooledArchival", {}), indent=2))
     if args.fresh:
         print(json.dumps(out.get("pooledFresh", {}), indent=2))
+        if out.get("pooledRoleAccuracyCurated"):
+            print(json.dumps(out["pooledRoleAccuracyCurated"], indent=2))
     print(f"\nwrote {out_path}")
     return 0
 

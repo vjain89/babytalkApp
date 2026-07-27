@@ -107,7 +107,8 @@ Sliding 1.5s windows inside each VAD region are turned into **speaker embeddings
 
 Backends, picked automatically in this order:
 
-- **`ecapa` (recommended)** — SpeechBrain ECAPA-TDNN embeddings. Needs `torch torchaudio speechbrain` (already in `requirements.txt`, ~1 GB of wheels). First run downloads the ~80 MB model to `~/.cache/babytalk/spkrec-ecapa-voxceleb` and takes an extra ~20s; after that a 12-minute session diarizes in ~20s. **No HuggingFace token needed.**
+- **`ecapa` (recommended default)** — SpeechBrain ECAPA-TDNN embeddings. Needs `torch torchaudio speechbrain` (already in `requirements.txt`, ~1 GB of wheels). First run downloads the ~80 MB model to `~/.cache/babytalk/spkrec-ecapa-voxceleb` and takes an extra ~20s; after that a 12-minute session diarizes in ~20s. **No HuggingFace token needed.**
+- **`vtc` / `--segmentation vtc-first`** — [LAAC-LSCP Voice Type Classifier](https://github.com/LAAC-LSCP/VTC) role labels (`KCHI`/`OCH`/`FEM`/`MAL` → Baby/Parent/Other). Needs a local VTC checkout at `~/.cache/babytalk/VTC` (or `BABYTALK_VTC_ROOT`) with `uv sync`, Homebrew FFmpeg, and `uv` on `PATH`. **`vtc-first`** skips energy VAD+ECAPA and uses VTC's role timeline as parent spans; **`--diarization vtc`** keeps energy VAD and only swaps ECAPA for role cuts. Prefills the Confirm `speaker` chip. RTTMs cache under `~/.cache/babytalk/vtc_predictions/`.
 - **`melstats` (fallback)** — pure numpy/sklearn MFCC mean+std features with per-recording normalization. No downloads, always available, runs in ~3s, but noticeably weaker: on the test session it split one child into three "speakers". Fine for adult-vs-baby, unreliable for adult-vs-adult.
 - **`pyannote` (opt-in)** — the full `pyannote.audio` speaker-diarization-3.1 pipeline. Best quality and some overlap handling, but you must `pip install pyannote.audio`, accept the model terms on huggingface.co, and export a token:
 
@@ -121,12 +122,20 @@ It is never selected automatically (slow on CPU, needs setup) — ask for it by 
 Useful flags:
 
 ```bash
---diarization auto|ecapa|melstats|pyannote|none   # backend choice
+--segmentation vad|vtc-first                     # parent spans from energy VAD or VTC roles
+--diarization auto|ecapa|melstats|pyannote|vtc|none   # backend choice (ignored for vtc-first)
 --no-diarization                                  # stage 1 + pause splitting only
 --num-speakers 2                                  # force the speaker count
 --speaker-distance 0.5                            # clustering cut (lower = more speakers)
 --list-backends                                   # availability report
 --dry-run                                         # counts only, don't write
+```
+
+Benchmark (read-only, never writes the library):
+
+```bash
+tools/.venv/bin/python tools/analysis/ml_delta.py --fresh --segmentation vtc-first \
+  --out tools/analysis/out/ml_delta_vtc.json
 ```
 
 **Graceful degradation:** if no backend is usable, or the model download fails, the pipeline still returns VAD-only candidates and reports why stage 2 was skipped — in the CLI output, and in the hint text next to the button. The Review Server never fails the request over a missing optional model.

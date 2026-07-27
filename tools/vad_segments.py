@@ -1,6 +1,8 @@
-"""ML candidate pipeline for BabyTalk session kits (vad_v0 + diar_v1).
+"""ML candidate pipeline for BabyTalk session kits (vad_v0 + diar_v1 / vtc).
 
-Stages turn a raw session recording into provisional annotations for Review:
+Stages turn a raw session recording into provisional annotations for Review.
+
+**Default path (VAD-first):**
 
   1. **VAD (this module)** — energy detection of louder-than-the-room regions,
      then a *speech-likeness* gate (``speechlike.py``) that asks whether each
@@ -10,9 +12,9 @@ Stages turn a raw session recording into provisional annotations for Review:
      each final candidate is re-judged individually.
   2. **Speaker diarization (``diarize.py``)** — speaker embeddings over sliding
      windows inside those regions, clustered across the whole recording, then
-     each region is cut wherever the speaker changes. This is what stops a
-     5–10s parent/baby/parent stretch from landing in one candidate, and it
-     tags each piece with a ``SPEAKER_xx`` cluster id.
+     each region is cut wherever the speaker changes. Tags each piece with a
+     ``SPEAKER_xx`` cluster id. Pass ``--diarization vtc`` to cut on Voice Type
+     Classifier roles (KCHI/OCH/FEM/MAL) instead of ECAPA clusters.
   3. **Refine (this module + ``resegment.py``)** — same-speaker spans still
      over 4s are pause-split; then each span is cut into syllable / short-
      utterance children (energy peaks + valleys + voicing trim) so multi-word
@@ -20,16 +22,24 @@ Stages turn a raw session recording into provisional annotations for Review:
      resort. Candidates overlapping ``tags.json`` are dropped. Results write
      to ``annotations.json`` as provisional candidates.
 
+**VTC-first path (``--segmentation vtc-first``):**
+
+  Skip energy VAD + ECAPA. Run the LAAC-LSCP Voice Type Classifier on the whole
+  file; its role turns become the parent spans (with ``speaker`` prefilled as
+  Baby/Parent/Other). Pause-split, syllable resegment, and the speechlike gate
+  still run. See ``vtc.py``.
+
 Stage 2 degrades gracefully: if no diarization backend is usable (or
 ``--no-diarization`` is passed) the pipeline falls back to VAD + pause /
 syllable splitting only, and says so in the returned stats.
 
-Requires: numpy, soundfile (stage 1) · see diarize.py for stage-2 deps
+Requires: numpy, soundfile (stage 1) · see diarize.py / vtc.py for stage-2 deps
   pip install numpy soundfile
 
 Usage:
   python3 tools/vad_segments.py /path/to/kit_or_library
   python3 tools/vad_segments.py /path/to/kit --diarization ecapa --num-speakers 2
+  python3 tools/vad_segments.py /path/to/kit --segmentation vtc-first --dry-run
   python3 tools/vad_segments.py /path/to/kit --no-diarization --dry-run
   python3 tools/vad_segments.py /path/to/kit --no-resegment
 """
@@ -734,12 +744,17 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             ann["nonSpeechReason"] = meta["nonSpeechReason"]
         if meta.get("f0Med"):
             ann["f0Med"] = meta["f0Med"]
-        # Diarization cluster id, not the reviewer-facing speaker field: the
-        # UI's `speaker` stays empty so Confirm still asks a human who this is.
+        # Anonymous ECAPA clusters stay off the reviewer-facing `speaker`
+        # field (Confirm still asks). VTC roles *are* meaningful — prefill
+        # Baby/Parent/Other so Confirm can accept with one click.
         if meta.get("speakerCluster"):
             ann["speakerCluster"] = meta["speakerCluster"]
             if meta.get("speakerConfidence") is not None:
                 ann["speakerConfidence"] = meta["speakerConfidence"]
+        if meta.get("speaker"):
+            ann["speaker"] = meta["speaker"]
+        if meta.get("vtcRole"):
+            ann["vtcRole"] = meta["vtcRole"]
         anns.append(ann)
     return anns
 
@@ -840,6 +855,161 @@ def merge_with_existing(
     return kept + new_anns
 
 
+def _pieces_from_vtc_turns(turns) -> list[dict]:
+    """Convert VTC role turns into pipeline pieces (parent spans)."""
+    pieces: list[dict] = []
+    for turn in turns:
+        pieces.append(
+            {
+                "start": float(turn.start_ms),
+                "end": float(turn.end_ms),
+                "dur": float(turn.end_ms - turn.start_ms),
+                "score": 0.7,
+                "meta": {
+                    "speakerCluster": turn.role,
+                    "speaker": turn.speaker,
+                    "vtcRole": turn.role,
+                    "speakerConfidence": round(float(turn.confidence), 3),
+                },
+            }
+        )
+    return pieces
+
+
+def build_candidates_vtc_first(
+    audio: np.ndarray,
+    sr: int,
+    *,
+    merge_gap_ms: float = MERGE_GAP_MS,
+    min_dur_ms: float = MIN_DUR_MS,
+    split_target_ms: float = SPLIT_TARGET_MS,
+    reject_non_speech: bool = True,
+    resegment: bool = True,
+    reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+) -> tuple[list[dict], dict]:
+    """VTC-first path: role timeline → pause/syllable refine → speech gate."""
+    times, dbs = frame_rms_db(audio, sr)
+    stats: dict = {
+        "segmentation": "vtc-first",
+        "regions": 0,
+        "diarization": {
+            "ok": False,
+            "backend": "vtc",
+            "speakerSplits": 0,
+            "numSpeakers": 0,
+        },
+    }
+    try:
+        import vtc as vtc_mod
+    except ImportError as e:
+        stats["diarization"]["error"] = f"vtc.py unavailable: {e}"
+        return [], stats
+
+    result = vtc_mod.run_vtc_inference(audio, sr)
+    stats["diarization"]["ok"] = result.ok
+    stats["diarization"]["backend"] = "vtc"
+    if result.cache_hit:
+        stats["diarization"]["cacheHit"] = True
+    if result.elapsed_sec is not None:
+        stats["diarization"]["elapsedSec"] = result.elapsed_sec
+    if result.note:
+        stats["diarization"]["note"] = result.note
+    if result.stats:
+        stats["diarization"]["stats"] = result.stats
+    if not result.ok:
+        stats["diarization"]["error"] = result.error or "VTC failed"
+        return [], stats
+
+    # Drop tiny turns the way stage-1 VAD drops short regions.
+    turns = [t for t in result.turns if (t.end_ms - t.start_ms) >= min_dur_ms]
+    pieces = _pieces_from_vtc_turns(turns)
+    stats["regions"] = len(pieces)
+    stats["diarization"]["numSpeakers"] = len({t.role for t in turns})
+    stats["diarization"]["speakerSplits"] = max(0, len(turns) - 1)
+
+    pieces, refine_stats = refine_long_spans(
+        pieces,
+        times,
+        dbs,
+        split_target_ms=split_target_ms,
+        min_dur_ms=min_dur_ms,
+    )
+    stats.update(refine_stats)
+
+    pieces, reseg_stats = reseg_mod.resegment_pieces(
+        pieces,
+        audio,
+        sr,
+        enabled=resegment,
+        target_ms=reseg_target_ms,
+        min_part_ms=max(min_dur_ms * 0.9, reseg_mod.RESEG_MIN_PART_MS),
+    )
+    stats.update(reseg_stats)
+
+    pieces, gate_stats = apply_speech_gate(pieces, audio, sr, reject=reject_non_speech)
+    stats.update(gate_stats)
+    stats["split"] = (
+        int(stats["diarization"].get("speakerSplits", 0))
+        + refine_stats["pauseSplit"]
+        + reseg_stats.get("resegSplits", 0)
+    )
+    stats["candidates"] = len(pieces)
+    # merge_gap unused in VTC-first but kept in signature for API symmetry
+    _ = merge_gap_ms
+    return segments_to_annotations(pieces), stats
+
+
+def split_by_vtc(
+    regions: list[dict],
+    audio: np.ndarray,
+    sr: int,
+    *,
+    min_dur_ms: float = MIN_DUR_MS,
+) -> tuple[list[dict], dict]:
+    """Cut energy-VAD regions at VTC role changes (``diarization=vtc``)."""
+    info: dict = {"ok": False, "backend": "vtc", "speakerSplits": 0, "numSpeakers": 0}
+    if not regions:
+        info["ok"] = True
+        return regions, info
+    try:
+        import vtc as vtc_mod
+    except ImportError as e:
+        info["error"] = f"vtc.py unavailable: {e}"
+        return regions, info
+
+    result = vtc_mod.run_vtc_inference(audio, sr)
+    if result.cache_hit:
+        info["cacheHit"] = True
+    if result.elapsed_sec is not None:
+        info["elapsedSec"] = result.elapsed_sec
+    if result.stats:
+        info["stats"] = result.stats
+    if not result.ok:
+        info["error"] = result.error or "VTC failed"
+        return regions, info
+
+    clipped = vtc_mod.intersect_turns_with_regions(
+        result.turns,
+        [(r["start"], r["end"]) for r in regions],
+        min_ms=min_dur_ms,
+    )
+    pieces = _pieces_from_vtc_turns(clipped)
+    # Preserve stage-1 speech scores where a piece sits inside a region.
+    for piece in pieces:
+        mid = 0.5 * (piece["start"] + piece["end"])
+        for region in regions:
+            if region["start"] - 1e-6 <= mid <= region["end"] + 1e-6:
+                piece["score"] = region["score"]
+                flags = (region.get("meta") or {}).get("flags")
+                if flags:
+                    piece["meta"]["flags"] = list(flags)
+                break
+    info["ok"] = True
+    info["numSpeakers"] = len({p["meta"]["speakerCluster"] for p in pieces})
+    info["speakerSplits"] = max(0, len(pieces) - len(regions))
+    return pieces, info
+
+
 def build_candidates(
     audio: np.ndarray,
     sr: int,
@@ -854,8 +1024,25 @@ def build_candidates(
     speaker_distance: float | None = None,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    segmentation: str = "vad",
 ) -> tuple[list[dict], dict]:
-    """Run VAD → diarize → pause/syllable refine → speech gate; return anns + stats."""
+    """Run VAD → diarize → pause/syllable refine → speech gate; return anns + stats.
+
+    Pass ``segmentation='vtc-first'`` to skip energy VAD/ECAPA and use VTC roles
+    as the parent spans instead.
+    """
+    if (segmentation or "vad").lower() in ("vtc-first", "vtc", "vtc_first"):
+        return build_candidates_vtc_first(
+            audio,
+            sr,
+            merge_gap_ms=merge_gap_ms,
+            min_dur_ms=min_dur_ms,
+            split_target_ms=split_target_ms,
+            reject_non_speech=reject_non_speech,
+            resegment=resegment,
+            reseg_target_ms=reseg_target_ms,
+        )
+
     times, dbs = frame_rms_db(audio, sr)
     regions, stats = detect_speech_regions(
         times,
@@ -867,6 +1054,7 @@ def build_candidates(
         min_dur_ms=min_dur_ms,
         reject_non_speech=reject_non_speech,
     )
+    stats["segmentation"] = "vad"
     stats["regions"] = len(regions)
 
     if diarization in (None, "", "none", "off"):
@@ -877,6 +1065,11 @@ def build_candidates(
             "error": "disabled",
             "speakerSplits": 0,
         }
+    elif str(diarization).lower() == "vtc":
+        pieces, diar_info = split_by_vtc(
+            regions, audio, sr, min_dur_ms=min_dur_ms
+        )
+        stats["diarization"] = diar_info
     else:
         pieces, diar_info = split_by_speaker(
             regions,
@@ -931,6 +1124,7 @@ def run_vad_on_audio(
     speaker_distance: float | None = None,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    segmentation: str = "vad",
 ) -> tuple[list[dict], dict]:
     audio, sr = sf.read(str(audio_path), always_2d=False)
     audio = np.asarray(audio, dtype=np.float64)
@@ -947,6 +1141,7 @@ def run_vad_on_audio(
         speaker_distance=speaker_distance,
         resegment=resegment,
         reseg_target_ms=reseg_target_ms,
+        segmentation=segmentation,
     )
 
 
@@ -963,6 +1158,7 @@ def process_kit(
     speaker_distance: float | None = None,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    segmentation: str = "vad",
     write: bool = True,
 ) -> dict:
     manifest_path = kit / "manifest.json"
@@ -987,6 +1183,7 @@ def process_kit(
         speaker_distance=speaker_distance,
         resegment=resegment,
         reseg_target_ms=reseg_target_ms,
+        segmentation=segmentation,
     )
 
     tags = load_tags(kit)
@@ -1022,6 +1219,7 @@ def process_kit(
             "numSpeakers": num_speakers,
             "resegment": resegment,
             "resegTargetMs": reseg_target_ms,
+            "segmentation": segmentation,
             "source": SOURCE,
         },
     }
@@ -1045,10 +1243,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Disable impulsive non-speech (tap/door) rejection",
     )
     p.add_argument(
+        "--segmentation",
+        default="vad",
+        choices=["vad", "vtc-first"],
+        help="Parent-span finder: energy VAD (default) or VTC-first role timeline",
+    )
+    p.add_argument(
         "--diarization",
         default="auto",
-        choices=["auto", "ecapa", "melstats", "pyannote", "none"],
-        help="Stage-2 speaker diarization backend (default: auto)",
+        choices=["auto", "ecapa", "melstats", "pyannote", "vtc", "none"],
+        help="Stage-2 speaker diarization backend (default: auto; ignored for vtc-first)",
     )
     p.add_argument(
         "--no-diarization",
@@ -1096,6 +1300,14 @@ def main(argv: list[str] | None = None) -> int:
         for b in backend_status():
             mark = "available" if b["available"] else "not available"
             print(f"{b['name']:<10} {mark:<15} {b['detail']}")
+        try:
+            import vtc as vtc_mod
+
+            ok, detail = vtc_mod.vtc_available()
+            mark = "available" if ok else "not available"
+            print(f"{'vtc':<10} {mark:<15} {detail}")
+        except ImportError as e:
+            print(f"{'vtc':<10} {'not available':<15} {e}")
         print(f"\nauto would pick: {resolve_backend('auto')}")
         return 0
 
@@ -1128,6 +1340,7 @@ def main(argv: list[str] | None = None) -> int:
             speaker_distance=args.speaker_distance,
             resegment=not args.no_resegment,
             reseg_target_ms=args.reseg_target_ms,
+            segmentation=args.segmentation,
             write=not args.dry_run,
         )
         if not result.get("ok"):

@@ -302,6 +302,7 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
     diarization = (body.get("diarization") or "auto").strip() or "auto"
     if body.get("diarize") is False:
         diarization = "none"
+    segmentation = (body.get("segmentation") or "vad").strip() or "vad"
     num_speakers = body.get("numSpeakers")
     try:
         num_speakers = int(num_speakers) if num_speakers not in (None, "", 0, "0") else None
@@ -320,6 +321,7 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
             num_speakers=num_speakers,
             resegment=bool(body.get("resegment", True)),
             reseg_target_ms=_num("resegTargetMs", RESEG_TARGET_MS),
+            segmentation=segmentation,
             write=True,
         )
     except Exception as e:  # noqa: BLE001 — surface to UI
@@ -334,6 +336,28 @@ def diarization_status() -> dict:
     except ImportError as e:
         return {"available": False, "active": "none", "error": str(e), "backends": []}
     backends = backend_status()
+    try:
+        import vtc as vtc_mod
+
+        ok, detail = vtc_mod.vtc_available()
+        backends.append(
+            {
+                "name": "vtc",
+                "available": ok,
+                "detail": (
+                    "LAAC-LSCP Voice Type Classifier (KCHI/OCH/FEM/MAL) — "
+                    f"{detail}. Use segmentation=vtc-first or diarization=vtc."
+                ),
+            }
+        )
+    except ImportError as e:
+        backends.append(
+            {
+                "name": "vtc",
+                "available": False,
+                "detail": f"vtc.py unavailable: {e}",
+            }
+        )
     active = resolve_backend("auto")
     return {
         "available": active != "none",
