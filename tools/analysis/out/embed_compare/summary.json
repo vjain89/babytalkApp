@@ -1,0 +1,40 @@
+{
+  "kits": [
+    {
+      "needle": "26_07_27__19:53:00",
+      "folder": "/Users/vijayjain/Documents/BabyTalk/Library/2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+    },
+    {
+      "needle": "26_07_05__00:00:00",
+      "folder": "/Users/vijayjain/Documents/BabyTalk/Library/2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+    }
+  ],
+  "n_clips": 357,
+  "skipped_short": 0,
+  "label_key": "word \u2192 label \u2192 phonetic (lower/strip; skip empty/untitled)",
+  "distance": "sklearn cosine_distances (= 1 \u2212 cosine similarity)",
+  "n_unique_labels": 131,
+  "n_singleton_labels": 78,
+  "n_multi_labels": 53,
+  "summary": {
+    "mel": {
+      "mean_same": 0.7567049899109483,
+      "mean_diff": 0.8641149188276395,
+      "gap": 0.10740992891669121,
+      "n_same": 1440,
+      "n_diff": 62106
+    },
+    "hubert": {
+      "mean_same": 0.23638345884926326,
+      "mean_diff": 0.30145558794656435,
+      "gap": 0.06507212909730109,
+      "n_same": 1440,
+      "n_diff": 62106
+    }
+  },
+  "plots": {
+    "histograms": "/Users/vijayjain/babytalkApp-1/tools/analysis/out/embed_compare/distance_histograms.png",
+    "umap_mel": "/Users/vijayjain/babytalkApp-1/tools/analysis/out/embed_compare/umap_mel.png",
+    "umap_hubert": "/Users/vijayjain/babytalkApp-1/tools/analysis/out/embed_compare/umap_hubert.png"
+  }
+}

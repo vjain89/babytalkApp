@@ -1,0 +1,853 @@
+{
+  "metric": "manual excl non-verbal IoU\u22650.5 (north star); verbal-all IoU\u22650.5 for English regression; median durRatio; tooShort%; nCands",
+  "rule": "Guards unchanged: same parentSpanId, same speakerCluster, gap in [-20, max_gap_ms], mergedDur \u2264 max_merged_ms, continuous energy (flank\u2212valley \u2264 energy_drop_db).\n\n**Legacy OR:** merge if short_piece (min dur < short_piece_ms) OR weak_valley (prom < weak_dip_db and gap \u2264 weak_sep_ms).\n\n**Short-gated:** merge only if clearly short \u2014 `min(dur_a, dur_b) < short_piece_ms` OR `min(dur_a, dur_b) / session_median_manual_excl_nv_tag_ms < dur_ratio_max` (when set; default probe 0.65). Weak valley is recorded as a secondary reason but is **never sufficient alone**.",
+  "hypothesisSupported": "no",
+  "recommendation": "NO to the joint hypothesis as stated: requiring clearly-short does not simultaneously erase the English verbal regression and keep full St_75-style north-star gains. It exposes a Pareto tradeoff.\n\n\u2022 `short_req_abs350`: English verbal flat (0 pp) but St_75 excl-nv also flat \u2014 too tight.\n\u2022 `short_req_abs400` (best for English protection): English verbal \u22121.5 pp (vs legacy \u22128.4), St_75 excl-nv +2.8 (kept, but smaller than legacy +5.5); pooled excl-nv only +0.5 (legacy was +4.4). English excl-nv dips \u22120.9.\n\u2022 `short_req_abs450` (best north-star among short-gates): pooled excl-nv +4.4 (= legacy), St_75 +6.9 (better than legacy), English verbal still \u22125.4 (improved vs \u22128.4, not fixed).\n\u2022 `short_req_abs350+rel0.65`: \u2248 legacy (session medians 810/960 ms \u2192 0.65\u00d7 \u2248 526\u2013624 ms).\n\nRecommended threshold if prioritizing English verbal: **require_clearly_short + short_piece_ms=400** (weak valley never sufficient alone). If prioritizing pooled excl-nv IoU: prefer **450 ms** short-required instead. Do not wire production yet.",
+  "recommended": {
+    "policy": "short_req_abs400",
+    "params": {
+      "max_gap_ms": 100.0,
+      "max_merged_ms": 1800.0,
+      "short_piece_ms": 400.0,
+      "weak_dip_db": 5.0,
+      "weak_sep_ms": 280.0,
+      "energy_drop_db": 6.0,
+      "cut_window_ms": 80.0,
+      "require_clearly_short": true,
+      "dur_ratio_max": null,
+      "session_median_tag_ms": null
+    },
+    "pooled": {
+      "manual_excl_nonverbal": {
+        "nCands": 1288,
+        "iou50Pct": 49.7,
+        "medianDurRatio": 0.68,
+        "candTooShortPct": 65.3,
+        "anyOverlapPct": 93.9,
+        "nTags": 181
+      },
+      "verbal": {
+        "nCands": 1288,
+        "iou50Pct": 65.3,
+        "medianDurRatio": 1.0,
+        "candTooShortPct": 44.0,
+        "anyOverlapPct": 96.5,
+        "nTags": 285
+      }
+    },
+    "kits": [
+      {
+        "sessionName": "26_07_27__19:53:00",
+        "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+        "nMerges": 71,
+        "nConsidered": 505,
+        "mergeReasons": {
+          "short_abs+weak_valley": 60,
+          "short_abs": 11
+        },
+        "rejectReasons": {
+          "energy_drop": 68,
+          "not_clearly_short": 99,
+          "long_pause": 261,
+          "max_merged": 6
+        },
+        "manual_excl_nonverbal": {
+          "nCands": 944,
+          "iou50Pct": 46.8,
+          "medianDurRatio": 0.68,
+          "candTooShortPct": 58.6,
+          "anyOverlapPct": 90.8,
+          "nTags": 109
+        },
+        "verbal": {
+          "nCands": 944,
+          "iou50Pct": 71.4,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 29.9,
+          "anyOverlapPct": 95.6,
+          "nTags": 203
+        },
+        "exclNvIou50Delta": -0.9,
+        "verbalIou50Delta": -1.5,
+        "sessionMedianTagMs": 810.0
+      },
+      {
+        "sessionName": "26_07_05__00:00:00",
+        "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "nMerges": 25,
+        "nConsidered": 177,
+        "mergeReasons": {
+          "short_abs+weak_valley": 24,
+          "short_abs": 1
+        },
+        "rejectReasons": {
+          "energy_drop": 43,
+          "long_pause": 80,
+          "not_clearly_short": 26,
+          "max_merged": 3
+        },
+        "manual_excl_nonverbal": {
+          "nCands": 344,
+          "iou50Pct": 54.2,
+          "medianDurRatio": 0.64,
+          "candTooShortPct": 74.6,
+          "anyOverlapPct": 98.6,
+          "nTags": 72
+        },
+        "verbal": {
+          "nCands": 344,
+          "iou50Pct": 50.0,
+          "medianDurRatio": 0.61,
+          "candTooShortPct": 77.8,
+          "anyOverlapPct": 98.8,
+          "nTags": 82
+        },
+        "exclNvIou50Delta": 2.8,
+        "verbalIou50Delta": 2.4,
+        "sessionMedianTagMs": 960.0
+      }
+    ],
+    "nMergesTotal": 96,
+    "selectionScore": 197.05,
+    "englishVerbalDelta": -1.5,
+    "st75ExclNvDelta": 2.8
+  },
+  "sweep": [
+    {
+      "policy": "baseline",
+      "params": null,
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 0,
+          "nConsidered": 0,
+          "manual_excl_nonverbal": {
+            "nCands": 1015,
+            "iou50Pct": 47.7,
+            "medianDurRatio": 0.65,
+            "candTooShortPct": 64.6,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 1015,
+            "iou50Pct": 72.9,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 33.0,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": 0.0,
+          "verbalIou50Delta": 0.0,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 0,
+          "nConsidered": 0,
+          "manual_excl_nonverbal": {
+            "nCands": 369,
+            "iou50Pct": 51.4,
+            "medianDurRatio": 0.61,
+            "candTooShortPct": 76.1,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 369,
+            "iou50Pct": 47.6,
+            "medianDurRatio": 0.59,
+            "candTooShortPct": 79.0,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 0.0,
+          "verbalIou50Delta": 0.0,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1384,
+          "iou50Pct": 49.2,
+          "medianDurRatio": 0.65,
+          "candTooShortPct": 69.4,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1384,
+          "iou50Pct": 65.6,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 46.5,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 0
+    },
+    {
+      "policy": "legacy_or_short550",
+      "params": {
+        "max_gap_ms": 100.0,
+        "max_merged_ms": 1800.0,
+        "short_piece_ms": 550.0,
+        "weak_dip_db": 5.0,
+        "weak_sep_ms": 280.0,
+        "energy_drop_db": 6.0,
+        "cut_window_ms": 80.0,
+        "require_clearly_short": false,
+        "dur_ratio_max": null,
+        "session_median_tag_ms": null
+      },
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 168,
+          "nConsidered": 505,
+          "mergeReasons": {
+            "short_piece+weak_valley": 139,
+            "weak_valley": 13,
+            "short_piece": 16
+          },
+          "rejectReasons": {
+            "energy_drop": 67,
+            "long_pause": 261,
+            "max_merged": 9
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 847,
+            "iou50Pct": 51.4,
+            "medianDurRatio": 0.93,
+            "candTooShortPct": 40.4,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 847,
+            "iou50Pct": 64.5,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 20.6,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": 3.7,
+          "verbalIou50Delta": -8.4,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 50,
+          "nConsidered": 177,
+          "mergeReasons": {
+            "short_piece+weak_valley": 45,
+            "short_piece": 4,
+            "weak_valley": 1
+          },
+          "rejectReasons": {
+            "energy_drop": 42,
+            "long_pause": 80,
+            "max_merged": 5
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 319,
+            "iou50Pct": 56.9,
+            "medianDurRatio": 0.66,
+            "candTooShortPct": 67.6,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 319,
+            "iou50Pct": 52.4,
+            "medianDurRatio": 0.65,
+            "candTooShortPct": 71.6,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 5.5,
+          "verbalIou50Delta": 4.8,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1166,
+          "iou50Pct": 53.6,
+          "medianDurRatio": 0.93,
+          "candTooShortPct": 51.8,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1166,
+          "iou50Pct": 61.1,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 35.6,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 218
+    },
+    {
+      "policy": "short_req_abs350",
+      "params": {
+        "max_gap_ms": 100.0,
+        "max_merged_ms": 1800.0,
+        "short_piece_ms": 350.0,
+        "weak_dip_db": 5.0,
+        "weak_sep_ms": 280.0,
+        "energy_drop_db": 6.0,
+        "cut_window_ms": 80.0,
+        "require_clearly_short": true,
+        "dur_ratio_max": null,
+        "session_median_tag_ms": null
+      },
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 12,
+          "nConsidered": 505,
+          "mergeReasons": {
+            "short_abs+weak_valley": 12
+          },
+          "rejectReasons": {
+            "energy_drop": 68,
+            "not_clearly_short": 159,
+            "long_pause": 261,
+            "max_merged": 5
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 1003,
+            "iou50Pct": 47.7,
+            "medianDurRatio": 0.66,
+            "candTooShortPct": 62.6,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 1003,
+            "iou50Pct": 72.9,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 32.0,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": 0.0,
+          "verbalIou50Delta": 0.0,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 5,
+          "nConsidered": 177,
+          "mergeReasons": {
+            "short_abs+weak_valley": 5
+          },
+          "rejectReasons": {
+            "energy_drop": 43,
+            "long_pause": 80,
+            "not_clearly_short": 46,
+            "max_merged": 3
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 364,
+            "iou50Pct": 51.4,
+            "medianDurRatio": 0.61,
+            "candTooShortPct": 74.6,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 364,
+            "iou50Pct": 47.6,
+            "medianDurRatio": 0.59,
+            "candTooShortPct": 77.8,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 0.0,
+          "verbalIou50Delta": 0.0,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1367,
+          "iou50Pct": 49.2,
+          "medianDurRatio": 0.66,
+          "candTooShortPct": 67.6,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1367,
+          "iou50Pct": 65.6,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 45.5,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 17
+    },
+    {
+      "policy": "short_req_abs400",
+      "params": {
+        "max_gap_ms": 100.0,
+        "max_merged_ms": 1800.0,
+        "short_piece_ms": 400.0,
+        "weak_dip_db": 5.0,
+        "weak_sep_ms": 280.0,
+        "energy_drop_db": 6.0,
+        "cut_window_ms": 80.0,
+        "require_clearly_short": true,
+        "dur_ratio_max": null,
+        "session_median_tag_ms": null
+      },
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 71,
+          "nConsidered": 505,
+          "mergeReasons": {
+            "short_abs+weak_valley": 60,
+            "short_abs": 11
+          },
+          "rejectReasons": {
+            "energy_drop": 68,
+            "not_clearly_short": 99,
+            "long_pause": 261,
+            "max_merged": 6
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 944,
+            "iou50Pct": 46.8,
+            "medianDurRatio": 0.68,
+            "candTooShortPct": 58.6,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 944,
+            "iou50Pct": 71.4,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 29.9,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": -0.9,
+          "verbalIou50Delta": -1.5,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 25,
+          "nConsidered": 177,
+          "mergeReasons": {
+            "short_abs+weak_valley": 24,
+            "short_abs": 1
+          },
+          "rejectReasons": {
+            "energy_drop": 43,
+            "long_pause": 80,
+            "not_clearly_short": 26,
+            "max_merged": 3
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 344,
+            "iou50Pct": 54.2,
+            "medianDurRatio": 0.64,
+            "candTooShortPct": 74.6,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 344,
+            "iou50Pct": 50.0,
+            "medianDurRatio": 0.61,
+            "candTooShortPct": 77.8,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 2.8,
+          "verbalIou50Delta": 2.4,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1288,
+          "iou50Pct": 49.7,
+          "medianDurRatio": 0.68,
+          "candTooShortPct": 65.3,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1288,
+          "iou50Pct": 65.3,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 44.0,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 96
+    },
+    {
+      "policy": "short_req_abs450",
+      "params": {
+        "max_gap_ms": 100.0,
+        "max_merged_ms": 1800.0,
+        "short_piece_ms": 450.0,
+        "weak_dip_db": 5.0,
+        "weak_sep_ms": 280.0,
+        "energy_drop_db": 6.0,
+        "cut_window_ms": 80.0,
+        "require_clearly_short": true,
+        "dur_ratio_max": null,
+        "session_median_tag_ms": null
+      },
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 132,
+          "nConsidered": 505,
+          "mergeReasons": {
+            "short_abs+weak_valley": 117,
+            "short_abs": 15
+          },
+          "rejectReasons": {
+            "energy_drop": 67,
+            "not_clearly_short": 36,
+            "long_pause": 261,
+            "max_merged": 9
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 883,
+            "iou50Pct": 50.5,
+            "medianDurRatio": 0.81,
+            "candTooShortPct": 47.5,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 883,
+            "iou50Pct": 67.5,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 24.2,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": 2.8,
+          "verbalIou50Delta": -5.4,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 44,
+          "nConsidered": 177,
+          "mergeReasons": {
+            "short_abs+weak_valley": 40,
+            "short_abs": 4
+          },
+          "rejectReasons": {
+            "energy_drop": 43,
+            "long_pause": 80,
+            "max_merged": 3,
+            "not_clearly_short": 7
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 325,
+            "iou50Pct": 58.3,
+            "medianDurRatio": 0.66,
+            "candTooShortPct": 67.6,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 325,
+            "iou50Pct": 53.7,
+            "medianDurRatio": 0.65,
+            "candTooShortPct": 71.6,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 6.9,
+          "verbalIou50Delta": 6.1,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1208,
+          "iou50Pct": 53.6,
+          "medianDurRatio": 0.81,
+          "candTooShortPct": 55.9,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1208,
+          "iou50Pct": 63.5,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 38.2,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 176
+    },
+    {
+      "policy": "short_req_abs500",
+      "params": {
+        "max_gap_ms": 100.0,
+        "max_merged_ms": 1800.0,
+        "short_piece_ms": 500.0,
+        "weak_dip_db": 5.0,
+        "weak_sep_ms": 280.0,
+        "energy_drop_db": 6.0,
+        "cut_window_ms": 80.0,
+        "require_clearly_short": true,
+        "dur_ratio_max": null,
+        "session_median_tag_ms": null
+      },
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 144,
+          "nConsidered": 505,
+          "mergeReasons": {
+            "short_abs+weak_valley": 129,
+            "short_abs": 15
+          },
+          "rejectReasons": {
+            "energy_drop": 67,
+            "not_clearly_short": 24,
+            "long_pause": 261,
+            "max_merged": 9
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 871,
+            "iou50Pct": 48.6,
+            "medianDurRatio": 0.86,
+            "candTooShortPct": 44.4,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 871,
+            "iou50Pct": 65.0,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 22.7,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": 0.9,
+          "verbalIou50Delta": -7.9,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 47,
+          "nConsidered": 177,
+          "mergeReasons": {
+            "short_abs+weak_valley": 43,
+            "short_abs": 4
+          },
+          "rejectReasons": {
+            "energy_drop": 43,
+            "long_pause": 80,
+            "max_merged": 3,
+            "not_clearly_short": 4
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 322,
+            "iou50Pct": 58.3,
+            "medianDurRatio": 0.66,
+            "candTooShortPct": 67.6,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 322,
+            "iou50Pct": 53.7,
+            "medianDurRatio": 0.65,
+            "candTooShortPct": 71.6,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 6.9,
+          "verbalIou50Delta": 6.1,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1193,
+          "iou50Pct": 52.5,
+          "medianDurRatio": 0.86,
+          "candTooShortPct": 54.1,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1193,
+          "iou50Pct": 61.8,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 37.1,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 191
+    },
+    {
+      "policy": "short_req_abs350+rel0.65",
+      "params": {
+        "max_gap_ms": 100.0,
+        "max_merged_ms": 1800.0,
+        "short_piece_ms": 350.0,
+        "weak_dip_db": 5.0,
+        "weak_sep_ms": 280.0,
+        "energy_drop_db": 6.0,
+        "cut_window_ms": 80.0,
+        "require_clearly_short": true,
+        "dur_ratio_max": 0.65,
+        "session_median_tag_ms": null
+      },
+      "kits": [
+        {
+          "sessionName": "26_07_27__19:53:00",
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "nMerges": 151,
+          "nConsidered": 505,
+          "mergeReasons": {
+            "short_rel+weak_valley": 123,
+            "short_abs+short_rel+weak_valley": 12,
+            "short_rel": 16
+          },
+          "rejectReasons": {
+            "energy_drop": 67,
+            "long_pause": 261,
+            "not_clearly_short": 17,
+            "max_merged": 9
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 864,
+            "iou50Pct": 49.5,
+            "medianDurRatio": 0.87,
+            "candTooShortPct": 42.4,
+            "anyOverlapPct": 90.8,
+            "nTags": 109
+          },
+          "verbal": {
+            "nCands": 864,
+            "iou50Pct": 64.5,
+            "medianDurRatio": 1.0,
+            "candTooShortPct": 21.6,
+            "anyOverlapPct": 95.6,
+            "nTags": 203
+          },
+          "exclNvIou50Delta": 1.8,
+          "verbalIou50Delta": -8.4,
+          "sessionMedianTagMs": 810.0
+        },
+        {
+          "sessionName": "26_07_05__00:00:00",
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "nMerges": 50,
+          "nConsidered": 177,
+          "mergeReasons": {
+            "short_rel+weak_valley": 41,
+            "short_abs+short_rel+weak_valley": 5,
+            "short_rel": 4
+          },
+          "rejectReasons": {
+            "energy_drop": 42,
+            "long_pause": 80,
+            "max_merged": 5
+          },
+          "manual_excl_nonverbal": {
+            "nCands": 319,
+            "iou50Pct": 56.9,
+            "medianDurRatio": 0.66,
+            "candTooShortPct": 67.6,
+            "anyOverlapPct": 98.6,
+            "nTags": 72
+          },
+          "verbal": {
+            "nCands": 319,
+            "iou50Pct": 52.4,
+            "medianDurRatio": 0.65,
+            "candTooShortPct": 71.6,
+            "anyOverlapPct": 98.8,
+            "nTags": 82
+          },
+          "exclNvIou50Delta": 5.5,
+          "verbalIou50Delta": 4.8,
+          "sessionMedianTagMs": 960.0
+        }
+      ],
+      "pooled": {
+        "manual_excl_nonverbal": {
+          "nCands": 1183,
+          "iou50Pct": 52.5,
+          "medianDurRatio": 0.87,
+          "candTooShortPct": 52.9,
+          "anyOverlapPct": 93.9,
+          "nTags": 181
+        },
+        "verbal": {
+          "nCands": 1183,
+          "iou50Pct": 61.1,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 36.4,
+          "anyOverlapPct": 96.5,
+          "nTags": 285
+        }
+      },
+      "nMergesTotal": 201
+    }
+  ],
+  "baselinePooled": {
+    "manual_excl_nonverbal": {
+      "nCands": 1384,
+      "iou50Pct": 49.2,
+      "medianDurRatio": 0.65,
+      "candTooShortPct": 69.4,
+      "anyOverlapPct": 93.9,
+      "nTags": 181
+    },
+    "verbal": {
+      "nCands": 1384,
+      "iou50Pct": 65.6,
+      "medianDurRatio": 1.0,
+      "candTooShortPct": 46.5,
+      "anyOverlapPct": 96.5,
+      "nTags": 285
+    }
+  },
+  "recommendedThresholdMs": 400,
+  "alternateThresholdMs": 450,
+  "verdict": {
+    "hypothesisYesNo": "no",
+    "recommendedForEnglishProtectionMs": 400,
+    "recommendedForNorthStarMs": 450,
+    "note": "Short-gate is necessary but threshold dominates; blocking weak-valley-only alone is insufficient (most merges already had short_piece)."
+  }
+}

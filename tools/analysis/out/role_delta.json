@@ -1,0 +1,1915 @@
+{
+  "generatedAt": "2026-07-27T15:51:12",
+  "library": "/Users/vijayjain/Documents/BabyTalk/Library",
+  "task": "baby-vs-adult role label (not segment IoU)",
+  "nKits": 4,
+  "nTags": 228,
+  "tagClasses": {
+    "Baby": 214,
+    "Adult": 4,
+    "Other": 10
+  },
+  "kits": [
+    {
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "nTagsWithSpeaker": 89,
+      "tagClasses": {
+        "Baby": 86,
+        "Adult": 3
+      },
+      "vtcElapsedSec": 1.9,
+      "vtcTurns": 10,
+      "vtcRoles": {
+        "FEM": 4,
+        "KCHI": 6
+      },
+      "vtcOverlapFlagged": 0,
+      "vtc": {
+        "ternary": {
+          "n": 89,
+          "agreePct": 5.6,
+          "missPct": 44.9,
+          "macroF1": 8.2,
+          "perClass": {
+            "Baby": {
+              "tp": 2,
+              "fp": 0,
+              "fn": 84,
+              "precision": 100.0,
+              "recall": 2.3,
+              "f1": 4.5,
+              "support": 86
+            },
+            "Adult": {
+              "tp": 3,
+              "fp": 44,
+              "fn": 0,
+              "precision": 6.4,
+              "recall": 100.0,
+              "f1": 12.0,
+              "support": 3
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Adult": 44,
+              "MISS": 40,
+              "Baby": 2
+            },
+            "Adult": {
+              "Adult": 3
+            }
+          },
+          "missesByGold": {
+            "Baby": 40
+          }
+        },
+        "babyVsRest": {
+          "n": 89,
+          "agreePct": 5.6,
+          "missPct": 44.9,
+          "macroF1": 8.2,
+          "perClass": {
+            "Baby": {
+              "tp": 2,
+              "fp": 0,
+              "fn": 84,
+              "precision": 100.0,
+              "recall": 2.3,
+              "f1": 4.5,
+              "support": 86
+            },
+            "NonBaby": {
+              "tp": 3,
+              "fp": 44,
+              "fn": 0,
+              "precision": 6.4,
+              "recall": 100.0,
+              "f1": 12.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "NonBaby": 44,
+              "MISS": 40,
+              "Baby": 2
+            },
+            "NonBaby": {
+              "NonBaby": 3
+            }
+          },
+          "missesByGold": {
+            "Baby": 40
+          }
+        },
+        "babyVsAdult": {
+          "n": 89,
+          "agreePct": 5.6,
+          "missPct": 44.9,
+          "macroF1": 8.2,
+          "perClass": {
+            "Baby": {
+              "tp": 2,
+              "fp": 0,
+              "fn": 84,
+              "precision": 100.0,
+              "recall": 2.3,
+              "f1": 4.5,
+              "support": 86
+            },
+            "Adult": {
+              "tp": 3,
+              "fp": 44,
+              "fn": 0,
+              "precision": 6.4,
+              "recall": 100.0,
+              "f1": 12.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Adult": 44,
+              "MISS": 40,
+              "Baby": 2
+            },
+            "Adult": {
+              "Adult": 3
+            }
+          },
+          "missesByGold": {
+            "Baby": 40
+          }
+        }
+      },
+      "ecapaOk": true,
+      "ecapaElapsedSec": 35.5,
+      "ecapaTurns": 192,
+      "ecapaClusters": {
+        "SPEAKER_00": 70,
+        "SPEAKER_01": 122
+      },
+      "ecapaOracleMap": {
+        "SPEAKER_01": "Baby",
+        "SPEAKER_00": "Baby"
+      },
+      "ecapaOracle": {
+        "ternary": {
+          "n": 89,
+          "agreePct": 94.4,
+          "missPct": 2.2,
+          "macroF1": 48.5,
+          "perClass": {
+            "Baby": {
+              "tp": 84,
+              "fp": 3,
+              "fn": 2,
+              "precision": 96.6,
+              "recall": 97.7,
+              "f1": 97.1,
+              "support": 86
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 3,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 84,
+              "MISS": 2
+            },
+            "Adult": {
+              "Baby": 3
+            }
+          },
+          "missesByGold": {
+            "Baby": 2
+          }
+        },
+        "babyVsRest": {
+          "n": 89,
+          "agreePct": 94.4,
+          "missPct": 2.2,
+          "macroF1": 48.5,
+          "perClass": {
+            "Baby": {
+              "tp": 84,
+              "fp": 3,
+              "fn": 2,
+              "precision": 96.6,
+              "recall": 97.7,
+              "f1": 97.1,
+              "support": 86
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 3,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 84,
+              "MISS": 2
+            },
+            "NonBaby": {
+              "Baby": 3
+            }
+          },
+          "missesByGold": {
+            "Baby": 2
+          }
+        },
+        "babyVsAdult": {
+          "n": 89,
+          "agreePct": 94.4,
+          "missPct": 2.2,
+          "macroF1": 48.5,
+          "perClass": {
+            "Baby": {
+              "tp": 84,
+              "fp": 3,
+              "fn": 2,
+              "precision": 96.6,
+              "recall": 97.7,
+              "f1": 97.1,
+              "support": 86
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 3,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 84,
+              "MISS": 2
+            },
+            "Adult": {
+              "Baby": 3
+            }
+          },
+          "missesByGold": {
+            "Baby": 2
+          }
+        }
+      },
+      "alwaysBaby": {
+        "ternary": {
+          "n": 89,
+          "agreePct": 96.6,
+          "missPct": 0.0,
+          "macroF1": 49.1,
+          "perClass": {
+            "Baby": {
+              "tp": 86,
+              "fp": 3,
+              "fn": 0,
+              "precision": 96.6,
+              "recall": 100.0,
+              "f1": 98.3,
+              "support": 86
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 3,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 86
+            },
+            "Adult": {
+              "Baby": 3
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 89,
+          "agreePct": 96.6,
+          "missPct": 0.0,
+          "macroF1": 49.1,
+          "perClass": {
+            "Baby": {
+              "tp": 86,
+              "fp": 3,
+              "fn": 0,
+              "precision": 96.6,
+              "recall": 100.0,
+              "f1": 98.3,
+              "support": 86
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 3,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 86
+            },
+            "NonBaby": {
+              "Baby": 3
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 89,
+          "agreePct": 96.6,
+          "missPct": 0.0,
+          "macroF1": 49.1,
+          "perClass": {
+            "Baby": {
+              "tp": 86,
+              "fp": 3,
+              "fn": 0,
+              "precision": 96.6,
+              "recall": 100.0,
+              "f1": 98.3,
+              "support": 86
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 3,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 3
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 86
+            },
+            "Adult": {
+              "Baby": 3
+            }
+          },
+          "missesByGold": {}
+        }
+      }
+    },
+    {
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "nTagsWithSpeaker": 88,
+      "tagClasses": {
+        "Baby": 88
+      },
+      "vtcElapsedSec": 0.7,
+      "vtcTurns": 1,
+      "vtcRoles": {
+        "FEM": 1
+      },
+      "vtcOverlapFlagged": 0,
+      "vtc": {
+        "ternary": {
+          "n": 88,
+          "agreePct": 0.0,
+          "missPct": 89.8,
+          "macroF1": 0.0,
+          "perClass": {
+            "Baby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 88,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 88
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 9,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "MISS": 79,
+              "Adult": 9
+            }
+          },
+          "missesByGold": {
+            "Baby": 79
+          }
+        },
+        "babyVsRest": {
+          "n": 88,
+          "agreePct": 0.0,
+          "missPct": 89.8,
+          "macroF1": 0.0,
+          "perClass": {
+            "Baby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 88,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 88
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 9,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "MISS": 79,
+              "NonBaby": 9
+            }
+          },
+          "missesByGold": {
+            "Baby": 79
+          }
+        },
+        "babyVsAdult": {
+          "n": 88,
+          "agreePct": 0.0,
+          "missPct": 89.8,
+          "macroF1": 0.0,
+          "perClass": {
+            "Baby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 88,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 88
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 9,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "MISS": 79,
+              "Adult": 9
+            }
+          },
+          "missesByGold": {
+            "Baby": 79
+          }
+        }
+      },
+      "ecapaOk": true,
+      "ecapaElapsedSec": 8.8,
+      "ecapaTurns": 113,
+      "ecapaClusters": {
+        "SPEAKER_00": 83,
+        "SPEAKER_01": 30
+      },
+      "ecapaOracleMap": {
+        "SPEAKER_00": "Baby",
+        "SPEAKER_01": "Baby"
+      },
+      "ecapaOracle": {
+        "ternary": {
+          "n": 88,
+          "agreePct": 92.0,
+          "missPct": 8.0,
+          "macroF1": 95.9,
+          "perClass": {
+            "Baby": {
+              "tp": 81,
+              "fp": 0,
+              "fn": 7,
+              "precision": 100.0,
+              "recall": 92.0,
+              "f1": 95.9,
+              "support": 88
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 81,
+              "MISS": 7
+            }
+          },
+          "missesByGold": {
+            "Baby": 7
+          }
+        },
+        "babyVsRest": {
+          "n": 88,
+          "agreePct": 92.0,
+          "missPct": 8.0,
+          "macroF1": 95.9,
+          "perClass": {
+            "Baby": {
+              "tp": 81,
+              "fp": 0,
+              "fn": 7,
+              "precision": 100.0,
+              "recall": 92.0,
+              "f1": 95.9,
+              "support": 88
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 81,
+              "MISS": 7
+            }
+          },
+          "missesByGold": {
+            "Baby": 7
+          }
+        },
+        "babyVsAdult": {
+          "n": 88,
+          "agreePct": 92.0,
+          "missPct": 8.0,
+          "macroF1": 95.9,
+          "perClass": {
+            "Baby": {
+              "tp": 81,
+              "fp": 0,
+              "fn": 7,
+              "precision": 100.0,
+              "recall": 92.0,
+              "f1": 95.9,
+              "support": 88
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 81,
+              "MISS": 7
+            }
+          },
+          "missesByGold": {
+            "Baby": 7
+          }
+        }
+      },
+      "alwaysBaby": {
+        "ternary": {
+          "n": 88,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 88,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 88
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 88
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 88,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 88,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 88
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 88
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 88,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 88,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 88
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 88
+            }
+          },
+          "missesByGold": {}
+        }
+      }
+    },
+    {
+      "kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+      "nTagsWithSpeaker": 43,
+      "tagClasses": {
+        "Other": 10,
+        "Baby": 32,
+        "Adult": 1
+      },
+      "vtcElapsedSec": 0.3,
+      "vtcTurns": 1,
+      "vtcRoles": {
+        "FEM": 1
+      },
+      "vtcOverlapFlagged": 0,
+      "vtc": {
+        "ternary": {
+          "n": 43,
+          "agreePct": 2.3,
+          "missPct": 2.3,
+          "macroF1": 1.6,
+          "perClass": {
+            "Baby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 32,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 32
+            },
+            "Adult": {
+              "tp": 1,
+              "fp": 41,
+              "fn": 0,
+              "precision": 2.4,
+              "recall": 100.0,
+              "f1": 4.7,
+              "support": 1
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 10,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 10
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Adult": 31,
+              "MISS": 1
+            },
+            "Adult": {
+              "Adult": 1
+            },
+            "Other": {
+              "Adult": 10
+            }
+          },
+          "missesByGold": {
+            "Baby": 1
+          }
+        },
+        "babyVsRest": {
+          "n": 43,
+          "agreePct": 25.6,
+          "missPct": 2.3,
+          "macroF1": 20.8,
+          "perClass": {
+            "Baby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 32,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 32
+            },
+            "NonBaby": {
+              "tp": 11,
+              "fp": 31,
+              "fn": 0,
+              "precision": 26.2,
+              "recall": 100.0,
+              "f1": 41.5,
+              "support": 11
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "NonBaby": 31,
+              "MISS": 1
+            },
+            "NonBaby": {
+              "NonBaby": 11
+            }
+          },
+          "missesByGold": {
+            "Baby": 1
+          }
+        },
+        "babyVsAdult": {
+          "n": 33,
+          "agreePct": 3.0,
+          "missPct": 3.0,
+          "macroF1": 3.0,
+          "perClass": {
+            "Baby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 32,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 32
+            },
+            "Adult": {
+              "tp": 1,
+              "fp": 31,
+              "fn": 0,
+              "precision": 3.1,
+              "recall": 100.0,
+              "f1": 6.1,
+              "support": 1
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Adult": 31,
+              "MISS": 1
+            },
+            "Adult": {
+              "Adult": 1
+            }
+          },
+          "missesByGold": {
+            "Baby": 1
+          }
+        }
+      },
+      "ecapaOk": true,
+      "ecapaElapsedSec": 12.7,
+      "ecapaTurns": 91,
+      "ecapaClusters": {
+        "SPEAKER_00": 64,
+        "SPEAKER_01": 3,
+        "SPEAKER_02": 18,
+        "SPEAKER_03": 3,
+        "SPEAKER_04": 3
+      },
+      "ecapaOracleMap": {
+        "SPEAKER_02": "Other",
+        "SPEAKER_00": "Baby"
+      },
+      "ecapaOracle": {
+        "ternary": {
+          "n": 43,
+          "agreePct": 93.0,
+          "missPct": 0.0,
+          "macroF1": 61.3,
+          "perClass": {
+            "Baby": {
+              "tp": 30,
+              "fp": 0,
+              "fn": 2,
+              "precision": 100.0,
+              "recall": 93.8,
+              "f1": 96.8,
+              "support": 32
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 1
+            },
+            "Other": {
+              "tp": 10,
+              "fp": 3,
+              "fn": 0,
+              "precision": 76.9,
+              "recall": 100.0,
+              "f1": 87.0,
+              "support": 10
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 30,
+              "Other": 2
+            },
+            "Adult": {
+              "Other": 1
+            },
+            "Other": {
+              "Other": 10
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 43,
+          "agreePct": 95.3,
+          "missPct": 0.0,
+          "macroF1": 94.2,
+          "perClass": {
+            "Baby": {
+              "tp": 30,
+              "fp": 0,
+              "fn": 2,
+              "precision": 100.0,
+              "recall": 93.8,
+              "f1": 96.8,
+              "support": 32
+            },
+            "NonBaby": {
+              "tp": 11,
+              "fp": 2,
+              "fn": 0,
+              "precision": 84.6,
+              "recall": 100.0,
+              "f1": 91.7,
+              "support": 11
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 30,
+              "NonBaby": 2
+            },
+            "NonBaby": {
+              "NonBaby": 11
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 33,
+          "agreePct": 90.9,
+          "missPct": 9.1,
+          "macroF1": 48.4,
+          "perClass": {
+            "Baby": {
+              "tp": 30,
+              "fp": 0,
+              "fn": 2,
+              "precision": 100.0,
+              "recall": 93.8,
+              "f1": 96.8,
+              "support": 32
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 1
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 30,
+              "MISS": 2
+            },
+            "Adult": {
+              "MISS": 1
+            }
+          },
+          "missesByGold": {
+            "Baby": 2,
+            "Adult": 1
+          }
+        }
+      },
+      "alwaysBaby": {
+        "ternary": {
+          "n": 43,
+          "agreePct": 74.4,
+          "missPct": 0.0,
+          "macroF1": 28.4,
+          "perClass": {
+            "Baby": {
+              "tp": 32,
+              "fp": 11,
+              "fn": 0,
+              "precision": 74.4,
+              "recall": 100.0,
+              "f1": 85.3,
+              "support": 32
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 1
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 10,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 10
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 32
+            },
+            "Adult": {
+              "Baby": 1
+            },
+            "Other": {
+              "Baby": 10
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 43,
+          "agreePct": 74.4,
+          "missPct": 0.0,
+          "macroF1": 42.6,
+          "perClass": {
+            "Baby": {
+              "tp": 32,
+              "fp": 11,
+              "fn": 0,
+              "precision": 74.4,
+              "recall": 100.0,
+              "f1": 85.3,
+              "support": 32
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 11,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 11
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 32
+            },
+            "NonBaby": {
+              "Baby": 11
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 33,
+          "agreePct": 97.0,
+          "missPct": 0.0,
+          "macroF1": 49.2,
+          "perClass": {
+            "Baby": {
+              "tp": 32,
+              "fp": 1,
+              "fn": 0,
+              "precision": 97.0,
+              "recall": 100.0,
+              "f1": 98.5,
+              "support": 32
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 1,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 1
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 32
+            },
+            "Adult": {
+              "Baby": 1
+            }
+          },
+          "missesByGold": {}
+        }
+      }
+    },
+    {
+      "kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+      "nTagsWithSpeaker": 8,
+      "tagClasses": {
+        "Baby": 8
+      },
+      "vtcElapsedSec": 0.1,
+      "vtcTurns": 10,
+      "vtcRoles": {
+        "KCHI": 9,
+        "OCH": 1
+      },
+      "vtcOverlapFlagged": 1,
+      "vtc": {
+        "ternary": {
+          "n": 8,
+          "agreePct": 87.5,
+          "missPct": 0.0,
+          "macroF1": 93.3,
+          "perClass": {
+            "Baby": {
+              "tp": 7,
+              "fp": 0,
+              "fn": 1,
+              "precision": 100.0,
+              "recall": 87.5,
+              "f1": 93.3,
+              "support": 8
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 1,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Other": 1,
+              "Baby": 7
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 8,
+          "agreePct": 87.5,
+          "missPct": 0.0,
+          "macroF1": 93.3,
+          "perClass": {
+            "Baby": {
+              "tp": 7,
+              "fp": 0,
+              "fn": 1,
+              "precision": 100.0,
+              "recall": 87.5,
+              "f1": 93.3,
+              "support": 8
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 1,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "NonBaby": 1,
+              "Baby": 7
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 8,
+          "agreePct": 87.5,
+          "missPct": 12.5,
+          "macroF1": 93.3,
+          "perClass": {
+            "Baby": {
+              "tp": 7,
+              "fp": 0,
+              "fn": 1,
+              "precision": 100.0,
+              "recall": 87.5,
+              "f1": 93.3,
+              "support": 8
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "MISS": 1,
+              "Baby": 7
+            }
+          },
+          "missesByGold": {
+            "Baby": 1
+          }
+        }
+      },
+      "ecapaOk": true,
+      "ecapaElapsedSec": 0.6,
+      "ecapaTurns": 8,
+      "ecapaClusters": {
+        "SPEAKER_00": 8
+      },
+      "ecapaOracleMap": {
+        "SPEAKER_00": "Baby"
+      },
+      "ecapaOracle": {
+        "ternary": {
+          "n": 8,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 8,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 8
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 8
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 8,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 8,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 8
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 8
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 8,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 8,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 8
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 8
+            }
+          },
+          "missesByGold": {}
+        }
+      },
+      "alwaysBaby": {
+        "ternary": {
+          "n": 8,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 8,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 8
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Other": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 8
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsRest": {
+          "n": 8,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 8,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 8
+            },
+            "NonBaby": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 8
+            }
+          },
+          "missesByGold": {}
+        },
+        "babyVsAdult": {
+          "n": 8,
+          "agreePct": 100.0,
+          "missPct": 0.0,
+          "macroF1": 100.0,
+          "perClass": {
+            "Baby": {
+              "tp": 8,
+              "fp": 0,
+              "fn": 0,
+              "precision": 100.0,
+              "recall": 100.0,
+              "f1": 100.0,
+              "support": 8
+            },
+            "Adult": {
+              "tp": 0,
+              "fp": 0,
+              "fn": 0,
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion": {
+            "Baby": {
+              "Baby": 8
+            }
+          },
+          "missesByGold": {}
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "vtc": {
+      "ternary": {
+        "n": 228,
+        "agreePct": 5.7,
+        "missPct": 52.6,
+        "macroF1": 5.3,
+        "perClass": {
+          "Baby": {
+            "tp": 9,
+            "fp": 0,
+            "fn": 205,
+            "precision": 100.0,
+            "recall": 4.2,
+            "f1": 8.1,
+            "support": 214
+          },
+          "Adult": {
+            "tp": 4,
+            "fp": 94,
+            "fn": 0,
+            "precision": 4.1,
+            "recall": 100.0,
+            "f1": 7.8,
+            "support": 4
+          },
+          "Other": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 10,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 10
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Adult": 84,
+            "MISS": 120,
+            "Baby": 9,
+            "Other": 1
+          },
+          "Adult": {
+            "Adult": 4
+          },
+          "Other": {
+            "Adult": 10
+          }
+        },
+        "missesByGold": {
+          "Baby": 120
+        }
+      },
+      "babyVsRest": {
+        "n": 228,
+        "agreePct": 10.1,
+        "missPct": 52.6,
+        "macroF1": 16.4,
+        "perClass": {
+          "Baby": {
+            "tp": 9,
+            "fp": 0,
+            "fn": 205,
+            "precision": 100.0,
+            "recall": 4.2,
+            "f1": 8.1,
+            "support": 214
+          },
+          "NonBaby": {
+            "tp": 14,
+            "fp": 85,
+            "fn": 0,
+            "precision": 14.1,
+            "recall": 100.0,
+            "f1": 24.8,
+            "support": 14
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "NonBaby": 85,
+            "MISS": 120,
+            "Baby": 9
+          },
+          "NonBaby": {
+            "NonBaby": 14
+          }
+        },
+        "missesByGold": {
+          "Baby": 120
+        }
+      },
+      "babyVsAdult": {
+        "n": 218,
+        "agreePct": 6.0,
+        "missPct": 55.5,
+        "macroF1": 8.4,
+        "perClass": {
+          "Baby": {
+            "tp": 9,
+            "fp": 0,
+            "fn": 205,
+            "precision": 100.0,
+            "recall": 4.2,
+            "f1": 8.1,
+            "support": 214
+          },
+          "Adult": {
+            "tp": 4,
+            "fp": 84,
+            "fn": 0,
+            "precision": 4.5,
+            "recall": 100.0,
+            "f1": 8.7,
+            "support": 4
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Adult": 84,
+            "MISS": 121,
+            "Baby": 9
+          },
+          "Adult": {
+            "Adult": 4
+          }
+        },
+        "missesByGold": {
+          "Baby": 121
+        }
+      }
+    },
+    "ecapaOracle": {
+      "ternary": {
+        "n": 228,
+        "agreePct": 93.4,
+        "missPct": 3.9,
+        "macroF1": 61.2,
+        "perClass": {
+          "Baby": {
+            "tp": 203,
+            "fp": 3,
+            "fn": 11,
+            "precision": 98.5,
+            "recall": 94.9,
+            "f1": 96.7,
+            "support": 214
+          },
+          "Adult": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 4
+          },
+          "Other": {
+            "tp": 10,
+            "fp": 3,
+            "fn": 0,
+            "precision": 76.9,
+            "recall": 100.0,
+            "f1": 87.0,
+            "support": 10
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Baby": 203,
+            "MISS": 9,
+            "Other": 2
+          },
+          "Adult": {
+            "Baby": 3,
+            "Other": 1
+          },
+          "Other": {
+            "Other": 10
+          }
+        },
+        "missesByGold": {
+          "Baby": 9
+        }
+      },
+      "babyVsRest": {
+        "n": 228,
+        "agreePct": 93.9,
+        "missPct": 3.9,
+        "macroF1": 89.1,
+        "perClass": {
+          "Baby": {
+            "tp": 203,
+            "fp": 3,
+            "fn": 11,
+            "precision": 98.5,
+            "recall": 94.9,
+            "f1": 96.7,
+            "support": 214
+          },
+          "NonBaby": {
+            "tp": 11,
+            "fp": 2,
+            "fn": 3,
+            "precision": 84.6,
+            "recall": 78.6,
+            "f1": 81.5,
+            "support": 14
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Baby": 203,
+            "MISS": 9,
+            "NonBaby": 2
+          },
+          "NonBaby": {
+            "Baby": 3,
+            "NonBaby": 11
+          }
+        },
+        "missesByGold": {
+          "Baby": 9
+        }
+      },
+      "babyVsAdult": {
+        "n": 218,
+        "agreePct": 93.1,
+        "missPct": 5.5,
+        "macroF1": 48.4,
+        "perClass": {
+          "Baby": {
+            "tp": 203,
+            "fp": 3,
+            "fn": 11,
+            "precision": 98.5,
+            "recall": 94.9,
+            "f1": 96.7,
+            "support": 214
+          },
+          "Adult": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 4
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Baby": 203,
+            "MISS": 11
+          },
+          "Adult": {
+            "Baby": 3,
+            "MISS": 1
+          }
+        },
+        "missesByGold": {
+          "Baby": 11,
+          "Adult": 1
+        }
+      }
+    },
+    "alwaysBaby": {
+      "ternary": {
+        "n": 228,
+        "agreePct": 93.9,
+        "missPct": 0.0,
+        "macroF1": 32.3,
+        "perClass": {
+          "Baby": {
+            "tp": 214,
+            "fp": 14,
+            "fn": 0,
+            "precision": 93.9,
+            "recall": 100.0,
+            "f1": 96.8,
+            "support": 214
+          },
+          "Adult": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 4
+          },
+          "Other": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 10,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 10
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Baby": 214
+          },
+          "Adult": {
+            "Baby": 4
+          },
+          "Other": {
+            "Baby": 10
+          }
+        },
+        "missesByGold": {}
+      },
+      "babyVsRest": {
+        "n": 228,
+        "agreePct": 93.9,
+        "missPct": 0.0,
+        "macroF1": 48.4,
+        "perClass": {
+          "Baby": {
+            "tp": 214,
+            "fp": 14,
+            "fn": 0,
+            "precision": 93.9,
+            "recall": 100.0,
+            "f1": 96.8,
+            "support": 214
+          },
+          "NonBaby": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 14,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 14
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Baby": 214
+          },
+          "NonBaby": {
+            "Baby": 14
+          }
+        },
+        "missesByGold": {}
+      },
+      "babyVsAdult": {
+        "n": 218,
+        "agreePct": 98.2,
+        "missPct": 0.0,
+        "macroF1": 49.5,
+        "perClass": {
+          "Baby": {
+            "tp": 214,
+            "fp": 4,
+            "fn": 0,
+            "precision": 98.2,
+            "recall": 100.0,
+            "f1": 99.1,
+            "support": 214
+          },
+          "Adult": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 4
+          }
+        },
+        "confusion": {
+          "Baby": {
+            "Baby": 214
+          },
+          "Adult": {
+            "Baby": 4
+          }
+        },
+        "missesByGold": {}
+      }
+    }
+  },
+  "notes": {
+    "vtc": "KCHI\u2192Baby, FEM/MAL\u2192Adult, OCH\u2192Other; no human mapping",
+    "ecapaOracle": "Per-kit majority vote cluster\u2192class using the same tags (upper bound on 'ECAPA + manual speaker pick')",
+    "alwaysBaby": "Predict Baby for every tag (majority-class prior)",
+    "unit": "one human tag span with a speaker field"
+  }
+}

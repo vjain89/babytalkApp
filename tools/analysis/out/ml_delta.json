@@ -1,0 +1,2253 @@
+{
+  "generatedAt": "2026-07-26T19:21:19",
+  "library": "/Users/vijayjain/Documents/BabyTalk/Library",
+  "kits": [
+    {
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "durationMs": 0,
+      "nTags": 90,
+      "nAnnotations": 139,
+      "tagCategories": {
+        "verbal vocalization": 82,
+        "non-verbal vocalization": 6,
+        "non-vocal vegetative sound": 2
+      },
+      "tagSpeakers": {
+        "Baby": 86,
+        "Parent": 3,
+        "(none)": 1
+      },
+      "candidateVintage": {
+        "currentGate": 0,
+        "diarizedOnly": 0,
+        "preDiarization": 126
+      },
+      "candidateStatus": {
+        "vad_v0/dismissed": 126,
+        "ml_confirmed/confirmed": 12,
+        "ml_confirmed/dismissed": 1
+      },
+      "workflow": {
+        "nTags": 90,
+        "nManual": 78,
+        "nMlConfirmed": 12,
+        "manualPct": 86.7,
+        "mlConfirmedPct": 13.3,
+        "nDismissed": 126,
+        "manualInsideDismissed": 70,
+        "manualInsideDismissedPct": 89.7,
+        "manualNoCandidate": 8
+      },
+      "confirmEdits": {
+        "n": 12,
+        "nEdited": 0,
+        "editedPct": 0.0,
+        "dStart": {},
+        "dEnd": {},
+        "shrinkPct": 0.0
+      },
+      "archival": {
+        "label": "archival",
+        "nTags": 90,
+        "nCands": 139,
+        "coverage": {
+          "anyOverlap": 90,
+          "anyOverlapPct": 100.0,
+          "contains50": 89,
+          "contains50Pct": 98.9,
+          "contains90": 77,
+          "contains90Pct": 85.6,
+          "iou50": 20,
+          "iou50Pct": 22.2,
+          "iou70": 17,
+          "iou70Pct": 18.9,
+          "verbalTags": 82,
+          "verbalAnyPct": 100.0,
+          "verbalIou50Pct": 22.0,
+          "babyTags": 86,
+          "babyAnyPct": 100.0,
+          "babyIou50Pct": 19.8
+        },
+        "boundary": {
+          "dStart": {
+            "n": 90,
+            "min": -180.0,
+            "p10": -91.0,
+            "p25": 0.0,
+            "median": 1545.0,
+            "p75": 5030.0,
+            "p90": 7842.0,
+            "max": 13730.0,
+            "mean": 2948.7
+          },
+          "dEnd": {
+            "n": 90,
+            "min": -13430.0,
+            "p10": -9366.0,
+            "p25": -5895.0,
+            "median": -2650.0,
+            "p75": 0.0,
+            "p90": 31.0,
+            "max": 1400.0,
+            "mean": -3528.3
+          },
+          "iou": {
+            "n": 90,
+            "min": 0.028,
+            "p10": 0.056,
+            "p25": 0.072,
+            "median": 0.132,
+            "p75": 0.413,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.313
+          },
+          "durRatio": {
+            "n": 90,
+            "min": 0.45,
+            "p10": 1.0,
+            "p25": 2.28,
+            "median": 5.99,
+            "p75": 13.82,
+            "p90": 17.7,
+            "max": 35.5,
+            "mean": 8.58
+          },
+          "tagDur": {
+            "n": 90,
+            "min": 370.0,
+            "p10": 620.0,
+            "p25": 752.5,
+            "median": 960.0,
+            "p75": 1177.5,
+            "p90": 2074.0,
+            "max": 8490.0,
+            "mean": 1369.0
+          },
+          "candDur": {
+            "n": 90,
+            "min": 370.0,
+            "p10": 1446.0,
+            "p25": 3125.0,
+            "median": 8050.0,
+            "p75": 12140.0,
+            "p90": 16280.0,
+            "max": 17040.0,
+            "mean": 7846.0
+          },
+          "lateStart": 0,
+          "lateStartPct": 0.0,
+          "earlyEnd": 4,
+          "earlyEndPct": 4.4,
+          "candTooLong2x": 69,
+          "candTooLong2xPct": 76.7,
+          "candTooLong4x": 54,
+          "candTooLong4xPct": 60.0,
+          "candTooShort": 4,
+          "candTooShortPct": 4.4,
+          "dStartHist": [
+            {
+              "bucket": "< -2000",
+              "count": 0
+            },
+            {
+              "bucket": "-2000\u2013-1000",
+              "count": 0
+            },
+            {
+              "bucket": "-1000\u2013-500",
+              "count": 0
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 0
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 17
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 15
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 2
+            },
+            {
+              "bucket": "\u2265 500",
+              "count": 56
+            }
+          ],
+          "dEndHist": [
+            {
+              "bucket": "< -500",
+              "count": 59
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 2
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 5
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 20
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 2
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 1
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 1
+            },
+            {
+              "bucket": "\u2265 2000",
+              "count": 0
+            }
+          ],
+          "iouHist": [
+            {
+              "bucket": "< 0.1",
+              "count": 37
+            },
+            {
+              "bucket": "0.1\u20130.25",
+              "count": 18
+            },
+            {
+              "bucket": "0.25\u20130.5",
+              "count": 15
+            },
+            {
+              "bucket": "0.5\u20130.7",
+              "count": 3
+            },
+            {
+              "bucket": "0.7\u20130.9",
+              "count": 4
+            },
+            {
+              "bucket": "\u2265 0.9",
+              "count": 13
+            }
+          ],
+          "durRatioHist": [
+            {
+              "bucket": "< 0.8",
+              "count": 4
+            },
+            {
+              "bucket": "0.8\u20131",
+              "count": 2
+            },
+            {
+              "bucket": "1\u20131.5",
+              "count": 13
+            },
+            {
+              "bucket": "1.5\u20132",
+              "count": 2
+            },
+            {
+              "bucket": "2\u20134",
+              "count": 15
+            },
+            {
+              "bucket": "4\u20138",
+              "count": 12
+            },
+            {
+              "bucket": "\u2265 8",
+              "count": 42
+            }
+          ]
+        },
+        "falsePositives": {
+          "nNoTagOverlap": 86,
+          "noTagOverlapPct": 61.9,
+          "nDismissedNoOverlap": 86,
+          "durQuantiles": {
+            "n": 86,
+            "min": 300.0,
+            "p10": 490.0,
+            "p25": 997.5,
+            "median": 2085.0,
+            "p75": 3380.0,
+            "p90": 6430.0,
+            "max": 13770.0,
+            "mean": 2852.7
+          },
+          "durHist": [
+            {
+              "bucket": "< 500",
+              "count": 9
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 13
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 20
+            },
+            {
+              "bucket": "2000\u20134000",
+              "count": 28
+            },
+            {
+              "bucket": "4000\u20138000",
+              "count": 10
+            },
+            {
+              "bucket": "\u2265 8000",
+              "count": 6
+            }
+          ],
+          "speechScoreHitVsMiss": {
+            "hit": {},
+            "miss": {},
+            "available": 0
+          },
+          "flaggedNonSpeech": 0
+        },
+        "misses": {
+          "n": 0,
+          "pct": 0.0,
+          "byCategory": {},
+          "bySpeaker": {},
+          "durQuantiles": {},
+          "examples": []
+        },
+        "fragmentation": {
+          "tagsWithMultiCand": 1,
+          "tagsWithMultiCandPct": 1.1,
+          "candsWith2PlusTags": 23,
+          "candsWith2PlusTagsPct": 16.5,
+          "candsMultiSpeaker": 0,
+          "candsMultiSpeakerPct": 0.0,
+          "tagsPerHitCand": {
+            "n": 53,
+            "min": 1.0,
+            "p10": 1.0,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 2.0,
+            "p90": 3.0,
+            "max": 7.0,
+            "mean": 1.7
+          },
+          "coveredFracOfHitCands": {
+            "n": 53,
+            "min": 0.045,
+            "p10": 0.119,
+            "p25": 0.21,
+            "median": 0.382,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.532
+          }
+        },
+        "bySource": {
+          "manual": {
+            "nTags": 78,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 10.3,
+            "iou70Pct": 6.4,
+            "contains90Pct": 83.3,
+            "missed": 0,
+            "iou": {
+              "n": 78,
+              "min": 0.028,
+              "p10": 0.056,
+              "p25": 0.069,
+              "median": 0.107,
+              "p75": 0.29,
+              "p90": 0.477,
+              "max": 0.959,
+              "mean": 0.208
+            },
+            "durRatio": {
+              "n": 78,
+              "min": 0.45,
+              "p10": 1.71,
+              "p25": 3.18,
+              "median": 9.01,
+              "p75": 14.52,
+              "p90": 17.86,
+              "max": 35.5,
+              "mean": 9.75
+            },
+            "dStart": {
+              "n": 78,
+              "min": -180.0,
+              "p10": -103.0,
+              "p25": 252.5,
+              "median": 2315.0,
+              "p75": 5767.5,
+              "p90": 8091.0,
+              "max": 13730.0,
+              "mean": 3402.3
+            },
+            "dEnd": {
+              "n": 78,
+              "min": -13430.0,
+              "p10": -9537.0,
+              "p25": -6407.5,
+              "median": -3110.0,
+              "p75": -695.0,
+              "p90": 61.0,
+              "max": 1400.0,
+              "mean": -4071.2
+            }
+          },
+          "mlConfirmed": {
+            "nTags": 12,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 100.0,
+            "iou70Pct": 100.0,
+            "contains90Pct": 100.0,
+            "missed": 0,
+            "iou": {
+              "n": 12,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "durRatio": {
+              "n": 12,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "dStart": {
+              "n": 12,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            },
+            "dEnd": {
+              "n": 12,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            }
+          }
+        }
+      },
+      "tagDur": {
+        "n": 90,
+        "min": 370.0,
+        "p10": 620.0,
+        "p25": 752.5,
+        "median": 960.0,
+        "p75": 1177.5,
+        "p90": 2074.0,
+        "max": 8490.0,
+        "mean": 1369.0
+      }
+    },
+    {
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "durationMs": 714411,
+      "nTags": 47,
+      "nAnnotations": 75,
+      "tagCategories": {
+        "verbal vocalization": 34,
+        "non-verbal vocalization": 13
+      },
+      "tagSpeakers": {
+        "Baby": 47
+      },
+      "candidateVintage": {
+        "currentGate": 62,
+        "diarizedOnly": 0,
+        "preDiarization": 0
+      },
+      "candidateStatus": {
+        "vad_v0/provisional": 40,
+        "vad_v0/dismissed": 22,
+        "ml_confirmed/confirmed": 13
+      },
+      "workflow": {
+        "nTags": 47,
+        "nManual": 34,
+        "nMlConfirmed": 13,
+        "manualPct": 72.3,
+        "mlConfirmedPct": 27.7,
+        "nDismissed": 22,
+        "manualInsideDismissed": 32,
+        "manualInsideDismissedPct": 94.1,
+        "manualNoCandidate": 2
+      },
+      "confirmEdits": {
+        "n": 13,
+        "nEdited": 0,
+        "editedPct": 0.0,
+        "dStart": {},
+        "dEnd": {},
+        "shrinkPct": 0.0
+      },
+      "archival": {
+        "label": "archival",
+        "nTags": 47,
+        "nCands": 75,
+        "coverage": {
+          "anyOverlap": 47,
+          "anyOverlapPct": 100.0,
+          "contains50": 46,
+          "contains50Pct": 97.9,
+          "contains90": 27,
+          "contains90Pct": 57.4,
+          "iou50": 29,
+          "iou50Pct": 61.7,
+          "iou70": 17,
+          "iou70Pct": 36.2,
+          "verbalTags": 34,
+          "verbalAnyPct": 100.0,
+          "verbalIou50Pct": 50.0,
+          "babyTags": 47,
+          "babyAnyPct": 100.0,
+          "babyIou50Pct": 61.7
+        },
+        "boundary": {
+          "dStart": {
+            "n": 47,
+            "min": -300.0,
+            "p10": -174.0,
+            "p25": -80.0,
+            "median": 0.0,
+            "p75": 415.0,
+            "p90": 862.0,
+            "max": 2530.0,
+            "mean": 222.3
+          },
+          "dEnd": {
+            "n": 47,
+            "min": -3120.0,
+            "p10": -1276.0,
+            "p25": -630.0,
+            "median": 0.0,
+            "p75": 70.0,
+            "p90": 224.0,
+            "max": 350.0,
+            "mean": -336.2
+          },
+          "iou": {
+            "n": 47,
+            "min": 0.155,
+            "p10": 0.272,
+            "p25": 0.365,
+            "median": 0.559,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.617
+          },
+          "durRatio": {
+            "n": 47,
+            "min": 0.37,
+            "p10": 0.6,
+            "p25": 1.0,
+            "median": 1.29,
+            "p75": 2.01,
+            "p90": 3.11,
+            "max": 6.46,
+            "mean": 1.73
+          },
+          "tagDur": {
+            "n": 47,
+            "min": 360.0,
+            "p10": 616.0,
+            "p25": 720.0,
+            "median": 820.0,
+            "p75": 930.0,
+            "p90": 1162.0,
+            "max": 2030.0,
+            "mean": 882.3
+          },
+          "candDur": {
+            "n": 47,
+            "min": 330.0,
+            "p10": 412.0,
+            "p25": 670.0,
+            "median": 1260.0,
+            "p75": 2000.0,
+            "p90": 2264.0,
+            "max": 3810.0,
+            "mean": 1440.9
+          },
+          "lateStart": 4,
+          "lateStartPct": 8.5,
+          "earlyEnd": 6,
+          "earlyEndPct": 12.8,
+          "candTooLong2x": 12,
+          "candTooLong2xPct": 25.5,
+          "candTooLong4x": 4,
+          "candTooLong4xPct": 8.5,
+          "candTooShort": 7,
+          "candTooShortPct": 14.9,
+          "dStartHist": [
+            {
+              "bucket": "< -2000",
+              "count": 0
+            },
+            {
+              "bucket": "-2000\u2013-1000",
+              "count": 0
+            },
+            {
+              "bucket": "-1000\u2013-500",
+              "count": 0
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 4
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 13
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 16
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 4
+            },
+            {
+              "bucket": "\u2265 500",
+              "count": 10
+            }
+          ],
+          "dEndHist": [
+            {
+              "bucket": "< -500",
+              "count": 16
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 1
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 0
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 24
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 6
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 0
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 2000",
+              "count": 0
+            }
+          ],
+          "iouHist": [
+            {
+              "bucket": "< 0.1",
+              "count": 0
+            },
+            {
+              "bucket": "0.1\u20130.25",
+              "count": 5
+            },
+            {
+              "bucket": "0.25\u20130.5",
+              "count": 13
+            },
+            {
+              "bucket": "0.5\u20130.7",
+              "count": 12
+            },
+            {
+              "bucket": "0.7\u20130.9",
+              "count": 4
+            },
+            {
+              "bucket": "\u2265 0.9",
+              "count": 13
+            }
+          ],
+          "durRatioHist": [
+            {
+              "bucket": "< 0.8",
+              "count": 7
+            },
+            {
+              "bucket": "0.8\u20131",
+              "count": 2
+            },
+            {
+              "bucket": "1\u20131.5",
+              "count": 18
+            },
+            {
+              "bucket": "1.5\u20132",
+              "count": 8
+            },
+            {
+              "bucket": "2\u20134",
+              "count": 8
+            },
+            {
+              "bucket": "4\u20138",
+              "count": 4
+            },
+            {
+              "bucket": "\u2265 8",
+              "count": 0
+            }
+          ]
+        },
+        "falsePositives": {
+          "nNoTagOverlap": 39,
+          "noTagOverlapPct": 52.0,
+          "nDismissedNoOverlap": 1,
+          "durQuantiles": {
+            "n": 39,
+            "min": 320.0,
+            "p10": 384.0,
+            "p25": 510.0,
+            "median": 980.0,
+            "p75": 1485.0,
+            "p90": 1854.0,
+            "max": 3170.0,
+            "mean": 1116.9
+          },
+          "durHist": [
+            {
+              "bucket": "< 500",
+              "count": 9
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 12
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 15
+            },
+            {
+              "bucket": "2000\u20134000",
+              "count": 3
+            },
+            {
+              "bucket": "4000\u20138000",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 8000",
+              "count": 0
+            }
+          ],
+          "speechScoreHitVsMiss": {
+            "hit": {
+              "n": 36,
+              "min": 0.556,
+              "p10": 0.607,
+              "p25": 0.634,
+              "median": 0.714,
+              "p75": 0.754,
+              "p90": 0.808,
+              "max": 0.879,
+              "mean": 0.704
+            },
+            "miss": {
+              "n": 39,
+              "min": 0.568,
+              "p10": 0.601,
+              "p25": 0.655,
+              "median": 0.676,
+              "p75": 0.774,
+              "p90": 0.908,
+              "max": 0.97,
+              "mean": 0.72
+            },
+            "available": 75
+          },
+          "flaggedNonSpeech": 34
+        },
+        "misses": {
+          "n": 0,
+          "pct": 0.0,
+          "byCategory": {},
+          "bySpeaker": {},
+          "durQuantiles": {},
+          "examples": []
+        },
+        "fragmentation": {
+          "tagsWithMultiCand": 0,
+          "tagsWithMultiCandPct": 0.0,
+          "candsWith2PlusTags": 8,
+          "candsWith2PlusTagsPct": 10.7,
+          "candsMultiSpeaker": 0,
+          "candsMultiSpeakerPct": 0.0,
+          "tagsPerHitCand": {
+            "n": 36,
+            "min": 1.0,
+            "p10": 1.0,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 2.0,
+            "max": 4.0,
+            "mean": 1.3
+          },
+          "coveredFracOfHitCands": {
+            "n": 36,
+            "min": 0.407,
+            "p10": 0.679,
+            "p25": 0.931,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.913
+          }
+        },
+        "bySource": {
+          "manual": {
+            "nTags": 34,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 47.1,
+            "iou70Pct": 11.8,
+            "contains90Pct": 41.2,
+            "missed": 0,
+            "iou": {
+              "n": 34,
+              "min": 0.155,
+              "p10": 0.21,
+              "p25": 0.355,
+              "median": 0.445,
+              "p75": 0.577,
+              "p90": 0.735,
+              "max": 0.89,
+              "mean": 0.471
+            },
+            "durRatio": {
+              "n": 34,
+              "min": 0.37,
+              "p10": 0.56,
+              "p25": 0.97,
+              "median": 1.62,
+              "p75": 2.45,
+              "p90": 3.92,
+              "max": 6.46,
+              "mean": 2.01
+            },
+            "dStart": {
+              "n": 34,
+              "min": -300.0,
+              "p10": -208.0,
+              "p25": -135.0,
+              "median": -10.0,
+              "p75": 620.0,
+              "p90": 936.0,
+              "max": 2530.0,
+              "mean": 307.4
+            },
+            "dEnd": {
+              "n": 34,
+              "min": -3120.0,
+              "p10": -1507.0,
+              "p25": -715.0,
+              "median": -240.0,
+              "p75": 147.5,
+              "p90": 230.0,
+              "max": 350.0,
+              "mean": -464.7
+            }
+          },
+          "mlConfirmed": {
+            "nTags": 13,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 100.0,
+            "iou70Pct": 100.0,
+            "contains90Pct": 100.0,
+            "missed": 0,
+            "iou": {
+              "n": 13,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "durRatio": {
+              "n": 13,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "dStart": {
+              "n": 13,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            },
+            "dEnd": {
+              "n": 13,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            }
+          }
+        }
+      },
+      "tagDur": {
+        "n": 47,
+        "min": 360.0,
+        "p10": 616.0,
+        "p25": 720.0,
+        "median": 820.0,
+        "p75": 930.0,
+        "p90": 1162.0,
+        "max": 2030.0,
+        "mean": 882.3
+      }
+    },
+    {
+      "kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+      "durationMs": 333056,
+      "nTags": 43,
+      "nAnnotations": 250,
+      "tagCategories": {
+        "verbal vocalization": 22,
+        "non-verbal vocalization": 19,
+        "non-vocal vegetative sound": 2
+      },
+      "tagSpeakers": {
+        "Baby": 32,
+        "Other": 10,
+        "Parent": 1
+      },
+      "candidateVintage": {
+        "currentGate": 23,
+        "diarizedOnly": 105,
+        "preDiarization": 89
+      },
+      "candidateStatus": {
+        "vad_v0/dismissed": 217,
+        "ml_confirmed/confirmed": 33
+      },
+      "workflow": {
+        "nTags": 43,
+        "nManual": 10,
+        "nMlConfirmed": 33,
+        "manualPct": 23.3,
+        "mlConfirmedPct": 76.7,
+        "nDismissed": 217,
+        "manualInsideDismissed": 10,
+        "manualInsideDismissedPct": 100.0,
+        "manualNoCandidate": 0
+      },
+      "confirmEdits": {
+        "n": 33,
+        "nEdited": 0,
+        "editedPct": 0.0,
+        "dStart": {},
+        "dEnd": {},
+        "shrinkPct": 0.0
+      },
+      "archival": {
+        "label": "archival",
+        "nTags": 43,
+        "nCands": 250,
+        "coverage": {
+          "anyOverlap": 43,
+          "anyOverlapPct": 100.0,
+          "contains50": 43,
+          "contains50Pct": 100.0,
+          "contains90": 43,
+          "contains90Pct": 100.0,
+          "iou50": 35,
+          "iou50Pct": 81.4,
+          "iou70": 33,
+          "iou70Pct": 76.7,
+          "verbalTags": 22,
+          "verbalAnyPct": 100.0,
+          "verbalIou50Pct": 86.4,
+          "babyTags": 32,
+          "babyAnyPct": 100.0,
+          "babyIou50Pct": 78.1
+        },
+        "boundary": {
+          "dStart": {
+            "n": 43,
+            "min": 0.0,
+            "p10": 0.0,
+            "p25": 0.0,
+            "median": 0.0,
+            "p75": 0.0,
+            "p90": 802.0,
+            "max": 5710.0,
+            "mean": 288.8
+          },
+          "dEnd": {
+            "n": 43,
+            "min": -7130.0,
+            "p10": -1004.0,
+            "p25": 0.0,
+            "median": 0.0,
+            "p75": 0.0,
+            "p90": 0.0,
+            "max": 30.0,
+            "mean": -399.1
+          },
+          "iou": {
+            "n": 43,
+            "min": 0.074,
+            "p10": 0.251,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.837
+          },
+          "durRatio": {
+            "n": 43,
+            "min": 1.0,
+            "p10": 1.0,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 3.96,
+            "max": 13.51,
+            "mean": 1.84
+          },
+          "tagDur": {
+            "n": 43,
+            "min": 380.0,
+            "p10": 604.0,
+            "p25": 890.0,
+            "median": 1260.0,
+            "p75": 1865.0,
+            "p90": 2316.0,
+            "max": 3900.0,
+            "mean": 1417.0
+          },
+          "candDur": {
+            "n": 43,
+            "min": 380.0,
+            "p10": 838.0,
+            "p25": 1165.0,
+            "median": 1550.0,
+            "p75": 2370.0,
+            "p90": 3640.0,
+            "max": 7700.0,
+            "mean": 2104.9
+          },
+          "lateStart": 0,
+          "lateStartPct": 0.0,
+          "earlyEnd": 0,
+          "earlyEndPct": 0.0,
+          "candTooLong2x": 8,
+          "candTooLong2xPct": 18.6,
+          "candTooLong4x": 5,
+          "candTooLong4xPct": 11.6,
+          "candTooShort": 0,
+          "candTooShortPct": 0.0,
+          "dStartHist": [
+            {
+              "bucket": "< -2000",
+              "count": 0
+            },
+            {
+              "bucket": "-2000\u2013-1000",
+              "count": 0
+            },
+            {
+              "bucket": "-1000\u2013-500",
+              "count": 0
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 0
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 0
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 37
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 500",
+              "count": 6
+            }
+          ],
+          "dEndHist": [
+            {
+              "bucket": "< -500",
+              "count": 8
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 0
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 0
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 35
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 0
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 0
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 2000",
+              "count": 0
+            }
+          ],
+          "iouHist": [
+            {
+              "bucket": "< 0.1",
+              "count": 1
+            },
+            {
+              "bucket": "0.1\u20130.25",
+              "count": 3
+            },
+            {
+              "bucket": "0.25\u20130.5",
+              "count": 4
+            },
+            {
+              "bucket": "0.5\u20130.7",
+              "count": 2
+            },
+            {
+              "bucket": "0.7\u20130.9",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 0.9",
+              "count": 33
+            }
+          ],
+          "durRatioHist": [
+            {
+              "bucket": "< 0.8",
+              "count": 0
+            },
+            {
+              "bucket": "0.8\u20131",
+              "count": 0
+            },
+            {
+              "bucket": "1\u20131.5",
+              "count": 33
+            },
+            {
+              "bucket": "1.5\u20132",
+              "count": 2
+            },
+            {
+              "bucket": "2\u20134",
+              "count": 3
+            },
+            {
+              "bucket": "4\u20138",
+              "count": 4
+            },
+            {
+              "bucket": "\u2265 8",
+              "count": 1
+            }
+          ]
+        },
+        "falsePositives": {
+          "nNoTagOverlap": 184,
+          "noTagOverlapPct": 73.6,
+          "nDismissedNoOverlap": 184,
+          "durQuantiles": {
+            "n": 184,
+            "min": 300.0,
+            "p10": 373.0,
+            "p25": 507.5,
+            "median": 930.0,
+            "p75": 1910.0,
+            "p90": 3196.0,
+            "max": 6090.0,
+            "mean": 1396.0
+          },
+          "durHist": [
+            {
+              "bucket": "< 500",
+              "count": 44
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 56
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 41
+            },
+            {
+              "bucket": "2000\u20134000",
+              "count": 39
+            },
+            {
+              "bucket": "4000\u20138000",
+              "count": 4
+            },
+            {
+              "bucket": "\u2265 8000",
+              "count": 0
+            }
+          ],
+          "speechScoreHitVsMiss": {
+            "hit": {
+              "n": 14,
+              "min": 0.624,
+              "p10": 0.626,
+              "p25": 0.658,
+              "median": 0.724,
+              "p75": 0.788,
+              "p90": 0.833,
+              "max": 0.878,
+              "mean": 0.73
+            },
+            "miss": {
+              "n": 23,
+              "min": 0.55,
+              "p10": 0.568,
+              "p25": 0.585,
+              "median": 0.689,
+              "p75": 0.837,
+              "p90": 0.857,
+              "max": 0.886,
+              "mean": 0.701
+            },
+            "available": 37
+          },
+          "flaggedNonSpeech": 15
+        },
+        "misses": {
+          "n": 0,
+          "pct": 0.0,
+          "byCategory": {},
+          "bySpeaker": {},
+          "durQuantiles": {},
+          "examples": []
+        },
+        "fragmentation": {
+          "tagsWithMultiCand": 18,
+          "tagsWithMultiCandPct": 41.9,
+          "candsWith2PlusTags": 6,
+          "candsWith2PlusTagsPct": 2.4,
+          "candsMultiSpeaker": 1,
+          "candsMultiSpeakerPct": 0.4,
+          "tagsPerHitCand": {
+            "n": 66,
+            "min": 1.0,
+            "p10": 1.0,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 4.0,
+            "mean": 1.2
+          },
+          "coveredFracOfHitCands": {
+            "n": 66,
+            "min": 0.074,
+            "p10": 0.59,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.917
+          }
+        },
+        "bySource": {
+          "manual": {
+            "nTags": 10,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 20.0,
+            "iou70Pct": 0.0,
+            "contains90Pct": 100.0,
+            "missed": 0,
+            "iou": {
+              "n": 10,
+              "min": 0.074,
+              "p10": 0.143,
+              "p25": 0.231,
+              "median": 0.254,
+              "p75": 0.388,
+              "p90": 0.541,
+              "max": 0.565,
+              "mean": 0.3
+            },
+            "durRatio": {
+              "n": 10,
+              "min": 1.77,
+              "p10": 1.85,
+              "p25": 2.68,
+              "median": 3.91,
+              "p75": 4.34,
+              "p90": 7.31,
+              "max": 13.51,
+              "mean": 4.62
+            },
+            "dStart": {
+              "n": 10,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 7.5,
+              "median": 715.0,
+              "p75": 1542.5,
+              "p90": 2893.0,
+              "max": 5710.0,
+              "mean": 1242.0
+            },
+            "dEnd": {
+              "n": 10,
+              "min": -7130.0,
+              "p10": -3206.0,
+              "p25": -2230.0,
+              "median": -920.0,
+              "p75": -562.5,
+              "p90": 3.0,
+              "max": 30.0,
+              "mean": -1716.0
+            }
+          },
+          "mlConfirmed": {
+            "nTags": 33,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 100.0,
+            "iou70Pct": 100.0,
+            "contains90Pct": 100.0,
+            "missed": 0,
+            "iou": {
+              "n": 33,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "durRatio": {
+              "n": 33,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "dStart": {
+              "n": 33,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            },
+            "dEnd": {
+              "n": 33,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            }
+          }
+        }
+      },
+      "tagDur": {
+        "n": 43,
+        "min": 380.0,
+        "p10": 604.0,
+        "p25": 890.0,
+        "median": 1260.0,
+        "p75": 1865.0,
+        "p90": 2316.0,
+        "max": 3900.0,
+        "mean": 1417.0
+      }
+    },
+    {
+      "kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+      "durationMs": 76459,
+      "nTags": 8,
+      "nAnnotations": 19,
+      "tagCategories": {
+        "verbal vocalization": 7,
+        "non-verbal vocalization": 1
+      },
+      "tagSpeakers": {
+        "Baby": 8
+      },
+      "candidateVintage": {
+        "currentGate": 0,
+        "diarizedOnly": 0,
+        "preDiarization": 15
+      },
+      "candidateStatus": {
+        "vad_v0/dismissed": 15,
+        "ml_confirmed/confirmed": 4
+      },
+      "workflow": {
+        "nTags": 8,
+        "nManual": 4,
+        "nMlConfirmed": 4,
+        "manualPct": 50.0,
+        "mlConfirmedPct": 50.0,
+        "nDismissed": 15,
+        "manualInsideDismissed": 4,
+        "manualInsideDismissedPct": 100.0,
+        "manualNoCandidate": 0
+      },
+      "confirmEdits": {
+        "n": 4,
+        "nEdited": 0,
+        "editedPct": 0.0,
+        "dStart": {},
+        "dEnd": {},
+        "shrinkPct": 0.0
+      },
+      "archival": {
+        "label": "archival",
+        "nTags": 8,
+        "nCands": 19,
+        "coverage": {
+          "anyOverlap": 8,
+          "anyOverlapPct": 100.0,
+          "contains50": 8,
+          "contains50Pct": 100.0,
+          "contains90": 6,
+          "contains90Pct": 75.0,
+          "iou50": 4,
+          "iou50Pct": 50.0,
+          "iou70": 4,
+          "iou70Pct": 50.0,
+          "verbalTags": 7,
+          "verbalAnyPct": 100.0,
+          "verbalIou50Pct": 57.1,
+          "babyTags": 8,
+          "babyAnyPct": 100.0,
+          "babyIou50Pct": 50.0
+        },
+        "boundary": {
+          "dStart": {
+            "n": 8,
+            "min": -130.0,
+            "p10": -53.0,
+            "p25": -5.0,
+            "median": 0.0,
+            "p75": 92.5,
+            "p90": 595.0,
+            "max": 1120.0,
+            "mean": 167.5
+          },
+          "dEnd": {
+            "n": 8,
+            "min": -1020.0,
+            "p10": -551.0,
+            "p25": -87.5,
+            "median": 0.0,
+            "p75": 0.0,
+            "p90": 18.0,
+            "max": 60.0,
+            "mean": -163.8
+          },
+          "iou": {
+            "n": 8,
+            "min": 0.239,
+            "p10": 0.289,
+            "p25": 0.399,
+            "median": 0.739,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.682
+          },
+          "durRatio": {
+            "n": 8,
+            "min": 1.0,
+            "p10": 1.0,
+            "p25": 1.0,
+            "median": 1.22,
+            "p75": 2.33,
+            "p90": 3.17,
+            "max": 3.47,
+            "mean": 1.76
+          },
+          "tagDur": {
+            "n": 8,
+            "min": 340.0,
+            "p10": 403.0,
+            "p25": 475.0,
+            "median": 540.0,
+            "p75": 665.0,
+            "p90": 818.0,
+            "max": 930.0,
+            "mean": 583.8
+          },
+          "candDur": {
+            "n": 8,
+            "min": 590.0,
+            "p10": 618.0,
+            "p25": 690.0,
+            "median": 740.0,
+            "p75": 1070.0,
+            "p90": 1490.0,
+            "max": 1490.0,
+            "mean": 915.0
+          },
+          "lateStart": 0,
+          "lateStartPct": 0.0,
+          "earlyEnd": 0,
+          "earlyEndPct": 0.0,
+          "candTooLong2x": 3,
+          "candTooLong2xPct": 37.5,
+          "candTooLong4x": 0,
+          "candTooLong4xPct": 0.0,
+          "candTooShort": 0,
+          "candTooShortPct": 0.0,
+          "dStartHist": [
+            {
+              "bucket": "< -2000",
+              "count": 0
+            },
+            {
+              "bucket": "-2000\u2013-1000",
+              "count": 0
+            },
+            {
+              "bucket": "-1000\u2013-500",
+              "count": 0
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 0
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 2
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 4
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 1
+            },
+            {
+              "bucket": "\u2265 500",
+              "count": 1
+            }
+          ],
+          "dEndHist": [
+            {
+              "bucket": "< -500",
+              "count": 1
+            },
+            {
+              "bucket": "-500\u2013-200",
+              "count": 1
+            },
+            {
+              "bucket": "-200\u20130",
+              "count": 0
+            },
+            {
+              "bucket": "0\u2013200",
+              "count": 6
+            },
+            {
+              "bucket": "200\u2013500",
+              "count": 0
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 0
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 2000",
+              "count": 0
+            }
+          ],
+          "iouHist": [
+            {
+              "bucket": "< 0.1",
+              "count": 0
+            },
+            {
+              "bucket": "0.1\u20130.25",
+              "count": 1
+            },
+            {
+              "bucket": "0.25\u20130.5",
+              "count": 3
+            },
+            {
+              "bucket": "0.5\u20130.7",
+              "count": 0
+            },
+            {
+              "bucket": "0.7\u20130.9",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 0.9",
+              "count": 4
+            }
+          ],
+          "durRatioHist": [
+            {
+              "bucket": "< 0.8",
+              "count": 0
+            },
+            {
+              "bucket": "0.8\u20131",
+              "count": 0
+            },
+            {
+              "bucket": "1\u20131.5",
+              "count": 5
+            },
+            {
+              "bucket": "1.5\u20132",
+              "count": 0
+            },
+            {
+              "bucket": "2\u20134",
+              "count": 3
+            },
+            {
+              "bucket": "4\u20138",
+              "count": 0
+            },
+            {
+              "bucket": "\u2265 8",
+              "count": 0
+            }
+          ]
+        },
+        "falsePositives": {
+          "nNoTagOverlap": 13,
+          "noTagOverlapPct": 68.4,
+          "nDismissedNoOverlap": 13,
+          "durQuantiles": {
+            "n": 13,
+            "min": 310.0,
+            "p10": 340.0,
+            "p25": 430.0,
+            "median": 550.0,
+            "p75": 890.0,
+            "p90": 1838.0,
+            "max": 7460.0,
+            "mean": 1230.0
+          },
+          "durHist": [
+            {
+              "bucket": "< 500",
+              "count": 4
+            },
+            {
+              "bucket": "500\u20131000",
+              "count": 6
+            },
+            {
+              "bucket": "1000\u20132000",
+              "count": 2
+            },
+            {
+              "bucket": "2000\u20134000",
+              "count": 0
+            },
+            {
+              "bucket": "4000\u20138000",
+              "count": 1
+            },
+            {
+              "bucket": "\u2265 8000",
+              "count": 0
+            }
+          ],
+          "speechScoreHitVsMiss": {
+            "hit": {},
+            "miss": {},
+            "available": 0
+          },
+          "flaggedNonSpeech": 0
+        },
+        "misses": {
+          "n": 0,
+          "pct": 0.0,
+          "byCategory": {},
+          "bySpeaker": {},
+          "durQuantiles": {},
+          "examples": []
+        },
+        "fragmentation": {
+          "tagsWithMultiCand": 0,
+          "tagsWithMultiCandPct": 0.0,
+          "candsWith2PlusTags": 2,
+          "candsWith2PlusTagsPct": 10.5,
+          "candsMultiSpeaker": 0,
+          "candsMultiSpeakerPct": 0.0,
+          "tagsPerHitCand": {
+            "n": 6,
+            "min": 1.0,
+            "p10": 1.0,
+            "p25": 1.0,
+            "median": 1.0,
+            "p75": 1.8,
+            "p90": 2.0,
+            "max": 2.0,
+            "mean": 1.3
+          },
+          "coveredFracOfHitCands": {
+            "n": 6,
+            "min": 0.564,
+            "p10": 0.775,
+            "p25": 0.989,
+            "median": 1.0,
+            "p75": 1.0,
+            "p90": 1.0,
+            "max": 1.0,
+            "mean": 0.925
+          }
+        },
+        "bySource": {
+          "manual": {
+            "nTags": 4,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 0.0,
+            "iou70Pct": 0.0,
+            "contains90Pct": 50.0,
+            "missed": 0,
+            "iou": {
+              "n": 4,
+              "min": 0.239,
+              "p10": 0.26,
+              "p25": 0.293,
+              "median": 0.37,
+              "p75": 0.441,
+              "p90": 0.464,
+              "max": 0.479,
+              "mean": 0.364
+            },
+            "durRatio": {
+              "n": 4,
+              "min": 1.45,
+              "p10": 1.64,
+              "p25": 1.93,
+              "median": 2.56,
+              "p75": 3.15,
+              "p90": 3.34,
+              "max": 3.47,
+              "mean": 2.51
+            },
+            "dStart": {
+              "n": 4,
+              "min": -130.0,
+              "p10": -97.0,
+              "p25": -47.5,
+              "median": 175.0,
+              "p75": 557.5,
+              "p90": 895.0,
+              "max": 1120.0,
+              "mean": 335.0
+            },
+            "dEnd": {
+              "n": 4,
+              "min": -1020.0,
+              "p10": -819.0,
+              "p25": -517.5,
+              "median": -175.0,
+              "p75": 15.0,
+              "p90": 42.0,
+              "max": 60.0,
+              "mean": -327.5
+            }
+          },
+          "mlConfirmed": {
+            "nTags": 4,
+            "anyOverlapPct": 100.0,
+            "iou50Pct": 100.0,
+            "iou70Pct": 100.0,
+            "contains90Pct": 100.0,
+            "missed": 0,
+            "iou": {
+              "n": 4,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "durRatio": {
+              "n": 4,
+              "min": 1.0,
+              "p10": 1.0,
+              "p25": 1.0,
+              "median": 1.0,
+              "p75": 1.0,
+              "p90": 1.0,
+              "max": 1.0,
+              "mean": 1.0
+            },
+            "dStart": {
+              "n": 4,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            },
+            "dEnd": {
+              "n": 4,
+              "min": 0.0,
+              "p10": 0.0,
+              "p25": 0.0,
+              "median": 0.0,
+              "p75": 0.0,
+              "p90": 0.0,
+              "max": 0.0,
+              "mean": 0.0
+            }
+          }
+        }
+      },
+      "tagDur": {
+        "n": 8,
+        "min": 340.0,
+        "p10": 403.0,
+        "p25": 475.0,
+        "median": 540.0,
+        "p75": 665.0,
+        "p90": 818.0,
+        "max": 930.0,
+        "mean": 583.8
+      }
+    }
+  ],
+  "pooledArchival": {
+    "nTags": 188,
+    "nCands": 483,
+    "coverage": {
+      "anyOverlapPct": 100.0,
+      "contains90Pct": 81.4,
+      "iou50Pct": 46.8,
+      "iou70Pct": 37.8
+    },
+    "bySource": {
+      "manual": {
+        "nTags": 126,
+        "iou50Pct": 20.6,
+        "iou": {
+          "n": 126,
+          "min": 0.028,
+          "p10": 0.062,
+          "p25": 0.085,
+          "median": 0.24,
+          "p75": 0.428,
+          "p90": 0.597,
+          "max": 0.959,
+          "mean": 0.291
+        },
+        "durRatio": {
+          "n": 126,
+          "min": 0.37,
+          "p10": 0.83,
+          "p25": 1.82,
+          "median": 3.95,
+          "p75": 11.53,
+          "p90": 16.0,
+          "max": 35.5,
+          "mean": 7.02
+        }
+      },
+      "mlConfirmed": {
+        "nTags": 62,
+        "iou50Pct": 100.0,
+        "iou": {
+          "n": 62,
+          "min": 1.0,
+          "p10": 1.0,
+          "p25": 1.0,
+          "median": 1.0,
+          "p75": 1.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "mean": 1.0
+        },
+        "durRatio": {
+          "n": 62,
+          "min": 1.0,
+          "p10": 1.0,
+          "p25": 1.0,
+          "median": 1.0,
+          "p75": 1.0,
+          "p90": 1.0,
+          "max": 1.0,
+          "mean": 1.0
+        }
+      }
+    },
+    "boundary": {
+      "dStart": {
+        "n": 188,
+        "min": -300.0,
+        "p10": -110.0,
+        "p25": 0.0,
+        "median": 0.0,
+        "p75": 1697.5,
+        "p90": 5973.0,
+        "max": 13730.0,
+        "mean": 1540.4
+      },
+      "dEnd": {
+        "n": 188,
+        "min": -13430.0,
+        "p10": -7095.0,
+        "p25": -2662.5,
+        "median": 0.0,
+        "p75": 0.0,
+        "p90": 83.0,
+        "max": 1400.0,
+        "mean": -1871.4
+      },
+      "iou": {
+        "n": 188,
+        "min": 0.028,
+        "p10": 0.067,
+        "p25": 0.148,
+        "median": 0.428,
+        "p75": 1.0,
+        "p90": 1.0,
+        "max": 1.0,
+        "mean": 0.525
+      },
+      "durRatio": {
+        "n": 188,
+        "min": 0.37,
+        "p10": 1.0,
+        "p25": 1.0,
+        "median": 1.83,
+        "p75": 6.31,
+        "p90": 14.84,
+        "max": 35.5,
+        "mean": 5.04
+      },
+      "dStartHist": [
+        {
+          "bucket": "< -2000",
+          "count": 0
+        },
+        {
+          "bucket": "-2000\u2013-1000",
+          "count": 0
+        },
+        {
+          "bucket": "-1000\u2013-500",
+          "count": 0
+        },
+        {
+          "bucket": "-500\u2013-200",
+          "count": 4
+        },
+        {
+          "bucket": "-200\u20130",
+          "count": 32
+        },
+        {
+          "bucket": "0\u2013200",
+          "count": 72
+        },
+        {
+          "bucket": "200\u2013500",
+          "count": 7
+        },
+        {
+          "bucket": "\u2265 500",
+          "count": 73
+        }
+      ],
+      "dEndHist": [
+        {
+          "bucket": "< -500",
+          "count": 84
+        },
+        {
+          "bucket": "-500\u2013-200",
+          "count": 4
+        },
+        {
+          "bucket": "-200\u20130",
+          "count": 5
+        },
+        {
+          "bucket": "0\u2013200",
+          "count": 85
+        },
+        {
+          "bucket": "200\u2013500",
+          "count": 8
+        },
+        {
+          "bucket": "500\u20131000",
+          "count": 1
+        },
+        {
+          "bucket": "1000\u20132000",
+          "count": 1
+        },
+        {
+          "bucket": "\u2265 2000",
+          "count": 0
+        }
+      ],
+      "iouHist": [
+        {
+          "bucket": "< 0.1",
+          "count": 38
+        },
+        {
+          "bucket": "0.1\u20130.25",
+          "count": 27
+        },
+        {
+          "bucket": "0.25\u20130.5",
+          "count": 35
+        },
+        {
+          "bucket": "0.5\u20130.7",
+          "count": 17
+        },
+        {
+          "bucket": "0.7\u20130.9",
+          "count": 8
+        },
+        {
+          "bucket": "\u2265 0.9",
+          "count": 63
+        }
+      ],
+      "durRatioHist": [
+        {
+          "bucket": "< 0.8",
+          "count": 11
+        },
+        {
+          "bucket": "0.8\u20131",
+          "count": 4
+        },
+        {
+          "bucket": "1\u20131.5",
+          "count": 69
+        },
+        {
+          "bucket": "1.5\u20132",
+          "count": 12
+        },
+        {
+          "bucket": "2\u20134",
+          "count": 29
+        },
+        {
+          "bucket": "4\u20138",
+          "count": 20
+        },
+        {
+          "bucket": "\u2265 8",
+          "count": 43
+        }
+      ],
+      "candTooLong2xPct": 48.9,
+      "lateStartPct": 2.1,
+      "earlyEndPct": 5.3
+    },
+    "falsePositives": {
+      "nNoTagOverlap": 322,
+      "noTagOverlapPct": 66.7,
+      "durHist": [
+        {
+          "bucket": "< 500",
+          "count": 66
+        },
+        {
+          "bucket": "500\u20131000",
+          "count": 87
+        },
+        {
+          "bucket": "1000\u20132000",
+          "count": 78
+        },
+        {
+          "bucket": "2000\u20134000",
+          "count": 70
+        },
+        {
+          "bucket": "4000\u20138000",
+          "count": 15
+        },
+        {
+          "bucket": "\u2265 8000",
+          "count": 6
+        }
+      ],
+      "durQuantiles": {
+        "n": 322,
+        "min": 300.0,
+        "p10": 381.0,
+        "p25": 550.0,
+        "median": 1110.0,
+        "p75": 2312.5,
+        "p90": 3476.0,
+        "max": 13770.0,
+        "mean": 1744.6
+      },
+      "hitScore": {
+        "n": 50,
+        "min": 0.556,
+        "p10": 0.614,
+        "p25": 0.635,
+        "median": 0.715,
+        "p75": 0.775,
+        "p90": 0.819,
+        "max": 0.879,
+        "mean": 0.711
+      },
+      "missScore": {
+        "n": 62,
+        "min": 0.55,
+        "p10": 0.58,
+        "p25": 0.621,
+        "median": 0.679,
+        "p75": 0.792,
+        "p90": 0.884,
+        "max": 0.97,
+        "mean": 0.713
+      }
+    },
+    "misses": {
+      "n": 0,
+      "pct": 0.0,
+      "byCategory": {},
+      "bySpeaker": {},
+      "durQuantiles": {}
+    },
+    "fragmentation": {
+      "candsWith2PlusTagsPct": 8.1,
+      "candsMultiSpeakerPct": 0.2,
+      "tagsWithMultiCandPct": 10.1,
+      "coveredFracOfHitCands": {
+        "n": 161,
+        "min": 0.045,
+        "p10": 0.21,
+        "p25": 0.564,
+        "median": 1.0,
+        "p75": 1.0,
+        "p90": 1.0,
+        "max": 1.0,
+        "mean": 0.79
+      }
+    }
+  }
+}

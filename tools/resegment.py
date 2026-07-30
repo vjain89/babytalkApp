@@ -326,6 +326,8 @@ def split_span_relative(
     min_part_ms: float = RESEG_MIN_PART_MS,
     ignorance_db: float = IGNORANCE_DB,
     min_dip_db: float = MIN_DIP_DB,
+    word_split_min_sep_ms: float = WORD_SPLIT_MIN_SEP_MS,
+    word_split_min_dip_db: float = WORD_SPLIT_MIN_DIP_DB,
 ) -> list[tuple[float, float, str | None]]:
     """Split a mono clip (t=0 at clip start) into DJW-nucleus children."""
     x = _mono(x)
@@ -359,7 +361,7 @@ def split_span_relative(
         mi = _min_between(times_ms, intensity, a, b)
         dip = float(intensity[mi])
         prom = min(float(intensity[a]), float(intensity[b])) - dip
-        if sep_ms >= WORD_SPLIT_MIN_SEP_MS or prom >= WORD_SPLIT_MIN_DIP_DB:
+        if sep_ms >= word_split_min_sep_ms or prom >= word_split_min_dip_db:
             cuts.append(float(times_ms[mi]))
     boundaries = [0.0] + cuts + [dur_ms]
     raw_parts = [
@@ -405,6 +407,8 @@ def resegment_pieces(
     min_prominence_db: float | None = None,  # API compat → min_dip override
     ignorance_db: float = IGNORANCE_DB,
     min_dip_db: float = MIN_DIP_DB,
+    word_split_min_sep_ms: float = WORD_SPLIT_MIN_SEP_MS,
+    word_split_min_dip_db: float = WORD_SPLIT_MIN_DIP_DB,
 ) -> tuple[list[dict], dict]:
     """Expand parent pieces into DJW-nucleus children."""
     del min_gap_ms  # unused
@@ -418,6 +422,10 @@ def resegment_pieces(
         "resegSkipped": 0,
         "resegChildren": 0,
         "resegMethod": "dejong_wempe",
+        "wordSplitMinSepMs": word_split_min_sep_ms,
+        "wordSplitMinDipDb": word_split_min_dip_db,
+        "resegTargetMs": target_ms,
+        "resegMinPartMs": min_part_ms,
     }
     audio = _mono(audio)
     if not enabled:
@@ -479,6 +487,8 @@ def resegment_pieces(
             min_part_ms=min_part_ms,
             ignorance_db=ignorance_db,
             min_dip_db=min_dip_db,
+            word_split_min_sep_ms=word_split_min_sep_ms,
+            word_split_min_dip_db=word_split_min_dip_db,
         )
         if len(rel_parts) > 1:
             stats["resegSplits"] += len(rel_parts) - 1

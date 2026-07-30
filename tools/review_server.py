@@ -15,6 +15,9 @@ Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - Sync with iPhone (USB) to pull kits and push tags.json
 
 Usage:
+  # Prefer the supervised launcher (auto-restart; survives agent shells):
+  tools/run_review_server.sh
+  # Direct (ephemeral — dies when the terminal/agent shell ends):
   python3 tools/review_server.py
   # or: python3 tools/review_server.py ~/Documents/BabyTalk/Library
   open http://127.0.0.1:8765
@@ -431,8 +434,20 @@ HTML = r"""<!DOCTYPE html>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>BabyTalk Review</title>
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('babytalk-review-theme') || 'auto';
+    var h = new Date().getHours();
+    var night = h >= 18 || h < 6;
+    var theme = pref === 'dark' || (pref !== 'light' && night) ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+})();
+</script>
 <style>
   :root {
+    color-scheme: light;
     --bg: #f3efe8;
     --ink: #1a1a1a;
     --muted: #667;
@@ -442,6 +457,82 @@ HTML = r"""<!DOCTYPE html>
     --tag: #c45c26;
     --ml: #5a7a5a;
     --sel: rgba(47, 111, 237, 0.28);
+    --sidebar: #ebe4da;
+    --surface: #ffffff;
+    --surface-2: #f7f4ef;
+    --hover: #f7f2e9;
+    --selected-row: #f1e9dc;
+    --header-bg: #1a1a1a;
+    --header-ink: #f7f3ec;
+    --header-muted: #bdb7ae;
+    --on-ink: #ffffff;
+    --help-bg: #e7f0ff;
+    --help-line: #c5d7f5;
+    --pill-bg: #efe6da;
+    --pill-user-bg: #f3d9c8;
+    --pill-user-ink: #7a3410;
+    --pill-ml-bg: #d9e6d9;
+    --pill-ml-ink: #2f4f2f;
+    --pill-frag-bg: #f0e0b8;
+    --pill-frag-ink: #6b4e12;
+    --tag-fill: rgba(194, 100, 48, 0.20);
+    --tag-fill-sel: rgba(194, 100, 48, 0.38);
+    --tag-label-bg: rgba(255, 253, 249, 0.82);
+    --wave-bg: #fffdf9;
+    --wave-ink: #5c5c5c;
+    --wave-mid: #ddd5c8;
+    --wave-grid: #ece6dc;
+    --wave-empty: #999999;
+    --wave-tick: #888888;
+    --overview-bg: #ebe4da;
+    --overview-tag: rgba(194, 100, 48, 0.45);
+    --cloud-colors: #7a3410, #c26430, #1a1a1a, #5a3a28, #8b4513, #2f4f2f;
+    --playhead: #c62828;
+    --shadow: rgba(0, 0, 0, 0.06);
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #141210;
+    --ink: #efe9e0;
+    --muted: #9a9288;
+    --panel: #1e1b17;
+    --line: #3a342c;
+    --accent: #7aa2ff;
+    --tag: #e08a55;
+    --ml: #8fbc8f;
+    --sel: rgba(122, 162, 255, 0.30);
+    --sidebar: #181512;
+    --surface: #25211c;
+    --surface-2: #2c2721;
+    --hover: #2a261f;
+    --selected-row: #342e26;
+    --header-bg: #0f0d0b;
+    --header-ink: #f0ebe3;
+    --header-muted: #a89f93;
+    --on-ink: #141210;
+    --help-bg: #1a2436;
+    --help-line: #2f4060;
+    --pill-bg: #322c24;
+    --pill-user-bg: #4a2f1c;
+    --pill-user-ink: #f0c4a0;
+    --pill-ml-bg: #243328;
+    --pill-ml-ink: #b7d7b7;
+    --pill-frag-bg: #3a3020;
+    --pill-frag-ink: #e0c080;
+    --tag-fill: rgba(224, 138, 85, 0.28);
+    --tag-fill-sel: rgba(224, 138, 85, 0.45);
+    --tag-label-bg: rgba(30, 27, 23, 0.88);
+    --wave-bg: #1e1b17;
+    --wave-ink: #c8c2b8;
+    --wave-mid: #3a342c;
+    --wave-grid: #2a2621;
+    --wave-empty: #8a847a;
+    --wave-tick: #a89f93;
+    --overview-bg: #181512;
+    --overview-tag: rgba(224, 138, 85, 0.50);
+    --cloud-colors: #f0c4a0, #e08a55, #efe9e0, #d4a574, #c9a27a, #b7d7b7;
+    --playhead: #ef5350;
+    --shadow: rgba(0, 0, 0, 0.35);
   }
   * { box-sizing: border-box; }
   body {
@@ -452,8 +543,8 @@ HTML = r"""<!DOCTYPE html>
   }
   header {
     padding: 14px 20px 12px;
-    background: var(--ink);
-    color: #f7f3ec;
+    background: var(--header-bg);
+    color: var(--header-ink);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -465,7 +556,7 @@ HTML = r"""<!DOCTYPE html>
     flex-wrap: wrap;
   }
   header strong { font-size: 18px; letter-spacing: 0.02em; }
-  header .hint { color: #bdb7ae; font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif; flex: 1; }
+  header .hint { color: var(--header-muted); font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif; flex: 1; }
   .sync-btn {
     font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 13px;
@@ -473,11 +564,22 @@ HTML = r"""<!DOCTYPE html>
     border-radius: 6px;
     border: 1px solid #5a5a5a;
     background: #2a2a2a;
-    color: #f7f3ec;
+    color: var(--header-ink);
     cursor: pointer;
   }
   .sync-btn:hover { background: #3a3a3a; }
   .sync-btn:disabled { opacity: 0.55; cursor: wait; }
+  .theme-btn {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 12px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid #5a5a5a;
+    background: transparent;
+    color: var(--header-muted);
+    cursor: pointer;
+  }
+  .theme-btn:hover { color: var(--header-ink); border-color: #7a7a7a; }
   #vocabBar {
     font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 13px;
@@ -496,7 +598,7 @@ HTML = r"""<!DOCTYPE html>
   main { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 56px); }
   #sidebar {
     border-right: 1px solid var(--line);
-    background: #ebe4da;
+    background: var(--sidebar);
     padding: 12px;
     overflow: auto;
     font-family: ui-sans-serif, system-ui, sans-serif;
@@ -510,7 +612,7 @@ HTML = r"""<!DOCTYPE html>
     padding: 10px; border: 1px solid var(--line); background: var(--panel);
     cursor: pointer; border-radius: 6px; font: inherit;
   }
-  #kitList button.active { border-color: var(--ink); background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,0.06); }
+  #kitList button.active { border-color: var(--ink); background: var(--surface); box-shadow: 0 1px 0 var(--shadow); }
   #kitList .year-group { margin: 0 0 14px; }
   #kitList .year-label {
     font-size: 13px; font-weight: 700; color: var(--ink);
@@ -524,24 +626,25 @@ HTML = r"""<!DOCTYPE html>
     cursor: text; border-radius: 6px; padding: 2px 6px; margin-left: -6px;
     outline: none;
   }
-  #sessionTitle:hover { background: rgba(0,0,0,0.04); }
+  #sessionTitle:hover { background: var(--hover); }
   #sessionTitle.editing {
-    background: #fff; border: 1px solid var(--line);
-    box-shadow: 0 0 0 2px rgba(47,111,237,0.15);
+    background: var(--surface); border: 1px solid var(--line);
+    box-shadow: 0 0 0 2px var(--sel);
   }
   #sessionTitleInput {
     font: inherit; font-size: 1.5rem; font-weight: 600;
     width: min(100%, 420px); padding: 4px 8px;
     border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); color: var(--ink);
   }
   .title-row {
     display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
     margin: 0 0 4px;
   }
   .title-row button.ghost {
-    border: 1px solid var(--line); background: #fff; padding: 5px 10px;
+    border: 1px solid var(--line); background: var(--surface); padding: 5px 10px;
     border-radius: 6px; cursor: pointer; font: inherit; font-size: 12px;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-family: ui-sans-serif, system-ui, sans-serif; color: var(--ink);
   }
   #panel { padding: 18px 22px 40px; max-width: 1100px; }
   #cloudPane {
@@ -573,11 +676,11 @@ HTML = r"""<!DOCTYPE html>
     margin: 12px 0; font-family: ui-sans-serif, system-ui, sans-serif;
   }
   .transport button, .tag-form button, .row button, .tag-detail .controls button {
-    border: 1px solid var(--line); background: #fff; padding: 7px 12px;
-    border-radius: 6px; cursor: pointer; font: inherit;
+    border: 1px solid var(--line); background: var(--surface); padding: 7px 12px;
+    border-radius: 6px; cursor: pointer; font: inherit; color: var(--ink);
   }
   .transport button.primary, .tag-form button.primary {
-    background: var(--ink); color: #fff; border-color: var(--ink);
+    background: var(--ink); color: var(--on-ink); border-color: var(--ink);
   }
   #waveWrap {
     position: relative;
@@ -595,19 +698,19 @@ HTML = r"""<!DOCTYPE html>
     border: 1px solid var(--line);
     border-top: none;
     border-radius: 0 0 8px 8px;
-    background: #ebe4da;
+    background: var(--overview-bg);
     cursor: grab;
     overflow: hidden;
   }
   #overviewCanvas { display: block; width: 100%; height: 28px; }
   #overviewWindow {
     position: absolute; top: 0; bottom: 0;
-    background: rgba(47, 111, 237, 0.22);
+    background: var(--sel);
     border: 1px solid var(--accent);
     pointer-events: none;
   }
   #playhead {
-    position: absolute; top: 0; bottom: 0; width: 2px; background: #c62828;
+    position: absolute; top: 0; bottom: 0; width: 2px; background: var(--playhead);
     pointer-events: none; left: 0; z-index: 4;
   }
   #tagMarks {
@@ -617,30 +720,30 @@ HTML = r"""<!DOCTYPE html>
   }
   .tag-mark {
     position: absolute; top: 0; bottom: 0;
-    background: rgba(194, 100, 48, 0.20);
-    border-left: 2px solid #c26430;
-    border-right: 1px solid rgba(194, 100, 48, 0.55);
+    background: var(--tag-fill);
+    border-left: 2px solid var(--tag);
+    border-right: 1px solid var(--tag);
     box-sizing: border-box;
     overflow: hidden;
   }
   .tag-mark.point {
     border-right: none;
     width: 2px !important;
-    background: #c26430;
+    background: var(--tag);
   }
   .tag-mark.sel {
-    background: rgba(194, 100, 48, 0.38);
+    background: var(--tag-fill-sel);
     border-left-width: 3px;
-    border-right-color: #c26430;
+    border-right-color: var(--tag);
   }
   .tag-mark span {
     position: absolute; top: 3px; left: 4px; right: 2px;
     font: 600 10px/1.2 ui-sans-serif, system-ui, sans-serif;
-    color: #7a3410;
+    color: var(--pill-user-ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: rgba(255, 253, 249, 0.82);
+    background: var(--tag-label-bg);
     padding: 1px 4px;
     border-radius: 2px;
     max-width: 100%;
@@ -675,7 +778,7 @@ HTML = r"""<!DOCTYPE html>
   }
   .tag-form input, .tag-form select {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
-    background: #fff; color: var(--ink);
+    background: var(--surface); color: var(--ink);
   }
   .tax-block {
     display: grid;
@@ -694,7 +797,7 @@ HTML = r"""<!DOCTYPE html>
   }
   .chip {
     border: 1px solid var(--line);
-    background: #fff;
+    background: var(--surface);
     color: var(--ink);
     padding: 5px 10px;
     border-radius: 999px;
@@ -704,7 +807,7 @@ HTML = r"""<!DOCTYPE html>
   }
   .chip.active {
     background: var(--ink);
-    color: #fff;
+    color: var(--on-ink);
     border-color: var(--ink);
   }
   .asr-line {
@@ -719,11 +822,11 @@ HTML = r"""<!DOCTYPE html>
     font-family: ui-sans-serif, system-ui, sans-serif;
   }
   .main-tabs button {
-    border: 1px solid var(--line); background: #fff; padding: 8px 14px;
-    border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px;
+    border: 1px solid var(--line); background: var(--surface); padding: 8px 14px;
+    border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; color: var(--ink);
   }
   .main-tabs button.active {
-    background: var(--ink); color: #fff; border-color: var(--ink);
+    background: var(--ink); color: var(--on-ink); border-color: var(--ink);
   }
   #clusterTab { display: none; }
   #clusterTab.active { display: block; }
@@ -734,18 +837,18 @@ HTML = r"""<!DOCTYPE html>
   }
   .cluster-list { display: grid; gap: 10px; }
   .cluster-card {
-    border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
     padding: 12px 14px; cursor: pointer;
     font-family: ui-sans-serif, system-ui, sans-serif;
   }
-  .cluster-card.active { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(0,0,0,0.06); }
+  .cluster-card.active { border-color: var(--ink); box-shadow: 0 0 0 2px var(--shadow); }
   .cluster-card .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .conf-grid {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
     margin: 10px 0; font-size: 12px;
   }
   .conf-grid div {
-    background: #f7f4ef; border-radius: 8px; padding: 8px;
+    background: var(--surface-2); border-radius: 8px; padding: 8px;
   }
   .conf-grid strong { display: block; font-size: 14px; color: var(--ink); }
   .spec-row {
@@ -757,7 +860,7 @@ HTML = r"""<!DOCTYPE html>
   }
   .spec-cell canvas { display: block; width: 100%; height: 72px; }
   .spec-cell .cap { color: #ccc; font-size: 11px; margin-top: 4px; font-family: ui-sans-serif, system-ui, sans-serif; }
-  .spec-cell.outlier { outline: 2px solid #c26430; }
+  .spec-cell.outlier { outline: 2px solid var(--tag); }
   .cluster-members { display: grid; gap: 6px; margin: 10px 0; }
   .cluster-member {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
@@ -770,26 +873,28 @@ HTML = r"""<!DOCTYPE html>
   .cluster-label-form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
   .cluster-label-form input, .cluster-label-form select {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
-    font: inherit; color: var(--ink); background: #fff;
+    font: inherit; color: var(--ink); background: var(--surface);
   }
   .add-snippet-box {
-    border: 1px solid var(--line); border-radius: 8px; background: #fff;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
     padding: 8px; display: grid; gap: 8px;
   }
   .add-snippet-box input[type="search"] {
     width: 100%; box-sizing: border-box;
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit;
+    background: var(--surface); color: var(--ink);
   }
   .add-snippet-results {
     max-height: 180px; overflow: auto; display: grid; gap: 4px;
   }
   .add-snippet-results button {
-    text-align: left; border: 1px solid transparent; background: #f7f4ef;
+    text-align: left; border: 1px solid transparent; background: var(--surface-2);
     border-radius: 6px; padding: 6px 8px; cursor: pointer; font: inherit; font-size: 12px;
+    color: var(--ink);
   }
   .add-snippet-results button:hover { border-color: var(--line); }
   .add-snippet-results button.selected {
-    border-color: var(--ink); background: #fff;
+    border-color: var(--ink); background: var(--surface);
   }
   .add-snippet-results .empty { color: var(--muted); font-size: 12px; padding: 6px; }
   .note-input {
@@ -809,7 +914,7 @@ HTML = r"""<!DOCTYPE html>
   .detail-fields[data-mode=""] .note-field,
   .detail-fields[data-mode=""] .language-field { display: none; }
   .help {
-    background: #e7f0ff; border: 1px solid #c5d7f5; border-radius: 8px;
+    background: var(--help-bg); border: 1px solid var(--help-line); border-radius: 8px;
     padding: 10px 12px; margin: 0 0 14px;
     font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
   }
@@ -840,7 +945,7 @@ HTML = r"""<!DOCTYPE html>
     font: inherit;
     font-size: 14px;
     color: var(--ink);
-    background: #fff;
+    background: var(--surface);
     width: 100%;
     box-sizing: border-box;
   }
@@ -857,7 +962,7 @@ HTML = r"""<!DOCTYPE html>
   .meta-actions button.primary {
     border: 1px solid var(--ink);
     background: var(--ink);
-    color: #fff;
+    color: var(--on-ink);
     padding: 8px 14px;
     border-radius: 6px;
     cursor: pointer;
@@ -880,17 +985,42 @@ HTML = r"""<!DOCTYPE html>
   }
   .row select, .row input[type=text], .row .note-input {
     padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
-    font: inherit; background: #fff; color: var(--ink);
+    font: inherit; background: var(--surface); color: var(--ink);
   }
   .row .category-select { width: 100%; max-width: 280px; }
   .row .speaker-row input { padding: 6px 8px; }
   .pill {
-    font-size: 11px; padding: 3px 7px; border-radius: 4px; background: #efe6da;
+    font-size: 11px; padding: 3px 7px; border-radius: 4px; background: var(--pill-bg);
     white-space: normal; line-height: 1.35;
   }
-  .pill.user { background: #f3d9c8; color: #7a3410; }
-  .pill.ml { background: #d9e6d9; color: #2f4f2f; }
+  .pill.user { background: var(--pill-user-bg); color: var(--pill-user-ink); }
+  .pill.ml { background: var(--pill-ml-bg); color: var(--pill-ml-ink); }
   .pill .sub { display: block; color: inherit; opacity: 0.85; font-weight: 500; }
+  /* Cheap review cue: spans well below typical word duration (likely syllable fragments). */
+  .cue-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    vertical-align: middle;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  .cue-badge.fragment {
+    background: var(--pill-frag-bg);
+    color: var(--pill-frag-ink);
+  }
+  .cluster-member.is-fragment {
+    opacity: 0.82;
+    border-left: 3px solid var(--pill-frag-ink);
+    padding-left: 6px;
+    margin-left: -2px;
+  }
+  .cluster-card .cue-badge { margin-left: 6px; vertical-align: text-bottom; }
   /* Compact tag list: one scannable line per tag, full editor on the open row only. */
   .tag-toolbar {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -899,11 +1029,15 @@ HTML = r"""<!DOCTYPE html>
   .tag-toolbar input[type=search] {
     padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px;
     font: inherit; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
-    background: #fff; color: var(--ink); width: 200px;
+    background: var(--surface); color: var(--ink); width: 200px;
   }
   .tag-rows {
     border: 1px solid var(--line); border-radius: 6px;
-    background: var(--panel); overflow: hidden;
+    background: var(--panel);
+    /* ~20 compact .tag-line rows (padding 6+6 + ~13px text + borders) */
+    max-height: calc(20 * 29px);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
   .tag-item + .tag-item { border-top: 1px solid var(--line); }
   .tag-line {
@@ -916,15 +1050,15 @@ HTML = r"""<!DOCTYPE html>
     font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
     color: var(--ink);
   }
-  .tag-line:hover { background: #f7f2e9; }
-  .tag-item.open > .tag-line { background: #f1e9dc; box-shadow: inset 3px 0 0 var(--tag); }
+  .tag-line:hover { background: var(--hover); }
+  .tag-item.open > .tag-line { background: var(--selected-row); box-shadow: inset 3px 0 0 var(--tag); }
   .tag-time { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
   .tag-badge {
     font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase;
     padding: 2px 5px; border-radius: 3px; justify-self: start;
   }
-  .tag-badge.ml { background: #d9e6d9; color: #2f4f2f; }
-  .tag-badge.user { background: #f3d9c8; color: #7a3410; }
+  .tag-badge.ml { background: var(--pill-ml-bg); color: var(--pill-ml-ink); }
+  .tag-badge.user { background: var(--pill-user-bg); color: var(--pill-user-ink); }
   .tag-who { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tag-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tag-label .ph { color: var(--muted); }
@@ -938,7 +1072,7 @@ HTML = r"""<!DOCTYPE html>
   .tag-detail .row-fields { grid-template-columns: 1fr; }
   .tag-detail select, .tag-detail input[type=text], .tag-detail .note-input {
     padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
-    font: inherit; background: #fff; color: var(--ink);
+    font: inherit; background: var(--surface); color: var(--ink);
   }
   .tag-detail .category-select { width: 100%; max-width: 280px; }
   .tag-detail .speaker-row input { padding: 6px 8px; }
@@ -959,6 +1093,7 @@ HTML = r"""<!DOCTYPE html>
   <div class="top-row">
     <strong>BabyTalk</strong>
     <span class="hint">Mac review · tags write live to each kit’s <code style="color:#e8dcc8">tags.json</code></span>
+    <button type="button" id="btnTheme" class="theme-btn" title="Cycle theme: Auto (evening/night) → Light → Dark">Theme: Auto</button>
     <button type="button" id="btnSync" class="sync-btn">Sync with iPhone</button>
   </div>
   <div id="vocabBar">
@@ -975,6 +1110,82 @@ HTML = r"""<!DOCTYPE html>
 </main>
 <audio id="audio" preload="auto"></audio>
 <script>
+const THEME_KEY = 'babytalk-review-theme';
+let themeTimer = null;
+
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+function isEveningOrNight(d) {
+  const h = (d || new Date()).getHours();
+  return h >= 18 || h < 6;
+}
+
+function getThemePreference() {
+  const v = localStorage.getItem(THEME_KEY);
+  return (v === 'light' || v === 'dark' || v === 'auto') ? v : 'auto';
+}
+
+function resolvedTheme(pref) {
+  const p = pref || getThemePreference();
+  if (p === 'light') return 'light';
+  if (p === 'dark') return 'dark';
+  return isEveningOrNight() ? 'dark' : 'light';
+}
+
+function scheduleThemeFlip() {
+  if (themeTimer) clearTimeout(themeTimer);
+  if (getThemePreference() !== 'auto') return;
+  const now = new Date();
+  const next = new Date(now.getTime());
+  if (isEveningOrNight(now)) {
+    if (now.getHours() < 6) next.setHours(6, 0, 0, 0);
+    else {
+      next.setDate(next.getDate() + 1);
+      next.setHours(6, 0, 0, 0);
+    }
+  } else {
+    next.setHours(18, 0, 0, 0);
+  }
+  themeTimer = setTimeout(() => applyTheme(true), Math.max(1000, next.getTime() - now.getTime() + 50));
+}
+
+function applyTheme(redraw) {
+  const pref = getThemePreference();
+  const theme = resolvedTheme(pref);
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('btnTheme');
+  if (btn) {
+    btn.textContent = pref === 'auto'
+      ? `Theme: Auto (${theme === 'dark' ? 'night' : 'day'})`
+      : `Theme: ${theme === 'dark' ? 'Dark' : 'Light'}`;
+  }
+  scheduleThemeFlip();
+  if (redraw) {
+    if (typeof audioBuf !== 'undefined' && audioBuf) {
+      drawWave();
+      drawOverview();
+      paintOverlays();
+    } else if (typeof drawWaveEmpty === 'function') {
+      drawWaveEmpty();
+      if (typeof drawOverview === 'function') drawOverview();
+    }
+    if (typeof renderWordCloud === 'function') renderWordCloud();
+  }
+}
+
+function cycleTheme() {
+  const order = ['auto', 'light', 'dark'];
+  const cur = getThemePreference();
+  const next = order[(Math.max(0, order.indexOf(cur)) + 1) % order.length];
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(true);
+}
+
+applyTheme(false);
+
 let kits = [];
 let current = null;
 let clusterDoc = null;
@@ -1519,14 +1730,14 @@ function renderWordCloud() {
   canvas.style.height = cssH + 'px';
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#fffdf9';
+  ctx.fillStyle = cssVar('--wave-bg', '#fffdf9');
   ctx.fillRect(0, 0, cssW, cssH);
   cloudHits = [];
 
   if (!current) {
     if (meta) meta.textContent = 'Select a session';
     canvas.classList.remove('has-words');
-    ctx.fillStyle = '#999';
+    ctx.fillStyle = cssVar('--wave-empty', '#999');
     ctx.font = '12px ui-sans-serif, system-ui, sans-serif';
     ctx.fillText('Word sizes reflect tag frequency', 14, cssH / 2);
     return;
@@ -1542,7 +1753,7 @@ function renderWordCloud() {
   }
   if (!entries.length) {
     canvas.classList.remove('has-words');
-    ctx.fillStyle = '#999';
+    ctx.fillStyle = cssVar('--wave-empty', '#999');
     ctx.font = '12px ui-sans-serif, system-ui, sans-serif';
     ctx.fillText('Add tags to build a word cloud', 14, cssH / 2);
     return;
@@ -1555,7 +1766,10 @@ function renderWordCloud() {
     if (maxC === minC) return 20;
     return 11 + ((n - minC) / (maxC - minC)) * 26;
   };
-  const colors = ['#7a3410', '#c26430', '#1a1a1a', '#5a3a28', '#8b4513', '#2f4f2f'];
+  const colors = cssVar(
+    '--cloud-colors',
+    '#7a3410, #c26430, #1a1a1a, #5a3a28, #8b4513, #2f4f2f'
+  ).split(',').map(s => s.trim()).filter(Boolean);
   const placed = [];
   const pad = 3;
   const overlaps = (a, b) => !(a.x1 + pad < b.x0 || a.x0 - pad > b.x1 || a.y1 + pad < b.y0 || a.y0 - pad > b.y1);
@@ -2043,6 +2257,8 @@ function renderShell() {
         Groups similar spans in this session (tags + non-dismissed VAD). Labels are stored on the
         <strong>cluster</strong> only (not auto-copied onto tags). <code>conceptIds</code> reserved for
         future many↔many developmental concepts. Exclude outliers before trusting a group.
+        Amber <span class="cue-badge fragment">short</span> marks spans below the fragment cutoff
+        (~400–500ms, or ~55% of this kit’s median tag duration) — likely syllable pieces to skip or merge later.
       </p>
       <div class="cluster-toolbar">
         <button type="button" class="primary" id="btnClusterRun">Run clustering</button>
@@ -2278,8 +2494,12 @@ function renderClusterList() {
     const conf = c.confidence || {};
     const label = [c.word, c.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
     const speakers = [...new Set((c.members || []).map(m => m.speaker || '?'))].join(', ');
+    const shortN = (c.members || []).filter(m => isLikelyFragment(m)).length;
+    const shortBadge = shortN
+      ? ` <span class="cue-badge fragment" title="${shortN} member(s) below fragment cutoff (${fragmentCutoffMs()}ms)">${shortN} short</span>`
+      : '';
     return `<div class="cluster-card${c.id === activeClusterId ? ' active' : ''}" data-cid="${esc(c.id)}">
-      <strong>${esc(label)}</strong> · ${conf.size || 0} members
+      <strong>${esc(label)}</strong> · ${conf.size || 0} members${shortBadge}
       <div class="meta">tight ${Number(conf.tightness || 0).toFixed(2)} · sep ${Number(conf.separation || 0).toFixed(2)} · speakers ${esc(speakers)}</div>
     </div>`;
   }).join('');
@@ -2351,7 +2571,7 @@ function renderUnassignedPanel() {
       const where = mem ? ` (in unlabeled cluster · ${mem.size})` : '';
       const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp}${w ? ' · '+w : ''}${ph ? ' · '+ph : ''} (tag)${where}`;
       const hay = `${label} ${t.category || ''} ${t.language || ''}`.toLowerCase();
-      byId.set(t.uuid, { id: t.uuid, label, hay, start });
+      byId.set(t.uuid, { id: t.uuid, label, hay, start, startMs: start, endMs: end });
     }
     for (const a of (current.annotations || []).filter(x => x.status !== 'dismissed')) {
       if (!a.uuid || byId.has(a.uuid)) continue;
@@ -2362,7 +2582,7 @@ function renderUnassignedPanel() {
       const end = a.endMs != null ? a.endMs : start;
       const where = mem ? ` (in unlabeled cluster · ${mem.size})` : '';
       const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp} (VAD)${where}`;
-      byId.set(a.uuid, { id: a.uuid, label, hay: label.toLowerCase(), start });
+      byId.set(a.uuid, { id: a.uuid, label, hay: label.toLowerCase(), start, startMs: start, endMs: end });
     }
     const list = [...byId.values()];
     list.sort((a, b) => a.start - b.start);
@@ -2386,7 +2606,7 @@ function renderUnassignedPanel() {
       return;
     }
     results.innerHTML = hits.map(o =>
-      `<button type="button" data-id="${esc(o.id)}" class="${selected.has(o.id) ? 'selected' : ''}">${esc(o.label)}</button>`
+      `<button type="button" data-id="${esc(o.id)}" class="${selected.has(o.id) ? 'selected' : ''}">${esc(o.label)} ${fragmentCueHtml(o)}</button>`
     ).join('');
     results.querySelectorAll('button[data-id]').forEach(b => {
       b.onclick = () => {
@@ -2559,16 +2779,21 @@ async function renderClusterDetail(cid) {
     </div>
   `;
   const memEl = document.getElementById('clusterMembers');
-  memEl.innerHTML = (c.members || []).map(m => `
-    <div class="cluster-member" data-mid="${esc(m.memberId)}">
+  memEl.innerHTML = (c.members || []).map(m => {
+    const dur = spanDurationMs(m);
+    const frag = isLikelyFragment(m);
+    return `
+    <div class="cluster-member${frag ? ' is-fragment' : ''}" data-mid="${esc(m.memberId)}">
       <span>${(m.startMs/1000).toFixed(2)}s–${(m.endMs/1000).toFixed(2)}s</span>
+      <span class="muted" style="font-variant-numeric:tabular-nums">${Math.round(dur)}ms</span>
+      ${fragmentCueHtml(m)}
       <span class="pill">${esc(m.speaker || '?')}</span>
       <span class="muted">${esc(m.refType)} · ${esc(m.source || '')}${m.outlier ? ' · outlier' : ''}</span>
       <button type="button" data-act="play">Play</button>
       <button type="button" data-act="exclude">Exclude</button>
       ${m.refType === 'annotation' ? '<button type="button" data-act="promote">Promote to tag</button>' : ''}
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   memEl.querySelectorAll('.cluster-member').forEach(row => {
     const mid = row.dataset.mid;
     const m = (c.members || []).find(x => x.memberId === mid);
@@ -2715,7 +2940,7 @@ async function renderClusterDetail(cid) {
     if (mem) where = mem.size <= 1 ? `singleton · ${mem.label}` : `in “${mem.label}” (${mem.size})`;
     const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp}${w ? ' · '+w : ''}${ph ? ' · '+ph : ''} (tag) · ${where}`;
     const hay = `${label} ${t.category || ''} ${t.language || ''} ${w} ${ph}`.toLowerCase();
-    addCandidatesById.set(t.uuid, { id: t.uuid, label, hay, start, assignedElsewhere: !!mem });
+    addCandidatesById.set(t.uuid, { id: t.uuid, label, hay, start, startMs: start, endMs: end, assignedElsewhere: !!mem });
   }
   for (const a of (current.annotations || []).filter(x => x.status !== 'dismissed')) {
     if (!a.uuid || addCandidatesById.has(a.uuid)) continue;
@@ -2728,7 +2953,7 @@ async function renderClusterDetail(cid) {
     if (mem) where = mem.size <= 1 ? `singleton · ${mem.label}` : `in “${mem.label}” (${mem.size})`;
     const label = `${(start/1000).toFixed(2)}s–${(end/1000).toFixed(2)}s · ${sp} (VAD) · ${where}`;
     const hay = `${label}`.toLowerCase();
-    addCandidatesById.set(a.uuid, { id: a.uuid, label, hay, start, assignedElsewhere: !!mem });
+    addCandidatesById.set(a.uuid, { id: a.uuid, label, hay, start, startMs: start, endMs: end, assignedElsewhere: !!mem });
   }
   const addCandidates = [...addCandidatesById.values()];
   addCandidates.sort((a, b) => a.start - b.start);
@@ -2749,7 +2974,7 @@ async function renderClusterDetail(cid) {
       return;
     }
     addResults.innerHTML = hits.map(o =>
-      `<button type="button" data-id="${esc(o.id)}" class="${selectedAddIds.has(o.id) ? 'selected' : ''}">${esc(o.label)}</button>`
+      `<button type="button" data-id="${esc(o.id)}" class="${selectedAddIds.has(o.id) ? 'selected' : ''}">${esc(o.label)} ${fragmentCueHtml(o)}</button>`
     ).join('');
     addResults.querySelectorAll('button[data-id]').forEach(btn => {
       btn.onclick = () => {
@@ -3150,15 +3375,15 @@ function drawWaveEmpty() {
   const h = 160;
   canvas.width = w * dpr; canvas.height = h * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#999'; ctx.font = '13px sans-serif';
+  ctx.fillStyle = cssVar('--wave-bg', '#fffdf9'); ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = cssVar('--wave-empty', '#999'); ctx.font = '13px sans-serif';
   ctx.fillText('Waveform unavailable — you can still mark in/out while playing.', 16, h/2);
 }
 
 function drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h) {
   const mid = h / 2;
   const span = Math.max(1, sampleEnd - sampleStart);
-  ctx.strokeStyle = '#5c5c5c';
+  ctx.strokeStyle = cssVar('--wave-ink', '#5c5c5c');
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let x = 0; x < w; x++) {
@@ -3177,7 +3402,7 @@ function drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h) {
     ctx.lineTo(x, mid + max * mid * 0.92);
   }
   ctx.stroke();
-  ctx.strokeStyle = '#ddd5c8';
+  ctx.strokeStyle = cssVar('--wave-mid', '#ddd5c8');
   ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
 }
 
@@ -3191,7 +3416,7 @@ function drawWave() {
   canvas.width = w * dpr; canvas.height = h * dpr;
   canvas.style.width = w + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#fffdf9'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = cssVar('--wave-bg', '#fffdf9'); ctx.fillRect(0, 0, w, h);
 
   const data = audioBuf.getChannelData(0);
   const sr = audioBuf.sampleRate;
@@ -3200,13 +3425,14 @@ function drawWave() {
   drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h);
 
   // Time ticks
-  ctx.fillStyle = '#888';
+  ctx.fillStyle = cssVar('--wave-tick', '#888');
   ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
   const tickEvery = niceTick(viewDur);
   const first = Math.ceil(viewStart / tickEvery) * tickEvery;
+  const grid = cssVar('--wave-grid', '#ece6dc');
   for (let t = first; t <= viewEnd() + 1e-9; t += tickEvery) {
     const x = timeToX(t, w);
-    ctx.strokeStyle = '#ece6dc';
+    ctx.strokeStyle = grid;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     ctx.fillText(formatTick(t), x + 3, 12);
   }
@@ -3240,13 +3466,14 @@ function drawOverview() {
   canvas.width = w * dpr; canvas.height = h * dpr;
   canvas.style.width = w + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#ebe4da'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = cssVar('--overview-bg', '#ebe4da'); ctx.fillRect(0, 0, w, h);
   if (audioBuf && durationSec) {
     const data = audioBuf.getChannelData(0);
     drawChannelPeaks(ctx, data, 0, data.length, w, h);
   }
   // Tag markers across the full timeline.
   if (durationSec && current && current.tags) {
+    const tagFill = cssVar('--overview-tag', 'rgba(194, 100, 48, 0.45)');
     for (const tag of current.tags) {
       const a = (tag.startMs || 0) / 1000;
       const bRaw = tag.endMs != null ? tag.endMs / 1000 : a;
@@ -3254,7 +3481,7 @@ function drawOverview() {
       const hi = Math.max(a, bRaw);
       const x0 = (lo / durationSec) * w;
       const x1 = (Math.max(hi, lo + 0.001) / durationSec) * w;
-      ctx.fillStyle = 'rgba(194, 100, 48, 0.45)';
+      ctx.fillStyle = tagFill;
       ctx.fillRect(x0, 0, Math.max(2, x1 - x0), h);
     }
   }
@@ -3272,6 +3499,64 @@ const TAG_CATEGORY_SHORT = {
   'non-verbal vocalization': 'non-verbal',
   'non-vocal vegetative sound': 'vegetative',
 };
+
+/** Absolute floor/default/ceiling for “likely syllable fragment” duration cue (ms). */
+const FRAGMENT_FLOOR_MS = 400;
+const FRAGMENT_DEFAULT_MS = 450;
+const FRAGMENT_CEIL_MS = 500;
+
+function spanDurationMs(obj) {
+  if (!obj) return 0;
+  const start = obj.startMs != null ? obj.startMs : (obj.tMs != null ? obj.tMs : null);
+  const end = obj.endMs != null ? obj.endMs : null;
+  if (start == null || end == null) return 0;
+  return Math.max(0, end - start);
+}
+
+/** Median tagged-word duration in the open kit (≥3 finite spans), else null. */
+function kitMedianTagDurationMs() {
+  const durs = [];
+  for (const t of (current && current.tags) || []) {
+    const d = spanDurationMs(t);
+    if (d > 0) durs.push(d);
+  }
+  if (durs.length < 3) return null;
+  durs.sort((a, b) => a - b);
+  return durs[Math.floor(durs.length / 2)];
+}
+
+/**
+ * Cutoff for the fragment cue: ~55% of kit median tag duration when available,
+ * clamped to 400–500ms; otherwise a fixed 450ms default.
+ */
+function fragmentCutoffMs() {
+  const med = kitMedianTagDurationMs();
+  if (med != null) {
+    return Math.min(FRAGMENT_CEIL_MS, Math.max(FRAGMENT_FLOOR_MS, Math.round(0.55 * med)));
+  }
+  return FRAGMENT_DEFAULT_MS;
+}
+
+function isLikelyFragment(objOrStartMs, endMs) {
+  let dur = 0;
+  if (objOrStartMs != null && typeof objOrStartMs === 'object') {
+    dur = spanDurationMs(objOrStartMs);
+  } else if (objOrStartMs != null && endMs != null) {
+    dur = Math.max(0, endMs - objOrStartMs);
+  }
+  return dur > 0 && dur < fragmentCutoffMs();
+}
+
+/** Shared dark-theme-friendly “short” / fragment chip for Clustering + ML rows. */
+function fragmentCueHtml(objOrDurMs) {
+  const dur = (objOrDurMs != null && typeof objOrDurMs === 'object')
+    ? spanDurationMs(objOrDurMs)
+    : (Number(objOrDurMs) || 0);
+  if (!(dur > 0 && dur < fragmentCutoffMs())) return '';
+  const cut = fragmentCutoffMs();
+  const title = `Likely syllable fragment · ${Math.round(dur)}ms &lt; ${cut}ms cutoff (kit median tag ×0.55, clamped 400–500)`;
+  return `<span class="cue-badge fragment" title="${title}">short</span>`;
+}
 
 function tagSpanSec(t) {
   const a = (t.startMs || 0) / 1000;
@@ -3492,6 +3777,7 @@ function renderLists() {
   annList.innerHTML = anns.length ? anns.map(a => `
     <div class="row" data-uuid="${esc(a.uuid)}">
       <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}
+        ${fragmentCueHtml(a)}
         ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
         ${a.language ? `<span class="sub">${esc(a.language)}</span>` : ''}
@@ -3654,6 +3940,8 @@ window.addEventListener('resize', () => {
 });
 
 wireWordCloud();
+document.getElementById('btnTheme').onclick = () => cycleTheme();
+applyTheme(false);
 document.getElementById('btnSync').onclick = async () => {
   const btn = document.getElementById('btnSync');
   btn.disabled = true;
@@ -3698,14 +3986,21 @@ refresh();
 """
 
 
+_CLIENT_GONE = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code: int, body: bytes, content_type: str) -> None:
-        self.send_response(code)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+        except _CLIENT_GONE:
+            # Browser navigated away / seeked audio / closed tab mid-write.
+            return
 
     def _read_json(self) -> dict:
         length = int(self.headers.get("Content-Length", "0"))
@@ -3718,6 +4013,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/health":
+            self._send(200, b'{"ok":true}\n', "application/json")
+            return
         if parsed.path == "/":
             self._send(200, HTML.encode("utf-8"), "text/html; charset=utf-8")
             return
@@ -4166,6 +4464,13 @@ def main(argv: list[str]) -> int:
             self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
             super().server_bind()
 
+        def handle_error(self, request, client_address) -> None:
+            # Client disconnects (seek/close) must not dump scary traces.
+            exc = sys.exc_info()[1]
+            if isinstance(exc, _CLIENT_GONE):
+                return
+            super().handle_error(request, client_address)
+
     DualStackHTTPServer.allow_reuse_address = True
     try:
         server = DualStackHTTPServer(("::", port), Handler)
@@ -4178,6 +4483,7 @@ def main(argv: list[str]) -> int:
         return 1
     print(f"Review UI: http://127.0.0.1:{port}")
     print(f"Also:       http://localhost:{port}")
+    print(f"Health:     http://127.0.0.1:{port}/health")
     print(f"Kits root: {ROOT}")
     if seeded:
         print(f"Seeded {seeded} kit(s) into {LIBRARY_DIR}")
@@ -4216,7 +4522,11 @@ def main(argv: list[str]) -> int:
             "Clustering: install deps first — "
             "tools/.venv/bin/pip install scikit-learn"
         )
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down review server.")
+        server.shutdown()
     return 0
 
 

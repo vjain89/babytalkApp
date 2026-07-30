@@ -1,0 +1,205 @@
+{
+  "mode": "matrix",
+  "n_clips_all": 357,
+  "n_clips_nonverbal": 62,
+  "n_clips_excl_nonverbal": 295,
+  "filter": {
+    "exclude_nonverbal": "category == 'non-verbal vocalization' (case-insensitive)",
+    "dropped_from": "embed set (distances, histograms, UMAP)"
+  },
+  "mel_normalization": {
+    "off": "production log_mel_embed (peak norm + fixed 32-frame grid + log10(duration_ms))",
+    "on": "analysis-only: RMS\u21920.1, fixed 32-frame mel grid, per-bin z-score, no duration feature, L2-normalize",
+    "duration_choice": "resample mel spectrogram to fixed n_frames_out via linear interpolation (same as production), then omit duration scalar"
+  },
+  "distance": "sklearn cosine_distances (= 1 \u2212 cosine similarity)",
+  "label_key": "word \u2192 label \u2192 phonetic (lower/strip; skip empty/untitled)",
+  "shared_scale_plots": {
+    "hist_mel_vs_hubert_*": "1\u00d72 mel(norm on)|HuBERT; density=True; shared xlim=[0,2]; shared ylim=max density across panels",
+    "umap_mel_vs_hubert_*": "1\u00d72 mel(norm on)|HuBERT; shared xlim/ylim = padded union of both UMAP fits"
+  },
+  "table": [
+    {
+      "space": "mel_norm_off_all",
+      "mean_same": 0.7567049899109483,
+      "mean_diff": 0.8641149188276395,
+      "gap": 0.10740992891669121,
+      "n_same": 1440,
+      "n_diff": 62106,
+      "mel_norm": false,
+      "exclude_nonverbal": false,
+      "n_clips": 357
+    },
+    {
+      "space": "mel_norm_on_all",
+      "mean_same": 0.7617510356409393,
+      "mean_diff": 0.869702119646181,
+      "gap": 0.10795108400524178,
+      "n_same": 1440,
+      "n_diff": 62106,
+      "mel_norm": true,
+      "exclude_nonverbal": false,
+      "n_clips": 357
+    },
+    {
+      "space": "mel_norm_off_excl_nonverbal",
+      "mean_same": 0.7196935527874201,
+      "mean_diff": 0.8730574178895396,
+      "gap": 0.15336386510211952,
+      "n_same": 814,
+      "n_diff": 42551,
+      "mel_norm": false,
+      "exclude_nonverbal": true,
+      "n_clips": 295
+    },
+    {
+      "space": "mel_norm_on_excl_nonverbal",
+      "mean_same": 0.7243477782492319,
+      "mean_diff": 0.8786794145556169,
+      "gap": 0.15433163630638502,
+      "n_same": 814,
+      "n_diff": 42551,
+      "mel_norm": true,
+      "exclude_nonverbal": true,
+      "n_clips": 295
+    },
+    {
+      "space": "hubert_all",
+      "mean_same": 0.23638345884926326,
+      "mean_diff": 0.30145558794656435,
+      "gap": 0.06507212909730109,
+      "n_same": 1440,
+      "n_diff": 62106
+    },
+    {
+      "space": "hubert_excl_nonverbal",
+      "mean_same": 0.20645409352090144,
+      "mean_diff": 0.30130797502134765,
+      "gap": 0.09485388150044621,
+      "n_same": 814,
+      "n_diff": 42551
+    }
+  ],
+  "conditions": {
+    "mel_norm_off_all": {
+      "space": "mel_norm_off_all",
+      "mean_same": 0.7567049899109483,
+      "mean_diff": 0.8641149188276395,
+      "gap": 0.10740992891669121,
+      "n_same": 1440,
+      "n_diff": 62106,
+      "mel_norm": false,
+      "exclude_nonverbal": false,
+      "n_clips": 357,
+      "hubert": {
+        "space": "hubert_all",
+        "mean_same": 0.23638345884926326,
+        "mean_diff": 0.30145558794656435,
+        "gap": 0.06507212909730109,
+        "n_same": 1440,
+        "n_diff": 62106
+      },
+      "plots": {
+        "histogram": "tools/analysis/out/embed_compare_norm/hist_mel_norm_off_all.png",
+        "hist_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/hist_mel_vs_hubert_all.png",
+        "umap_mel": "tools/analysis/out/embed_compare_norm/umap_mel_norm_off_all.png",
+        "umap_hubert": "tools/analysis/out/embed_compare_norm/umap_hubert_all.png",
+        "umap_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/umap_mel_vs_hubert_all.png"
+      }
+    },
+    "mel_norm_on_all": {
+      "space": "mel_norm_on_all",
+      "mean_same": 0.7617510356409393,
+      "mean_diff": 0.869702119646181,
+      "gap": 0.10795108400524178,
+      "n_same": 1440,
+      "n_diff": 62106,
+      "mel_norm": true,
+      "exclude_nonverbal": false,
+      "n_clips": 357,
+      "hubert": {
+        "space": "hubert_all",
+        "mean_same": 0.23638345884926326,
+        "mean_diff": 0.30145558794656435,
+        "gap": 0.06507212909730109,
+        "n_same": 1440,
+        "n_diff": 62106
+      },
+      "plots": {
+        "histogram": "tools/analysis/out/embed_compare_norm/hist_mel_norm_on_all.png",
+        "hist_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/hist_mel_vs_hubert_all.png",
+        "umap_mel": "tools/analysis/out/embed_compare_norm/umap_mel_norm_on_all.png",
+        "umap_hubert": "tools/analysis/out/embed_compare_norm/umap_hubert_all.png",
+        "umap_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/umap_mel_vs_hubert_all.png"
+      }
+    },
+    "mel_norm_off_excl_nonverbal": {
+      "space": "mel_norm_off_excl_nonverbal",
+      "mean_same": 0.7196935527874201,
+      "mean_diff": 0.8730574178895396,
+      "gap": 0.15336386510211952,
+      "n_same": 814,
+      "n_diff": 42551,
+      "mel_norm": false,
+      "exclude_nonverbal": true,
+      "n_clips": 295,
+      "hubert": {
+        "space": "hubert_excl_nonverbal",
+        "mean_same": 0.20645409352090144,
+        "mean_diff": 0.30130797502134765,
+        "gap": 0.09485388150044621,
+        "n_same": 814,
+        "n_diff": 42551
+      },
+      "plots": {
+        "histogram": "tools/analysis/out/embed_compare_norm/hist_mel_norm_off_excl_nonverbal.png",
+        "hist_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/hist_mel_vs_hubert_excl_nonverbal.png",
+        "umap_mel": "tools/analysis/out/embed_compare_norm/umap_mel_norm_off_excl_nonverbal.png",
+        "umap_hubert": "tools/analysis/out/embed_compare_norm/umap_hubert_excl_nonverbal.png",
+        "umap_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/umap_mel_vs_hubert_excl_nonverbal.png"
+      }
+    },
+    "mel_norm_on_excl_nonverbal": {
+      "space": "mel_norm_on_excl_nonverbal",
+      "mean_same": 0.7243477782492319,
+      "mean_diff": 0.8786794145556169,
+      "gap": 0.15433163630638502,
+      "n_same": 814,
+      "n_diff": 42551,
+      "mel_norm": true,
+      "exclude_nonverbal": true,
+      "n_clips": 295,
+      "hubert": {
+        "space": "hubert_excl_nonverbal",
+        "mean_same": 0.20645409352090144,
+        "mean_diff": 0.30130797502134765,
+        "gap": 0.09485388150044621,
+        "n_same": 814,
+        "n_diff": 42551
+      },
+      "plots": {
+        "histogram": "tools/analysis/out/embed_compare_norm/hist_mel_norm_on_excl_nonverbal.png",
+        "hist_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/hist_mel_vs_hubert_excl_nonverbal.png",
+        "umap_mel": "tools/analysis/out/embed_compare_norm/umap_mel_norm_on_excl_nonverbal.png",
+        "umap_hubert": "tools/analysis/out/embed_compare_norm/umap_hubert_excl_nonverbal.png",
+        "umap_mel_vs_hubert": "tools/analysis/out/embed_compare_norm/umap_mel_vs_hubert_excl_nonverbal.png"
+      }
+    }
+  },
+  "plots": {
+    "umap_hubert_all": "tools/analysis/out/embed_compare_norm/umap_hubert_all.png",
+    "hist_mel_vs_hubert_all": "tools/analysis/out/embed_compare_norm/hist_mel_vs_hubert_all.png",
+    "umap_mel_vs_hubert_all": "tools/analysis/out/embed_compare_norm/umap_mel_vs_hubert_all.png",
+    "hist_mel_norm_off_all.png": "tools/analysis/out/embed_compare_norm/hist_mel_norm_off_all.png",
+    "umap_mel_norm_off_all": "tools/analysis/out/embed_compare_norm/umap_mel_norm_off_all.png",
+    "hist_mel_norm_on_all.png": "tools/analysis/out/embed_compare_norm/hist_mel_norm_on_all.png",
+    "umap_mel_norm_on_all": "tools/analysis/out/embed_compare_norm/umap_mel_norm_on_all.png",
+    "umap_hubert_excl_nonverbal": "tools/analysis/out/embed_compare_norm/umap_hubert_excl_nonverbal.png",
+    "hist_mel_vs_hubert_excl_nonverbal": "tools/analysis/out/embed_compare_norm/hist_mel_vs_hubert_excl_nonverbal.png",
+    "umap_mel_vs_hubert_excl_nonverbal": "tools/analysis/out/embed_compare_norm/umap_mel_vs_hubert_excl_nonverbal.png",
+    "hist_mel_norm_off_excl_nonverbal.png": "tools/analysis/out/embed_compare_norm/hist_mel_norm_off_excl_nonverbal.png",
+    "umap_mel_norm_off_excl_nonverbal": "tools/analysis/out/embed_compare_norm/umap_mel_norm_off_excl_nonverbal.png",
+    "hist_mel_norm_on_excl_nonverbal.png": "tools/analysis/out/embed_compare_norm/hist_mel_norm_on_excl_nonverbal.png",
+    "umap_mel_norm_on_excl_nonverbal": "tools/analysis/out/embed_compare_norm/umap_mel_norm_on_excl_nonverbal.png"
+  }
+}

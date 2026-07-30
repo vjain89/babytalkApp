@@ -82,7 +82,8 @@ Samples are stored as sparse `{ tMs, avgDb, peakDb }` with metadata (`barDuratio
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/ARCHITECTURE_DEEP_DIVE.md](docs/ARCHITECTURE_DEEP_DIVE.md) | File-tied architecture walkthrough |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Current system architecture (phone + Mac review + ML; main vs branch) |
+| [docs/ARCHITECTURE_DEEP_DIVE.md](docs/ARCHITECTURE_DEEP_DIVE.md) | File-tied phone waveform walkthrough |
 | [INSTALL_TO_IPHONE.md](INSTALL_TO_IPHONE.md) | USB install via Xcode |
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | Historical status notes (may lag code) |
 

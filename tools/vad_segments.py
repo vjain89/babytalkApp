@@ -886,6 +886,9 @@ def build_candidates_vtc_first(
     reject_non_speech: bool = True,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    reseg_min_part_ms: float | None = None,
+    word_split_min_sep_ms: float = reseg_mod.WORD_SPLIT_MIN_SEP_MS,
+    word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
 ) -> tuple[list[dict], dict]:
     """VTC-first path: role timeline → pause/syllable refine → speech gate."""
     times, dbs = frame_rms_db(audio, sr)
@@ -936,13 +939,20 @@ def build_candidates_vtc_first(
     )
     stats.update(refine_stats)
 
+    min_part = (
+        reseg_min_part_ms
+        if reseg_min_part_ms is not None
+        else max(min_dur_ms * 0.9, reseg_mod.RESEG_MIN_PART_MS)
+    )
     pieces, reseg_stats = reseg_mod.resegment_pieces(
         pieces,
         audio,
         sr,
         enabled=resegment,
         target_ms=reseg_target_ms,
-        min_part_ms=max(min_dur_ms * 0.9, reseg_mod.RESEG_MIN_PART_MS),
+        min_part_ms=min_part,
+        word_split_min_sep_ms=word_split_min_sep_ms,
+        word_split_min_dip_db=word_split_min_dip_db,
     )
     stats.update(reseg_stats)
 
@@ -1024,6 +1034,9 @@ def build_candidates(
     speaker_distance: float | None = None,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    reseg_min_part_ms: float | None = None,
+    word_split_min_sep_ms: float = reseg_mod.WORD_SPLIT_MIN_SEP_MS,
+    word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
     segmentation: str = "vad",
 ) -> tuple[list[dict], dict]:
     """Run VAD → diarize → pause/syllable refine → speech gate; return anns + stats.
@@ -1041,6 +1054,9 @@ def build_candidates(
             reject_non_speech=reject_non_speech,
             resegment=resegment,
             reseg_target_ms=reseg_target_ms,
+            reseg_min_part_ms=reseg_min_part_ms,
+            word_split_min_sep_ms=word_split_min_sep_ms,
+            word_split_min_dip_db=word_split_min_dip_db,
         )
 
     times, dbs = frame_rms_db(audio, sr)
@@ -1090,13 +1106,20 @@ def build_candidates(
     )
     stats.update(refine_stats)
 
+    min_part = (
+        reseg_min_part_ms
+        if reseg_min_part_ms is not None
+        else max(min_dur_ms * 0.9, reseg_mod.RESEG_MIN_PART_MS)
+    )
     pieces, reseg_stats = reseg_mod.resegment_pieces(
         pieces,
         audio,
         sr,
         enabled=resegment,
         target_ms=reseg_target_ms,
-        min_part_ms=max(min_dur_ms * 0.9, reseg_mod.RESEG_MIN_PART_MS),
+        min_part_ms=min_part,
+        word_split_min_sep_ms=word_split_min_sep_ms,
+        word_split_min_dip_db=word_split_min_dip_db,
     )
     stats.update(reseg_stats)
 
@@ -1124,6 +1147,9 @@ def run_vad_on_audio(
     speaker_distance: float | None = None,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    reseg_min_part_ms: float | None = None,
+    word_split_min_sep_ms: float = reseg_mod.WORD_SPLIT_MIN_SEP_MS,
+    word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
     segmentation: str = "vad",
 ) -> tuple[list[dict], dict]:
     audio, sr = sf.read(str(audio_path), always_2d=False)
@@ -1141,6 +1167,9 @@ def run_vad_on_audio(
         speaker_distance=speaker_distance,
         resegment=resegment,
         reseg_target_ms=reseg_target_ms,
+        reseg_min_part_ms=reseg_min_part_ms,
+        word_split_min_sep_ms=word_split_min_sep_ms,
+        word_split_min_dip_db=word_split_min_dip_db,
         segmentation=segmentation,
     )
 

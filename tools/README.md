@@ -12,7 +12,16 @@ Plug in the iPhone, unlock it, and tap **Trust** if asked.
 
 ## Review studio
 
-Default library (no path needed):
+Keep the review UI up (recommended — auto-restarts; survives Cursor agent shells):
+
+```bash
+tools/run_review_server.sh
+open http://127.0.0.1:8765
+```
+
+`tools/run_review_server.sh --status` / `--stop` / `--restart` as needed. Log: `tools/.run/review_server.log`.
+
+Direct (ephemeral — dies when that terminal/agent shell ends):
 
 ```bash
 python3 tools/review_server.py
@@ -25,6 +34,8 @@ Optional override:
 
 ```bash
 python3 tools/review_server.py /path/to/some/kit-or-batch
+# or via the launcher:
+tools/run_review_server.sh /path/to/some/kit-or-batch
 ```
 
 ### Tagging

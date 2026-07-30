@@ -1,0 +1,80 @@
+{
+  "mode": "lda",
+  "n_clips_all": 357,
+  "n_clips_nonverbal": 62,
+  "n_clips_excl_nonverbal": 295,
+  "filter": {
+    "exclude_nonverbal": "category == 'non-verbal vocalization' (case-insensitive)"
+  },
+  "mel_base": "analysis-only norm ON: RMS\u21920.1, fixed 32-frame mel grid, per-bin z-score, no duration feature, L2-normalize",
+  "projection": {
+    "train_protocol": "fit-on-all labeled excl_nonverbal clips (optimistic diagnostic upper bound; not leave-one-kit-out)",
+    "n_samples": 295,
+    "n_features_in": 1280,
+    "n_classes": 119,
+    "n_singleton_labels": 71,
+    "n_components_requested": 32,
+    "l2_normalize_after": true,
+    "max_components_cap": 32,
+    "method": "LDA",
+    "solver": "svd",
+    "n_components_out": 32,
+    "fallback_chain": [
+      "LDA"
+    ]
+  },
+  "distance": "sklearn cosine_distances (= 1 \u2212 cosine similarity)",
+  "label_key": "word \u2192 label \u2192 phonetic (lower/strip; skip empty/untitled)",
+  "n_unique_labels": 119,
+  "n_singleton_labels": 71,
+  "n_multi_labels": 48,
+  "table": [
+    {
+      "space": "mel_norm_on_excl_nonverbal",
+      "mean_same": 0.7243477782492319,
+      "mean_diff": 0.8786794145556169,
+      "gap": 0.15433163630638502,
+      "n_same": 814,
+      "n_diff": 42551,
+      "mel_norm": true,
+      "exclude_nonverbal": true,
+      "n_clips": 295
+    },
+    {
+      "space": "mel_lda_excl_nonverbal",
+      "mean_same": 0.67117530004962,
+      "mean_diff": 1.0094767174400905,
+      "gap": 0.3383014173904705,
+      "n_same": 814,
+      "n_diff": 42551,
+      "mel_norm": true,
+      "exclude_nonverbal": true,
+      "n_clips": 295,
+      "projection": {
+        "train_protocol": "fit-on-all labeled excl_nonverbal clips (optimistic diagnostic upper bound; not leave-one-kit-out)",
+        "n_samples": 295,
+        "n_features_in": 1280,
+        "n_classes": 119,
+        "n_singleton_labels": 71,
+        "n_components_requested": 32,
+        "l2_normalize_after": true,
+        "max_components_cap": 32,
+        "method": "LDA",
+        "solver": "svd",
+        "n_components_out": 32,
+        "fallback_chain": [
+          "LDA"
+        ]
+      }
+    }
+  ],
+  "gap_delta_lda_minus_raw": 0.18396978108408546,
+  "gap_widened": true,
+  "conclusion": "LDA (LDA, d=32) widened the cosine gap (0.1543 \u2192 0.3383, \u0394=+0.1840); fit-on-all is optimistic.",
+  "plots": {
+    "hist_mel_vs_lda_excl_nonverbal": "tools/analysis/out/embed_compare_norm/hist_mel_vs_lda_excl_nonverbal.png",
+    "umap_lda_excl_nonverbal": "tools/analysis/out/embed_compare_norm/umap_lda_excl_nonverbal.png",
+    "umap_mel_vs_lda_excl_nonverbal": "tools/analysis/out/embed_compare_norm/umap_mel_vs_lda_excl_nonverbal.png"
+  },
+  "note": "Fit-on-all labeled excl_nonverbal clips is an optimistic diagnostic upper bound (same labels train the projection and score the gap)."
+}

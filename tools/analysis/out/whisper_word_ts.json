@@ -1,0 +1,6441 @@
+{
+  "generatedAt": "2026-07-29T22:27:08.432257+00:00",
+  "model": "faster-whisper/base",
+  "modelDefaultSource": "BABYTALK_WHISPER_MODEL or asr_suggest.DEFAULT_MODEL (=base)",
+  "sessions": [
+    "26_07_27__19:53:00",
+    "26_07_05__00:00:00"
+  ],
+  "method": {
+    "gapMs": 2500.0,
+    "padMs": 400.0,
+    "wordTimestamps": true,
+    "exclude": [
+      "non-verbal vocalization",
+      "source=ml_confirmed",
+      "empty word"
+    ]
+  },
+  "problem": "ML/DJW often emits too-short syllable boxes that miss IoU\u22650.5 against human word tags (tea|cher class).",
+  "whatWhisperWordTimestampsAre": "Per-word start/end times from faster-whisper with word_timestamps=True, aligned from padded tag-cluster windows to absolute session time.",
+  "whyTheyCouldHelp": "Independent word-boundary proposals that could replace or merge syllable over-splits, even when ASR spelling is wrong.",
+  "pooled": {
+    "nTags": 179,
+    "coverage": {
+      "anyOverlapN": 169,
+      "anyOverlapPct": 94.4,
+      "textMatchN": 16,
+      "textMatchPct": 8.9
+    },
+    "iou": {
+      "overlapOnly": {
+        "nWithOverlap": 169,
+        "iou50N": 46,
+        "iou50PctOfAllTags": 25.7,
+        "iou50PctOfOverlapping": 27.2,
+        "quantiles": {
+          "n": 169,
+          "min": 0.062,
+          "p25": 0.324,
+          "median": 0.416,
+          "p75": 0.521,
+          "p90": 0.623,
+          "max": 0.863,
+          "mean": 0.432
+        }
+      },
+      "textMatch": {
+        "nWithTextAndOverlap": 14,
+        "iou50N": 4,
+        "iou50PctOfAllTags": 2.2,
+        "iou50PctOfTextMatches": 25.0,
+        "quantiles": {
+          "n": 14,
+          "min": 0.102,
+          "p25": 0.261,
+          "median": 0.404,
+          "p75": 0.509,
+          "p90": 0.611,
+          "max": 0.631,
+          "mean": 0.39
+        }
+      }
+    },
+    "errorModes": {
+      "word_split": 73,
+      "wrong_word": 66,
+      "big_boundary_error": 13,
+      "no_speech": 10,
+      "boundary_soft": 7,
+      "ok": 5,
+      "word_merge": 5
+    },
+    "errorModePct": {
+      "word_split": 40.8,
+      "wrong_word": 36.9,
+      "big_boundary_error": 7.3,
+      "no_speech": 5.6,
+      "boundary_soft": 3.9,
+      "ok": 2.8,
+      "word_merge": 2.8
+    }
+  },
+  "recommendation": {
+    "verdict": "Need DJW merge-back \u2014 Whisper not enough alone",
+    "rationale": "Overlap coverage is high (94.4%), but word-box IoU\u22650.5 is only 25.7% \u2014 worse than DJW/fresh candidates on the same problem (~50\u201357% from iou_sweep; archival St_87 48.6%). Text match is 8.9%, and the dominant error mode is word_split (40.8%): Whisper itself over-fragments. Prioritize acoustic DJW merge-back; treat Whisper timestamps as an optional weak prior only where a single token already IoU-aligns.",
+    "thresholdsUsed": {
+      "whisperAloneIfIou50Pct": 55,
+      "hybridIfIou50Pct": 40,
+      "archivalMlIou50Ref": 29.9
+    },
+    "comparisonNotes": {
+      "iouSweepManualIou50Approx": "53\u201357%",
+      "archivalSt87Iou50": 48.6,
+      "archivalSt75Iou50": 11.1,
+      "archivalSt75Note": "likely stale; prefer iou_sweep for DJW reference",
+      "whisperPooledIou50": 25.7
+    }
+  },
+  "kits": [
+    {
+      "sessionName": "26_07_27__19:53:00",
+      "kitFolder": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "kitPath": "/Users/vijayjain/Documents/BabyTalk/Library/2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "audioDurSec": 1930.33,
+      "model": "faster-whisper/base",
+      "languageHint": "English",
+      "method": {
+        "description": "Cluster nearby manual tags into padded windows; transcribe each with word_timestamps=True; align Whisper words to tags by overlap (and fuzzy text).",
+        "gapMs": 2500.0,
+        "padMs": 400.0,
+        "nWindows": 43,
+        "nWhisperWords": 214,
+        "elapsedSec": 77.3
+      },
+      "summary": {
+        "nTags": 107,
+        "coverage": {
+          "anyOverlapN": 102,
+          "anyOverlapPct": 95.3,
+          "textMatchN": 12,
+          "textMatchPct": 11.2
+        },
+        "iou": {
+          "overlapOnly": {
+            "nWithOverlap": 102,
+            "iou50N": 33,
+            "iou50PctOfAllTags": 30.8,
+            "iou50PctOfOverlapping": 32.4,
+            "quantiles": {
+              "n": 102,
+              "min": 0.09,
+              "p25": 0.353,
+              "median": 0.433,
+              "p75": 0.564,
+              "p90": 0.661,
+              "max": 0.863,
+              "mean": 0.455
+            }
+          },
+          "textMatch": {
+            "nWithTextAndOverlap": 11,
+            "iou50N": 3,
+            "iou50PctOfAllTags": 2.8,
+            "iou50PctOfTextMatches": 25.0,
+            "quantiles": {
+              "n": 11,
+              "min": 0.102,
+              "p25": 0.318,
+              "median": 0.419,
+              "p75": 0.498,
+              "p90": 0.605,
+              "max": 0.613,
+              "mean": 0.402
+            }
+          }
+        },
+        "errorModes": {
+          "word_split": 46,
+          "wrong_word": 37,
+          "big_boundary_error": 8,
+          "boundary_soft": 5,
+          "no_speech": 5,
+          "ok": 4,
+          "word_merge": 2
+        },
+        "errorModePct": {
+          "word_split": 43.0,
+          "wrong_word": 34.6,
+          "big_boundary_error": 7.5,
+          "boundary_soft": 4.7,
+          "no_speech": 4.7,
+          "ok": 3.7,
+          "word_merge": 1.9
+        }
+      },
+      "archivalMlCompare": {
+        "nCands": 1015,
+        "anyOverlapPct": 91.6,
+        "iou50Pct": 48.6,
+        "iouQuantiles": {
+          "n": 98,
+          "min": 0.015,
+          "p25": 0.437,
+          "median": 0.503,
+          "p75": 0.613,
+          "p90": 0.724,
+          "max": 1.0,
+          "mean": 0.505
+        },
+        "note": "archival annotations.json vs same manual verbal tags (DJW/ML boxes)"
+      },
+      "samples": {
+        "no_speech": [
+          {
+            "word": "a",
+            "tagSpan": [
+              274980.0,
+              275370.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "cama",
+            "tagSpan": [
+              275370.0,
+              276140.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "night night",
+            "tagSpan": [
+              359490.0,
+              360470.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "no",
+            "tagSpan": [
+              416920.0,
+              417590.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "all done",
+            "tagSpan": [
+              543250.0,
+              544310.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          }
+        ],
+        "wrong_word": [
+          {
+            "word": "teacher",
+            "tagSpan": [
+              165510.0,
+              166450.0
+            ],
+            "best": {
+              "text": "a...",
+              "span": [
+                165710.0,
+                166770.0
+              ],
+              "iou": 0.5873,
+              "probability": 0.21248352155089378
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "a...",
+              "take"
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "teacher",
+            "tagSpan": [
+              167150.0,
+              168220.0
+            ],
+            "best": {
+              "text": "a...",
+              "span": [
+                167410.0,
+                168270.0
+              ],
+              "iou": 0.7232,
+              "probability": 0.7968112528324127
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "a...",
+              "Take"
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "teacher",
+            "tagSpan": [
+              168280.0,
+              169360.0
+            ],
+            "best": {
+              "text": "a...",
+              "span": [
+                168530.0,
+                169390.0
+              ],
+              "iou": 0.7477,
+              "probability": 0.9105090200901031
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "a...",
+              "Take"
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "you",
+            "tagSpan": [
+              170000.0,
+              170290.0
+            ],
+            "best": {
+              "text": "I",
+              "span": [
+                170010.0,
+                170230.0
+              ],
+              "iou": 0.7586,
+              "probability": 0.5884371995925903
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "I",
+              "see?",
+              "do"
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "teacher",
+            "tagSpan": [
+              172250.0,
+              173210.0
+            ],
+            "best": {
+              "text": "a...",
+              "span": [
+                172470.0,
+                173330.0
+              ],
+              "iou": 0.6852,
+              "probability": 0.9289288520812988
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "a...",
+              "Take"
+            ],
+            "errorMode": "wrong_word"
+          }
+        ],
+        "word_split": [
+          {
+            "word": "children",
+            "tagSpan": [
+              195480.0,
+              196410.0
+            ],
+            "best": {
+              "text": "more",
+              "span": [
+                195820.0,
+                196980.0
+              ],
+              "iou": 0.3933,
+              "probability": 0.22679729759693146
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "more",
+              "Two"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "you",
+            "tagSpan": [
+              197200.0,
+              197610.0
+            ],
+            "best": {
+              "text": "thing.",
+              "span": [
+                197260.0,
+                197940.0
+              ],
+              "iou": 0.473,
+              "probability": 0.5916146039962769
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "thing.",
+              "more"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "papier",
+            "tagSpan": [
+              216060.0,
+              216910.0
+            ],
+            "best": {
+              "text": "big",
+              "span": [
+                216380.0,
+                216800.0
+              ],
+              "iou": 0.4941,
+              "probability": 0.5520574450492859
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "big",
+              "A",
+              "thing!"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "I",
+            "tagSpan": [
+              234420.0,
+              234760.0
+            ],
+            "best": {
+              "text": "Thank",
+              "span": [
+                234020.0,
+                234660.0
+              ],
+              "iou": 0.3243,
+              "probability": 0.18977561593055725
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Thank",
+              "you."
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "schaffe",
+            "tagSpan": [
+              250450.0,
+              251070.0
+            ],
+            "best": {
+              "text": "not",
+              "span": [
+                250530.0,
+                250710.0
+              ],
+              "iou": 0.2903,
+              "probability": 0.4176720082759857
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "not",
+              "going",
+              "to...",
+              "I'm"
+            ],
+            "errorMode": "word_split"
+          }
+        ],
+        "word_merge": [
+          {
+            "word": "what",
+            "tagSpan": [
+              196640.0,
+              196970.0
+            ],
+            "best": {
+              "text": "more",
+              "span": [
+                195820.0,
+                196980.0
+              ],
+              "iou": 0.2845,
+              "probability": 0.22679729759693146
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "more"
+            ],
+            "errorMode": "word_merge"
+          },
+          {
+            "word": "a",
+            "tagSpan": [
+              271060.0,
+              271340.0
+            ],
+            "best": {
+              "text": "I'm",
+              "span": [
+                270660.0,
+                271420.0
+              ],
+              "iou": 0.3684,
+              "probability": 0.31918302178382874
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "I'm"
+            ],
+            "errorMode": "word_merge"
+          }
+        ],
+        "big_boundary_error": [
+          {
+            "word": "see",
+            "tagSpan": [
+              170410.0,
+              171330.0
+            ],
+            "best": {
+              "text": "see?",
+              "span": [
+                170230.0,
+                170690.0
+              ],
+              "iou": 0.2545,
+              "probability": 0.9020724296569824
+            },
+            "textMatch": {
+              "text": "see?",
+              "span": [
+                170230.0,
+                170690.0
+              ],
+              "iou": 0.2545,
+              "probability": 0.9020724296569824,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "see?"
+            ],
+            "errorMode": "big_boundary_error"
+          },
+          {
+            "word": "children",
+            "tagSpan": [
+              182010.0,
+              182980.0
+            ],
+            "best": {
+              "text": "Christmas,",
+              "span": [
+                182640.0,
+                182840.0
+              ],
+              "iou": 0.2062,
+              "probability": 0.04644224792718887
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Christmas,"
+            ],
+            "errorMode": "big_boundary_error"
+          },
+          {
+            "word": "what",
+            "tagSpan": [
+              183010.0,
+              183520.0
+            ],
+            "best": {
+              "text": "do",
+              "span": [
+                183300.0,
+                183520.0
+              ],
+              "iou": 0.4314,
+              "probability": 0.2839919924736023
+            },
+            "textMatch": {
+              "text": "what",
+              "span": [
+                183180.0,
+                183300.0
+              ],
+              "iou": 0.2353,
+              "probability": 0.175125852227211,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "do",
+              "what"
+            ],
+            "errorMode": "boundary_soft"
+          },
+          {
+            "word": "see",
+            "tagSpan": [
+              184190.0,
+              185120.0
+            ],
+            "best": {
+              "text": "See,",
+              "span": [
+                184120.0,
+                184580.0
+              ],
+              "iou": 0.39,
+              "probability": 0.7207388877868652
+            },
+            "textMatch": {
+              "text": "See,",
+              "span": [
+                184120.0,
+                184580.0
+              ],
+              "iou": 0.39,
+              "probability": 0.7207388877868652,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "See,"
+            ],
+            "errorMode": "boundary_soft"
+          },
+          {
+            "word": "children",
+            "tagSpan": [
+              190110.0,
+              190970.0
+            ],
+            "best": {
+              "text": "Peace.",
+              "span": [
+                189710.0,
+                190470.0
+              ],
+              "iou": 0.2857,
+              "probability": 0.09317795187234879
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Peace."
+            ],
+            "errorMode": "big_boundary_error"
+          }
+        ],
+        "ok": [
+          {
+            "word": "do",
+            "tagSpan": [
+              169780.0,
+              170010.0
+            ],
+            "best": {
+              "text": "do",
+              "span": [
+                169630.0,
+                170010.0
+              ],
+              "iou": 0.6053,
+              "probability": 0.954343855381012
+            },
+            "textMatch": {
+              "text": "do",
+              "span": [
+                169630.0,
+                170010.0
+              ],
+              "iou": 0.6053,
+              "probability": 0.954343855381012,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "do"
+            ],
+            "errorMode": "ok"
+          },
+          {
+            "word": "do",
+            "tagSpan": [
+              183460.0,
+              183890.0
+            ],
+            "best": {
+              "text": "you",
+              "span": [
+                183520.0,
+                184100.0
+              ],
+              "iou": 0.5781,
+              "probability": 0.6897808313369751
+            },
+            "textMatch": {
+              "text": "do",
+              "span": [
+                183300.0,
+                183520.0
+              ],
+              "iou": 0.1017,
+              "probability": 0.2839919924736023,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "you",
+              "do"
+            ],
+            "errorMode": "ok"
+          },
+          {
+            "word": "fips",
+            "tagSpan": [
+              660680.0,
+              660920.0
+            ],
+            "best": {
+              "text": "Fips",
+              "span": [
+                660610.0,
+                660870.0
+              ],
+              "iou": 0.6129,
+              "probability": 0.5359997972846031
+            },
+            "textMatch": {
+              "text": "Fips",
+              "span": [
+                660610.0,
+                660870.0
+              ],
+              "iou": 0.6129,
+              "probability": 0.5359997972846031,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "Fips",
+              "lasse?"
+            ],
+            "errorMode": "ok"
+          },
+          {
+            "word": "l\u00e4se",
+            "tagSpan": [
+              660910.0,
+              661370.0
+            ],
+            "best": {
+              "text": "lasse?",
+              "span": [
+                660870.0,
+                661170.0
+              ],
+              "iou": 0.52,
+              "probability": 0.3184778094291687
+            },
+            "textMatch": {
+              "text": "lasse?",
+              "span": [
+                660870.0,
+                661170.0
+              ],
+              "iou": 0.52,
+              "probability": 0.3184778094291687,
+              "fuzzy": true
+            },
+            "overlappingTexts": [
+              "lasse?"
+            ],
+            "errorMode": "ok"
+          }
+        ]
+      },
+      "nMatches": 107,
+      "matches": [
+        {
+          "uuid": "bfaadb8d-b93f-473a-a096-ffd9ff242841",
+          "word": "teacher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            165510.0,
+            166450.0
+          ],
+          "tagDurMs": 940.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "a...",
+            "span": [
+              165710.0,
+              166770.0
+            ],
+            "iou": 0.5873,
+            "probability": 0.21248352155089378
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "a...",
+            "take"
+          ]
+        },
+        {
+          "uuid": "684710ce-625a-41d9-b257-e1f96b6df7a2",
+          "word": "teacher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            167150.0,
+            168220.0
+          ],
+          "tagDurMs": 1070.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "a...",
+            "span": [
+              167410.0,
+              168270.0
+            ],
+            "iou": 0.7232,
+            "probability": 0.7968112528324127
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "a...",
+            "Take"
+          ]
+        },
+        {
+          "uuid": "40d7419d-3482-4b17-8e15-a88334fea629",
+          "word": "teacher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            168280.0,
+            169360.0
+          ],
+          "tagDurMs": 1080.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "a...",
+            "span": [
+              168530.0,
+              169390.0
+            ],
+            "iou": 0.7477,
+            "probability": 0.9105090200901031
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "a...",
+            "Take"
+          ]
+        },
+        {
+          "uuid": "3d955862-3631-457f-ad98-c00f8f790750",
+          "word": "do",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            169780.0,
+            170010.0
+          ],
+          "tagDurMs": 230.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "do",
+            "span": [
+              169630.0,
+              170010.0
+            ],
+            "iou": 0.6053,
+            "probability": 0.954343855381012
+          },
+          "textMatch": {
+            "text": "do",
+            "span": [
+              169630.0,
+              170010.0
+            ],
+            "iou": 0.6053,
+            "probability": 0.954343855381012,
+            "fuzzy": false
+          },
+          "errorMode": "ok",
+          "overlappingTexts": [
+            "do"
+          ]
+        },
+        {
+          "uuid": "788c2ad1-80cd-4538-82ef-e53af0b444a5",
+          "word": "you",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            170000.0,
+            170290.0
+          ],
+          "tagDurMs": 290.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "I",
+            "span": [
+              170010.0,
+              170230.0
+            ],
+            "iou": 0.7586,
+            "probability": 0.5884371995925903
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "I",
+            "see?",
+            "do"
+          ]
+        },
+        {
+          "uuid": "b85f7c81-5941-42db-aea6-7c074e117987",
+          "word": "see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            170410.0,
+            171330.0
+          ],
+          "tagDurMs": 920.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "see?",
+            "span": [
+              170230.0,
+              170690.0
+            ],
+            "iou": 0.2545,
+            "probability": 0.9020724296569824
+          },
+          "textMatch": {
+            "text": "see?",
+            "span": [
+              170230.0,
+              170690.0
+            ],
+            "iou": 0.2545,
+            "probability": 0.9020724296569824,
+            "fuzzy": false
+          },
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "see?"
+          ]
+        },
+        {
+          "uuid": "a2bca639-df8d-4ecd-a78f-041953a8fa2c",
+          "word": "teacher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            172250.0,
+            173210.0
+          ],
+          "tagDurMs": 960.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "a...",
+            "span": [
+              172470.0,
+              173330.0
+            ],
+            "iou": 0.6852,
+            "probability": 0.9289288520812988
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "a...",
+            "Take"
+          ]
+        },
+        {
+          "uuid": "c17a36ca-c9a3-46b3-9498-75402628d953",
+          "word": "teacher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            173240.0,
+            174100.0
+          ],
+          "tagDurMs": 860.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "a...",
+            "span": [
+              173470.0,
+              174410.0
+            ],
+            "iou": 0.5385,
+            "probability": 0.9543464779853821
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "a...",
+            "Take",
+            "a..."
+          ]
+        },
+        {
+          "uuid": "7b2a89a5-8b6e-42ed-8535-fa66cf5d316f",
+          "word": "children",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            180820.0,
+            181940.0
+          ],
+          "tagDurMs": 1120.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Christmas,",
+            "span": [
+              181200.0,
+              181920.0
+            ],
+            "iou": 0.6429,
+            "probability": 0.22214962542057037
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Christmas,",
+            "Share"
+          ]
+        },
+        {
+          "uuid": "2b4faf5e-1c34-40de-978b-48cf588e5e4f",
+          "word": "children",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            182010.0,
+            182980.0
+          ],
+          "tagDurMs": 970.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Christmas,",
+            "span": [
+              182640.0,
+              182840.0
+            ],
+            "iou": 0.2062,
+            "probability": 0.04644224792718887
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Christmas,"
+          ]
+        },
+        {
+          "uuid": "16f9633d-e537-41b8-8dec-a6c8d49b2d7f",
+          "word": "what",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            183010.0,
+            183520.0
+          ],
+          "tagDurMs": 510.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "do",
+            "span": [
+              183300.0,
+              183520.0
+            ],
+            "iou": 0.4314,
+            "probability": 0.2839919924736023
+          },
+          "textMatch": {
+            "text": "what",
+            "span": [
+              183180.0,
+              183300.0
+            ],
+            "iou": 0.2353,
+            "probability": 0.175125852227211,
+            "fuzzy": false
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "do",
+            "what"
+          ]
+        },
+        {
+          "uuid": "397b0b3b-a52d-4f20-8da9-de0369ea77a4",
+          "word": "do",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            183460.0,
+            183890.0
+          ],
+          "tagDurMs": 430.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "you",
+            "span": [
+              183520.0,
+              184100.0
+            ],
+            "iou": 0.5781,
+            "probability": 0.6897808313369751
+          },
+          "textMatch": {
+            "text": "do",
+            "span": [
+              183300.0,
+              183520.0
+            ],
+            "iou": 0.1017,
+            "probability": 0.2839919924736023,
+            "fuzzy": false
+          },
+          "errorMode": "ok",
+          "overlappingTexts": [
+            "you",
+            "do"
+          ]
+        },
+        {
+          "uuid": "33811b48-190c-48ad-9a2f-79f4a483ddc7",
+          "word": "see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            184190.0,
+            185120.0
+          ],
+          "tagDurMs": 930.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "See,",
+            "span": [
+              184120.0,
+              184580.0
+            ],
+            "iou": 0.39,
+            "probability": 0.7207388877868652
+          },
+          "textMatch": {
+            "text": "See,",
+            "span": [
+              184120.0,
+              184580.0
+            ],
+            "iou": 0.39,
+            "probability": 0.7207388877868652,
+            "fuzzy": false
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "See,"
+          ]
+        },
+        {
+          "uuid": "12f71726-75d7-4886-bda4-cfe1ae5a2b19",
+          "word": "children",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            185450.0,
+            186380.0
+          ],
+          "tagDurMs": 930.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Christmas,",
+            "span": [
+              185400.0,
+              186100.0
+            ],
+            "iou": 0.6633,
+            "probability": 0.30307361483573914
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Christmas,"
+          ]
+        },
+        {
+          "uuid": "17697c57-3013-4cb4-a65f-313663c3b0d4",
+          "word": "children",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            186550.0,
+            187540.0
+          ],
+          "tagDurMs": 990.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Christmas,",
+            "span": [
+              186700.0,
+              187380.0
+            ],
+            "iou": 0.6869,
+            "probability": 0.8712471723556519
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Christmas,"
+          ]
+        },
+        {
+          "uuid": "58121928-e830-4f50-86cf-3ee75137cd54",
+          "word": "children",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            190110.0,
+            190970.0
+          ],
+          "tagDurMs": 860.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Peace.",
+            "span": [
+              189710.0,
+              190470.0
+            ],
+            "iou": 0.2857,
+            "probability": 0.09317795187234879
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Peace."
+          ]
+        },
+        {
+          "uuid": "e8a7f04d-fb8b-464a-969b-d45a5f4f9a0b",
+          "word": "children",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            195480.0,
+            196410.0
+          ],
+          "tagDurMs": 930.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "more",
+            "span": [
+              195820.0,
+              196980.0
+            ],
+            "iou": 0.3933,
+            "probability": 0.22679729759693146
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "more",
+            "Two"
+          ]
+        },
+        {
+          "uuid": "11160f6b-70e4-4970-a6e1-199857029994",
+          "word": "what",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            196640.0,
+            196970.0
+          ],
+          "tagDurMs": 330.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "more",
+            "span": [
+              195820.0,
+              196980.0
+            ],
+            "iou": 0.2845,
+            "probability": 0.22679729759693146
+          },
+          "textMatch": null,
+          "errorMode": "word_merge",
+          "overlappingTexts": [
+            "more"
+          ]
+        },
+        {
+          "uuid": "336f0bb1-8157-4649-9d8e-6da7e54dc769",
+          "word": "do",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            196940.0,
+            197240.0
+          ],
+          "tagDurMs": 300.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "more",
+            "span": [
+              196980.0,
+              197260.0
+            ],
+            "iou": 0.8125,
+            "probability": 0.539086639881134
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "more",
+            "things.",
+            "One",
+            "more"
+          ]
+        },
+        {
+          "uuid": "f2e91841-759e-4e47-965a-923666f08dbb",
+          "word": "you",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            197200.0,
+            197610.0
+          ],
+          "tagDurMs": 410.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "thing.",
+            "span": [
+              197260.0,
+              197940.0
+            ],
+            "iou": 0.473,
+            "probability": 0.5916146039962769
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "thing.",
+            "more"
+          ]
+        },
+        {
+          "uuid": "368fe125-f1e3-4e46-8ef5-51f4b91e54f3",
+          "word": "see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            197660.0,
+            198420.0
+          ],
+          "tagDurMs": 760.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "thing.",
+            "span": [
+              197260.0,
+              197940.0
+            ],
+            "iou": 0.2414,
+            "probability": 0.5916146039962769
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "thing."
+          ]
+        },
+        {
+          "uuid": "ec706067-d063-4933-9ed1-3b9f0c488af5",
+          "word": "see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            198970.0,
+            200040.0
+          ],
+          "tagDurMs": 1070.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Eeeeeee.",
+            "span": [
+              198920.0,
+              200160.0
+            ],
+            "iou": 0.8629,
+            "probability": 0.20025137066841125
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Eeeeeee."
+          ]
+        },
+        {
+          "uuid": "ff856e74-d7de-4815-a7fa-53c78127505e",
+          "word": "papier",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            216060.0,
+            216910.0
+          ],
+          "tagDurMs": 850.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "big",
+            "span": [
+              216380.0,
+              216800.0
+            ],
+            "iou": 0.4941,
+            "probability": 0.5520574450492859
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "big",
+            "A",
+            "thing!"
+          ]
+        },
+        {
+          "uuid": "a85cc77e-cffd-4ae4-928e-fcb6445c589b",
+          "word": "zeichne",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            216880.0,
+            217730.0
+          ],
+          "tagDurMs": 850.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "thing!",
+            "span": [
+              216800.0,
+              217280.0
+            ],
+            "iou": 0.4301,
+            "probability": 0.16011007130146027
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "thing!"
+          ]
+        },
+        {
+          "uuid": "e87d2531-160c-42b5-972e-f089ebb2f34d",
+          "word": "I",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            234420.0,
+            234760.0
+          ],
+          "tagDurMs": 340.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Thank",
+            "span": [
+              234020.0,
+              234660.0
+            ],
+            "iou": 0.3243,
+            "probability": 0.18977561593055725
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Thank",
+            "you."
+          ]
+        },
+        {
+          "uuid": "022c13cb-c611-41b4-9869-9b2c194744a1",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            238280.0,
+            239230.0
+          ],
+          "tagDurMs": 950.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Goshi!",
+            "span": [
+              237880.0,
+              238760.0
+            ],
+            "iou": 0.3556,
+            "probability": 0.2267870232462883
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Goshi!"
+          ]
+        },
+        {
+          "uuid": "0fff7eaa-f9db-48b1-bf2d-a7559729ce7d",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            239750.0,
+            240610.0
+          ],
+          "tagDurMs": 860.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Goshi!",
+            "span": [
+              239380.0,
+              240260.0
+            ],
+            "iou": 0.4146,
+            "probability": 0.9696909785270691
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Goshi!"
+          ]
+        },
+        {
+          "uuid": "0eac6dce-342a-4a72-84dd-ecfccab2a57a",
+          "word": "night night",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            245310.0,
+            246550.0
+          ],
+          "tagDurMs": 1240.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Mommy!",
+            "span": [
+              244910.0,
+              246050.0
+            ],
+            "iou": 0.4512,
+            "probability": 0.30044177174568176
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Mommy!"
+          ]
+        },
+        {
+          "uuid": "285b6801-f188-474b-a9ff-5dee5028a9b0",
+          "word": "melanie",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            248060.0,
+            249170.0
+          ],
+          "tagDurMs": 1110.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Mommy!",
+            "span": [
+              248150.0,
+              248750.0
+            ],
+            "iou": 0.5405,
+            "probability": 0.9103271961212158
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Mommy!"
+          ]
+        },
+        {
+          "uuid": "93359381-6767-4936-9eaa-1ca451d8ada4",
+          "word": "melanie",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            249770.0,
+            250460.0
+          ],
+          "tagDurMs": 690.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Mommy,",
+            "span": [
+              249650.0,
+              250250.0
+            ],
+            "iou": 0.5926,
+            "probability": 0.7852325439453125
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Mommy,",
+            "I'm"
+          ]
+        },
+        {
+          "uuid": "b8c280c1-4f16-41c7-828c-56ff0e029520",
+          "word": "schaffe",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            250450.0,
+            251070.0
+          ],
+          "tagDurMs": 620.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "not",
+            "span": [
+              250530.0,
+              250710.0
+            ],
+            "iou": 0.2903,
+            "probability": 0.4176720082759857
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "not",
+            "going",
+            "to...",
+            "I'm"
+          ]
+        },
+        {
+          "uuid": "0ba9908f-cd50-4711-ad3f-600943b5bb59",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            252850.0,
+            253750.0
+          ],
+          "tagDurMs": 900.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "see!",
+            "span": [
+              253090.0,
+              253430.0
+            ],
+            "iou": 0.3778,
+            "probability": 0.16328434646129608
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "see!",
+            "Go",
+            "Go"
+          ]
+        },
+        {
+          "uuid": "1d830c71-91f5-4270-8b79-f3987ac2005b",
+          "word": "a",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            271060.0,
+            271340.0
+          ],
+          "tagDurMs": 280.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "I'm",
+            "span": [
+              270660.0,
+              271420.0
+            ],
+            "iou": 0.3684,
+            "probability": 0.31918302178382874
+          },
+          "textMatch": null,
+          "errorMode": "word_merge",
+          "overlappingTexts": [
+            "I'm"
+          ]
+        },
+        {
+          "uuid": "a6664933-a2f1-4624-87a8-6452d0e4cb31",
+          "word": "la",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            271330.0,
+            271650.0
+          ],
+          "tagDurMs": 320.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "gonna",
+            "span": [
+              271420.0,
+              271540.0
+            ],
+            "iou": 0.375,
+            "probability": 0.5233228802680969
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "gonna",
+            "go",
+            "I'm"
+          ]
+        },
+        {
+          "uuid": "3231d938-e53b-4b27-ba8b-08ac940487c0",
+          "word": "cama",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            271670.0,
+            272450.0
+          ],
+          "tagDurMs": 780.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "live.",
+            "span": [
+              271880.0,
+              272360.0
+            ],
+            "iou": 0.6154,
+            "probability": 0.2419169545173645
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "live.",
+            "go"
+          ]
+        },
+        {
+          "uuid": "acbf6e57-2c5d-400d-9aa3-d4e7ad3aa561",
+          "word": "a",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            274980.0,
+            275370.0
+          ],
+          "tagDurMs": 390.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "0683dab2-982f-4e2d-ade0-a5ca5abe303c",
+          "word": "cama",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            275370.0,
+            276140.0
+          ],
+          "tagDurMs": 770.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "a9623f6b-c016-4728-95b9-557709c3f60b",
+          "word": "z\u00e4ut",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            291620.0,
+            293040.0
+          ],
+          "tagDurMs": 1420.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Thanks!",
+            "span": [
+              291220.0,
+              292060.0
+            ],
+            "iou": 0.2418,
+            "probability": 0.37715286016464233
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Thanks!"
+          ]
+        },
+        {
+          "uuid": "c9a65ce8-f248-4577-bff5-6b48a2d8ba03",
+          "word": "jaa",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            300660.0,
+            301610.0
+          ],
+          "tagDurMs": 950.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Yeah!",
+            "span": [
+              300260.0,
+              301000.0
+            ],
+            "iou": 0.2519,
+            "probability": 0.10162324458360672
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Yeah!"
+          ]
+        },
+        {
+          "uuid": "ffc04399-d187-4467-85b2-cb5f638a4d73",
+          "word": "das",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            305890.0,
+            306210.0
+          ],
+          "tagDurMs": 320.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "that's",
+            "span": [
+              305930.0,
+              306350.0
+            ],
+            "iou": 0.6087,
+            "probability": 0.5166276805102825
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "that's"
+          ]
+        },
+        {
+          "uuid": "395a6805-91c2-45ff-bebc-38570a3b14b9",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            314370.0,
+            315070.0
+          ],
+          "tagDurMs": 700.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "here.",
+            "span": [
+              314530.0,
+              314850.0
+            ],
+            "iou": 0.4571,
+            "probability": 0.22320757806301117
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "here.",
+            "Let's",
+            "go"
+          ]
+        },
+        {
+          "uuid": "0b4a0bd4-5bcd-4e73-84f8-d0bc7ca7a754",
+          "word": "abhocke",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            324040.0,
+            324910.0
+          ],
+          "tagDurMs": 870.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "take",
+            "span": [
+              324260.0,
+              324480.0
+            ],
+            "iou": 0.2529,
+            "probability": 0.3577660620212555
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "take",
+            "it.",
+            "I'll"
+          ]
+        },
+        {
+          "uuid": "e55a43f9-b916-49e7-873e-684f10ac6714",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            329180.0,
+            330010.0
+          ],
+          "tagDurMs": 830.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "that's",
+            "span": [
+              329180.0,
+              329740.0
+            ],
+            "iou": 0.6747,
+            "probability": 0.37573844380676746
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "that's",
+            "it."
+          ]
+        },
+        {
+          "uuid": "89242c5c-5180-47df-a518-a7db072fc7ea",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            330630.0,
+            331470.0
+          ],
+          "tagDurMs": 840.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "see",
+            "span": [
+              330880.0,
+              331200.0
+            ],
+            "iou": 0.381,
+            "probability": 0.3018747568130493
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "see",
+            "it.",
+            "Go"
+          ]
+        },
+        {
+          "uuid": "ed61ef50-4826-462b-90bd-66bd382a2229",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            334590.0,
+            335060.0
+          ],
+          "tagDurMs": 470.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "don't",
+            "span": [
+              334870.0,
+              335130.0
+            ],
+            "iou": 0.3519,
+            "probability": 0.531813483685255
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "don't",
+            "I"
+          ]
+        },
+        {
+          "uuid": "ed05e23c-8086-4a51-bbb6-bb9b5d51bbe5",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            335060.0,
+            335640.0
+          ],
+          "tagDurMs": 580.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "see",
+            "span": [
+              335130.0,
+              335470.0
+            ],
+            "iou": 0.5862,
+            "probability": 0.6713024377822876
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "see",
+            "a",
+            "don't"
+          ]
+        },
+        {
+          "uuid": "afc52551-0c3a-47dc-b3ce-d7d414bff6f2",
+          "word": "aqui",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            335610.0,
+            335990.0
+          ],
+          "tagDurMs": 380.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "thing.",
+            "span": [
+              335670.0,
+              335870.0
+            ],
+            "iou": 0.5263,
+            "probability": 0.5913766622543335
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "thing.",
+            "a"
+          ]
+        },
+        {
+          "uuid": "25e47577-74bf-4149-a44a-e283fc717cc8",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            337980.0,
+            338370.0
+          ],
+          "tagDurMs": 390.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "don't",
+            "span": [
+              337750.0,
+              338270.0
+            ],
+            "iou": 0.4677,
+            "probability": 0.759857565164566
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "don't",
+            "see"
+          ]
+        },
+        {
+          "uuid": "b02b9899-e7f9-41c8-81c6-053245687740",
+          "word": "aman",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            338360.0,
+            338920.0
+          ],
+          "tagDurMs": 560.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "thing.",
+            "span": [
+              338530.0,
+              339210.0
+            ],
+            "iou": 0.4588,
+            "probability": 0.7248715162277222
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "thing.",
+            "a",
+            "see"
+          ]
+        },
+        {
+          "uuid": "047a4a82-576b-4dc1-b3f1-b53e05d70380",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            339780.0,
+            340430.0
+          ],
+          "tagDurMs": 650.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "don't",
+            "span": [
+              339630.0,
+              340010.0
+            ],
+            "iou": 0.2875,
+            "probability": 0.9103697538375854
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "don't",
+            "see",
+            "a"
+          ]
+        },
+        {
+          "uuid": "4dfc0cf2-b99f-42f7-8f20-84d4405161b8",
+          "word": "das",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            347390.0,
+            347710.0
+          ],
+          "tagDurMs": 320.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "This",
+            "span": [
+              346990.0,
+              347630.0
+            ],
+            "iou": 0.3333,
+            "probability": 0.15948991477489471
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "This",
+            "is..."
+          ]
+        },
+        {
+          "uuid": "8047db7a-f6b9-485f-9b62-0fc8a103be4e",
+          "word": "night night",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            356330.0,
+            357430.0
+          ],
+          "tagDurMs": 1100.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Mommy!",
+            "span": [
+              355930.0,
+              356770.0
+            ],
+            "iou": 0.2933,
+            "probability": 0.152293860912323
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Mommy!",
+            "Mommy!"
+          ]
+        },
+        {
+          "uuid": "925c312c-bb4a-4321-9afc-3503e8091de9",
+          "word": "night night",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            359490.0,
+            360470.0
+          ],
+          "tagDurMs": 980.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "8b5f0fba-fff1-4a8c-85cd-d45180a5ab17",
+          "word": "green frog",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            369390.0,
+            370340.0
+          ],
+          "tagDurMs": 950.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "work,",
+            "span": [
+              369670.0,
+              370110.0
+            ],
+            "iou": 0.4632,
+            "probability": 0.17015275359153748
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "work,",
+            "They"
+          ]
+        },
+        {
+          "uuid": "0576f272-d05c-45ed-8c7f-7eb22c0eb7cf",
+          "word": "green frog",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            370740.0,
+            371600.0
+          ],
+          "tagDurMs": 860.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "work.",
+            "span": [
+              371030.0,
+              371430.0
+            ],
+            "iou": 0.4651,
+            "probability": 0.9956287145614624
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "work.",
+            "they"
+          ]
+        },
+        {
+          "uuid": "b09f4c8f-1180-4f31-b3cd-7bfc9f541a5a",
+          "word": "vogu",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            377010.0,
+            378170.0
+          ],
+          "tagDurMs": 1160.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Falcon!",
+            "span": [
+              377090.0,
+              377610.0
+            ],
+            "iou": 0.4483,
+            "probability": 0.08272120356559753
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Falcon!",
+            "I'm"
+          ]
+        },
+        {
+          "uuid": "56d3f39e-2e71-4a2d-9b58-39cf3eeeda90",
+          "word": "green frog",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            378800.0,
+            379700.0
+          ],
+          "tagDurMs": 900.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "my...",
+            "span": [
+              379190.0,
+              380070.0
+            ],
+            "iou": 0.4016,
+            "probability": 0.26450201123952866
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "my...",
+            "Where's"
+          ]
+        },
+        {
+          "uuid": "70ad20a1-6d87-4ea0-b6f7-aea39137a56e",
+          "word": "night night",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            391190.0,
+            391890.0
+          ],
+          "tagDurMs": 700.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "in",
+            "span": [
+              391430.0,
+              391670.0
+            ],
+            "iou": 0.3429,
+            "probability": 0.786774754524231
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "in",
+            "it.",
+            "I'm"
+          ]
+        },
+        {
+          "uuid": "aae3d52f-56d2-4080-a005-ecb330d20889",
+          "word": "green frog",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            402180.0,
+            402920.0
+          ],
+          "tagDurMs": 740.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "you.",
+            "span": [
+              402460.0,
+              402660.0
+            ],
+            "iou": 0.2703,
+            "probability": 0.9501355290412903
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "you.",
+            "Thank"
+          ]
+        },
+        {
+          "uuid": "2ebdd531-f1f7-4a21-ad8f-27011909d017",
+          "word": "green frog",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            406290.0,
+            407090.0
+          ],
+          "tagDurMs": 800.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Let's",
+            "span": [
+              405890.0,
+              406850.0
+            ],
+            "iou": 0.4667,
+            "probability": 0.46099322149530053
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Let's",
+            "go."
+          ]
+        },
+        {
+          "uuid": "d0bef007-d567-4268-840d-7ea35dfe9020",
+          "word": "green frog",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            407940.0,
+            409090.0
+          ],
+          "tagDurMs": 1150.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "and",
+            "span": [
+              408270.0,
+              408650.0
+            ],
+            "iou": 0.3304,
+            "probability": 0.7471607327461243
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "and",
+            "Me",
+            "my",
+            "friend."
+          ]
+        },
+        {
+          "uuid": "fb60ff08-55ff-40df-98e8-a9d550002b9e",
+          "word": "all done",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            412130.0,
+            412720.0
+          ],
+          "tagDurMs": 590.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Okay,",
+            "span": [
+              411730.0,
+              412550.0
+            ],
+            "iou": 0.4242,
+            "probability": 0.21508124470710754
+          },
+          "textMatch": {
+            "text": "I'll",
+            "span": [
+              412790.0,
+              412990.0
+            ],
+            "iou": 0.0,
+            "probability": 0.3328210413455963,
+            "fuzzy": true
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "Okay,"
+          ]
+        },
+        {
+          "uuid": "a0980d33-7058-483a-93a9-e13e0fc6dac5",
+          "word": "no",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            416920.0,
+            417590.0
+          ],
+          "tagDurMs": 670.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "54f87564-e3aa-4857-aac6-23ca8095b247",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            422540.0,
+            423250.0
+          ],
+          "tagDurMs": 710.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "Take",
+            "span": [
+              422140.0,
+              423000.0
+            ],
+            "iou": 0.4144,
+            "probability": 0.06522876769304276
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Take",
+            "seat.",
+            "a"
+          ]
+        },
+        {
+          "uuid": "b133e86c-e7a8-43ef-a01f-c769d8aebb61",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            423290.0,
+            424360.0
+          ],
+          "tagDurMs": 1070.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "seat.",
+            "span": [
+              423020.0,
+              423940.0
+            ],
+            "iou": 0.4851,
+            "probability": 0.08321929723024368
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "seat."
+          ]
+        },
+        {
+          "uuid": "fa487ad7-4836-4ba2-a770-d89fb3b2d697",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            424900.0,
+            425650.0
+          ],
+          "tagDurMs": 750.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Take",
+            "span": [
+              424680.0,
+              425360.0
+            ],
+            "iou": 0.4742,
+            "probability": 0.7885401248931885
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Take",
+            "a"
+          ]
+        },
+        {
+          "uuid": "8728114d-2457-4724-a4c6-611be10d8d3f",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            425650.0,
+            426660.0
+          ],
+          "tagDurMs": 1010.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "seat.",
+            "span": [
+              425740.0,
+              426340.0
+            ],
+            "iou": 0.5941,
+            "probability": 0.998076319694519
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "seat.",
+            "a"
+          ]
+        },
+        {
+          "uuid": "b7980861-463a-4db1-a798-8480e79105ba",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            427200.0,
+            427740.0
+          ],
+          "tagDurMs": 540.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "a",
+            "span": [
+              427420.0,
+              427860.0
+            ],
+            "iou": 0.4848,
+            "probability": 0.9865238666534424
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "a",
+            "Take"
+          ]
+        },
+        {
+          "uuid": "84b9f7a3-4740-4416-b92c-2a4d88cf6a73",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            427720.0,
+            428720.0
+          ],
+          "tagDurMs": 1000.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "seat.",
+            "span": [
+              427860.0,
+              428320.0
+            ],
+            "iou": 0.46,
+            "probability": 0.9986714124679565
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "seat.",
+            "a"
+          ]
+        },
+        {
+          "uuid": "ce7c2d8c-173a-444f-8f3d-ab5d10b60248",
+          "word": "fuess",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            434590.0,
+            435310.0
+          ],
+          "tagDurMs": 720.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "boys!",
+            "span": [
+              434430.0,
+              435030.0
+            ],
+            "iou": 0.5,
+            "probability": 0.4078109562397003
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "boys!"
+          ]
+        },
+        {
+          "uuid": "5ccb3dbd-6bc2-4014-91bb-51d856ec8cf5",
+          "word": "abhocke",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            449820.0,
+            451350.0
+          ],
+          "tagDurMs": 1530.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Applesa!",
+            "span": [
+              449420.0,
+              451360.0
+            ],
+            "iou": 0.7887,
+            "probability": 0.44443104912837345
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Applesa!"
+          ]
+        },
+        {
+          "uuid": "af67560c-64af-4216-acc7-3f0c63650b30",
+          "word": "hilfe",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            453030.0,
+            454020.0
+          ],
+          "tagDurMs": 990.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "fuck!",
+            "span": [
+              453440.0,
+              453840.0
+            ],
+            "iou": 0.404,
+            "probability": 0.1628020852804184
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "fuck!",
+            "Damn"
+          ]
+        },
+        {
+          "uuid": "286340f2-d5a7-45d3-8730-156028068280",
+          "word": "spile",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            469850.0,
+            470370.0
+          ],
+          "tagDurMs": 520.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "better",
+            "span": [
+              469810.0,
+              470170.0
+            ],
+            "iou": 0.5714,
+            "probability": 0.3071346580982208
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "better",
+            "or"
+          ]
+        },
+        {
+          "uuid": "f89d569a-26b9-4684-8dc7-be584d1ead83",
+          "word": "b\u00fcecher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            475870.0,
+            476520.0
+          ],
+          "tagDurMs": 650.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "give",
+            "span": [
+              476170.0,
+              476410.0
+            ],
+            "iou": 0.3692,
+            "probability": 0.5284138321876526
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "give",
+            "We'll",
+            "this"
+          ]
+        },
+        {
+          "uuid": "4648f0fe-e6c4-44e8-b5c5-8dd9fcb36eb4",
+          "word": "l\u00e4se",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            476510.0,
+            477090.0
+          ],
+          "tagDurMs": 580.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "go.",
+            "span": [
+              476890.0,
+              477110.0
+            ],
+            "iou": 0.3333,
+            "probability": 0.31886911392211914
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "go.",
+            "a",
+            "this"
+          ]
+        },
+        {
+          "uuid": "228ae20f-7b94-448e-8e3b-1f3e65e38af7",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            480410.0,
+            481100.0
+          ],
+          "tagDurMs": 690.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "see",
+            "span": [
+              480610.0,
+              480910.0
+            ],
+            "iou": 0.4348,
+            "probability": 0.33173033595085144
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "see",
+            "to",
+            "going"
+          ]
+        },
+        {
+          "uuid": "d9794a1f-1075-4301-a5f6-14d5896f92c1",
+          "word": "purple cat",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            494310.0,
+            495000.0
+          ],
+          "tagDurMs": 690.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "at",
+            "span": [
+              494710.0,
+              495070.0
+            ],
+            "iou": 0.3816,
+            "probability": 0.9086492657661438
+          },
+          "textMatch": {
+            "text": "at",
+            "span": [
+              494710.0,
+              495070.0
+            ],
+            "iou": 0.3816,
+            "probability": 0.9086492657661438,
+            "fuzzy": true
+          },
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "at",
+            "look",
+            "Um,"
+          ]
+        },
+        {
+          "uuid": "2b5f1052-2d22-4fc4-a785-70883f9ac1a9",
+          "word": "purple cat",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            495590.0,
+            496820.0
+          ],
+          "tagDurMs": 1230.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "again.",
+            "span": [
+              495670.0,
+              496390.0
+            ],
+            "iou": 0.5854,
+            "probability": 0.22978708148002625
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "again.",
+            "me"
+          ]
+        },
+        {
+          "uuid": "a13ba870-0560-4225-9ae0-9030da7ee434",
+          "word": "teacher",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            506630.0,
+            507450.0
+          ],
+          "tagDurMs": 820.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "you?",
+            "span": [
+              506890.0,
+              507210.0
+            ],
+            "iou": 0.3902,
+            "probability": 0.5407477021217346
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "you?",
+            "Did"
+          ]
+        },
+        {
+          "uuid": "59d09276-5330-409b-b933-efd462e8e345",
+          "word": "goldfish",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            510700.0,
+            511610.0
+          ],
+          "tagDurMs": 910.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Coffee,",
+            "span": [
+              510300.0,
+              511180.0
+            ],
+            "iou": 0.3664,
+            "probability": 0.188705712556839
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Coffee,"
+          ]
+        },
+        {
+          "uuid": "5c1b500f-c9ac-4747-9c8a-6ae9b1b9e21c",
+          "word": "goldfish",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            512370.0,
+            513330.0
+          ],
+          "tagDurMs": 960.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "coffee,",
+            "span": [
+              511640.0,
+              512820.0
+            ],
+            "iou": 0.2663,
+            "probability": 0.5854326486587524
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "coffee,",
+            "coffee,"
+          ]
+        },
+        {
+          "uuid": "4dc0af30-5223-468e-8cc2-dcbdf417e9b0",
+          "word": "goldfish",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            514130.0,
+            515200.0
+          ],
+          "tagDurMs": 1070.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "coffee,",
+            "span": [
+              513300.0,
+              514640.0
+            ],
+            "iou": 0.2684,
+            "probability": 0.9205778241157532
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "coffee,",
+            "coffee,"
+          ]
+        },
+        {
+          "uuid": "6ff89230-165a-4a63-9003-c622544d7faa",
+          "word": "goldfish",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            515940.0,
+            517000.0
+          ],
+          "tagDurMs": 1060.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "coffee,",
+            "span": [
+              515160.0,
+              516400.0
+            ],
+            "iou": 0.25,
+            "probability": 0.9361580610275269
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "coffee,",
+            "coffee,"
+          ]
+        },
+        {
+          "uuid": "c3e39bfc-8eeb-4144-a494-bc8c6a4f6b0b",
+          "word": "goldfish",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            518510.0,
+            519830.0
+          ],
+          "tagDurMs": 1320.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "coffee.",
+            "span": [
+              517940.0,
+              518680.0
+            ],
+            "iou": 0.0899,
+            "probability": 0.31157711148262024
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "coffee."
+          ]
+        },
+        {
+          "uuid": "4a6aa93a-9aef-4934-9727-a7c75c19069f",
+          "word": "brown bear",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            526010.0,
+            527130.0
+          ],
+          "tagDurMs": 1120.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "sure.",
+            "span": [
+              526470.0,
+              526790.0
+            ],
+            "iou": 0.2857,
+            "probability": 0.7851859331130981
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "sure.",
+            "I'm",
+            "not"
+          ]
+        },
+        {
+          "uuid": "4fefc957-5aa3-43fd-8dde-b11976f36346",
+          "word": "gsundheit",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            539430.0,
+            540360.0
+          ],
+          "tagDurMs": 930.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "cry.",
+            "span": [
+              539870.0,
+              540890.0
+            ],
+            "iou": 0.3356,
+            "probability": 0.5482325553894043
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "cry.",
+            "Don't"
+          ]
+        },
+        {
+          "uuid": "aefd6b5f-0046-46e6-a8dc-13c73bcfbaed",
+          "word": "danke",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            540370.0,
+            541170.0
+          ],
+          "tagDurMs": 800.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "cry.",
+            "span": [
+              539870.0,
+              540890.0
+            ],
+            "iou": 0.4,
+            "probability": 0.5482325553894043
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "cry."
+          ]
+        },
+        {
+          "uuid": "20f90dfb-47ad-462c-b778-eef5644daee3",
+          "word": "all done",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            543250.0,
+            544310.0
+          ],
+          "tagDurMs": 1060.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "8f9b612d-6fa6-411b-9603-7e663470658d",
+          "word": "spile",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            560540.0,
+            561710.0
+          ],
+          "tagDurMs": 1170.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "me,",
+            "span": [
+              560540.0,
+              561040.0
+            ],
+            "iou": 0.4274,
+            "probability": 0.004582575056701899
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "me,"
+          ]
+        },
+        {
+          "uuid": "58f23285-3ad1-42ff-a60b-9a1a9ec467f4",
+          "word": "baby",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            563550.0,
+            564740.0
+          ],
+          "tagDurMs": 1190.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "peace.",
+            "span": [
+              563860.0,
+              564480.0
+            ],
+            "iou": 0.521,
+            "probability": 0.3926073908805847
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "peace.",
+            "my"
+          ]
+        },
+        {
+          "uuid": "9a61340f-e318-41dd-a599-1cd5a5af1f59",
+          "word": "andere",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            583240.0,
+            584190.0
+          ],
+          "tagDurMs": 950.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "Bounce",
+            "span": [
+              583380.0,
+              583840.0
+            ],
+            "iou": 0.4842,
+            "probability": 0.1269279606640339
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Bounce",
+            "like",
+            "a"
+          ]
+        },
+        {
+          "uuid": "fe3ceb1e-5212-4954-8ed4-b2a623ed2e7b",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            584140.0,
+            585050.0
+          ],
+          "tagDurMs": 910.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "pig",
+            "span": [
+              584380.0,
+              584700.0
+            ],
+            "iou": 0.3516,
+            "probability": 0.30559495091438293
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "pig",
+            "a",
+            "Yeah,"
+          ]
+        },
+        {
+          "uuid": "3515ed87-c491-4f63-96bb-64c11ca4aea9",
+          "word": "das",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            596180.0,
+            596450.0
+          ],
+          "tagDurMs": 270.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "that's",
+            "span": [
+              596120.0,
+              596420.0
+            ],
+            "iou": 0.7273,
+            "probability": 0.5662698373198509
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "that's",
+            "not"
+          ]
+        },
+        {
+          "uuid": "41604d27-c27d-4858-8727-cc27bedf4fa1",
+          "word": "cha",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            596420.0,
+            596570.0
+          ],
+          "tagDurMs": 150.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "not",
+            "span": [
+              596420.0,
+              596500.0
+            ],
+            "iou": 0.5333,
+            "probability": 0.6268534660339355
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "not",
+            "right."
+          ]
+        },
+        {
+          "uuid": "fb138072-5aee-46e7-a581-6fd978833fa6",
+          "word": "blybe",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            596540.0,
+            596960.0
+          ],
+          "tagDurMs": 420.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "right.",
+            "span": [
+              596500.0,
+              596660.0
+            ],
+            "iou": 0.2609,
+            "probability": 0.08636627346277237
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "right."
+          ]
+        },
+        {
+          "uuid": "2730da90-42ba-4fc7-9731-376f63b12b72",
+          "word": "es",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            597170.0,
+            597380.0
+          ],
+          "tagDurMs": 210.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "It's",
+            "span": [
+              597020.0,
+              597380.0
+            ],
+            "iou": 0.5833,
+            "probability": 0.6779391467571259
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "It's"
+          ]
+        },
+        {
+          "uuid": "1a6a572e-d8f6-4bec-bd06-f9982396c14d",
+          "word": "het",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            597350.0,
+            597550.0
+          ],
+          "tagDurMs": 200.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "a",
+            "span": [
+              597380.0,
+              597460.0
+            ],
+            "iou": 0.4,
+            "probability": 0.4561735987663269
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "a",
+            "dick",
+            "It's"
+          ]
+        },
+        {
+          "uuid": "77264b8e-3fe5-4e46-9b69-25686bf5f8b0",
+          "word": "decki",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            597510.0,
+            598060.0
+          ],
+          "tagDurMs": 550.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "dick",
+            "span": [
+              597460.0,
+              597740.0
+            ],
+            "iou": 0.3833,
+            "probability": 0.19579435884952545
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "dick",
+            "key",
+            "in"
+          ]
+        },
+        {
+          "uuid": "c406d368-d8dc-464e-b0b8-f4218ac6157a",
+          "word": "andere",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            598100.0,
+            598570.0
+          ],
+          "tagDurMs": 470.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "under",
+            "span": [
+              598300.0,
+              598500.0
+            ],
+            "iou": 0.4255,
+            "probability": 0.24393683671951294
+          },
+          "textMatch": {
+            "text": "under",
+            "span": [
+              598300.0,
+              598500.0
+            ],
+            "iou": 0.4255,
+            "probability": 0.24393683671951294,
+            "fuzzy": true
+          },
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "under",
+            "the",
+            "in",
+            "-to"
+          ]
+        },
+        {
+          "uuid": "b172ee63-1fd4-4b05-bb22-5a70efce1dca",
+          "word": "heidi",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            658930.0,
+            659320.0
+          ],
+          "tagDurMs": 390.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Heidi?",
+            "span": [
+              658890.0,
+              659110.0
+            ],
+            "iou": 0.4186,
+            "probability": 0.8349356055259705
+          },
+          "textMatch": {
+            "text": "Heidi?",
+            "span": [
+              658890.0,
+              659110.0
+            ],
+            "iou": 0.4186,
+            "probability": 0.8349356055259705,
+            "fuzzy": false
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "Heidi?"
+          ]
+        },
+        {
+          "uuid": "03c34665-b3a6-4cfc-8f48-f966ae4fef4a",
+          "word": "fips",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            660680.0,
+            660920.0
+          ],
+          "tagDurMs": 240.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Fips",
+            "span": [
+              660610.0,
+              660870.0
+            ],
+            "iou": 0.6129,
+            "probability": 0.5359997972846031
+          },
+          "textMatch": {
+            "text": "Fips",
+            "span": [
+              660610.0,
+              660870.0
+            ],
+            "iou": 0.6129,
+            "probability": 0.5359997972846031,
+            "fuzzy": false
+          },
+          "errorMode": "ok",
+          "overlappingTexts": [
+            "Fips",
+            "lasse?"
+          ]
+        },
+        {
+          "uuid": "e1f42ab1-457a-4c31-8484-fe465caccb10",
+          "word": "l\u00e4se",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            660910.0,
+            661370.0
+          ],
+          "tagDurMs": 460.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "lasse?",
+            "span": [
+              660870.0,
+              661170.0
+            ],
+            "iou": 0.52,
+            "probability": 0.3184778094291687
+          },
+          "textMatch": {
+            "text": "lasse?",
+            "span": [
+              660870.0,
+              661170.0
+            ],
+            "iou": 0.52,
+            "probability": 0.3184778094291687,
+            "fuzzy": true
+          },
+          "errorMode": "ok",
+          "overlappingTexts": [
+            "lasse?"
+          ]
+        },
+        {
+          "uuid": "07670b1c-d587-491a-9d1b-40a92444b96f",
+          "word": "heidi",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            663390.0,
+            664200.0
+          ],
+          "tagDurMs": 810.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Heidi!",
+            "span": [
+              663190.0,
+              663870.0
+            ],
+            "iou": 0.4752,
+            "probability": 0.8512505888938904
+          },
+          "textMatch": {
+            "text": "Heidi!",
+            "span": [
+              663190.0,
+              663870.0
+            ],
+            "iou": 0.4752,
+            "probability": 0.8512505888938904,
+            "fuzzy": false
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "Heidi!"
+          ]
+        },
+        {
+          "uuid": "b2a3e069-91e2-4c5f-832e-c37b045f3332",
+          "word": "pyjama",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            681150.0,
+            681690.0
+          ],
+          "tagDurMs": 540.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Pisa",
+            "span": [
+              681090.0,
+              681430.0
+            ],
+            "iou": 0.4667,
+            "probability": 0.221493199467659
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Pisa",
+            "Maa"
+          ]
+        },
+        {
+          "uuid": "d54226c8-0ebb-4714-a5bb-3c61fbb23337",
+          "word": "aalege",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            681640.0,
+            682110.0
+          ],
+          "tagDurMs": 470.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "ka?",
+            "span": [
+              681850.0,
+              682030.0
+            ],
+            "iou": 0.383,
+            "probability": 0.3261661231517792
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "ka?",
+            "Lai",
+            "Maa"
+          ]
+        },
+        {
+          "uuid": "cbcb28c9-95a8-4c97-b2f7-ab14ff4af9d7",
+          "word": "pyjama",
+          "category": "verbal vocalization",
+          "speaker": "Parent",
+          "source": "user",
+          "tagSpan": [
+            683420.0,
+            684360.0
+          ],
+          "tagDurMs": 940.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Siyama!",
+            "span": [
+              683350.0,
+              684030.0
+            ],
+            "iou": 0.604,
+            "probability": 0.6142145891984304
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Siyama!"
+          ]
+        },
+        {
+          "uuid": "7ed00f2a-1a8b-478f-9676-ed672a6b2e44",
+          "word": "fresas",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            773740.0,
+            774630.0
+          ],
+          "tagDurMs": 890.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "us.",
+            "span": [
+              774080.0,
+              774640.0
+            ],
+            "iou": 0.6111,
+            "probability": 0.9925500154495239
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "us.",
+            "embrace"
+          ]
+        }
+      ]
+    },
+    {
+      "sessionName": "26_07_05__00:00:00",
+      "kitFolder": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "kitPath": "/Users/vijayjain/Documents/BabyTalk/Library/2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "audioDurSec": 690.77,
+      "model": "faster-whisper/base",
+      "languageHint": "Swiss German dialect",
+      "method": {
+        "description": "Cluster nearby manual tags into padded windows; transcribe each with word_timestamps=True; align Whisper words to tags by overlap (and fuzzy text).",
+        "gapMs": 2500.0,
+        "padMs": 400.0,
+        "nWindows": 43,
+        "nWhisperWords": 206,
+        "elapsedSec": 84.0
+      },
+      "summary": {
+        "nTags": 72,
+        "coverage": {
+          "anyOverlapN": 67,
+          "anyOverlapPct": 93.1,
+          "textMatchN": 4,
+          "textMatchPct": 5.6
+        },
+        "iou": {
+          "overlapOnly": {
+            "nWithOverlap": 67,
+            "iou50N": 13,
+            "iou50PctOfAllTags": 18.1,
+            "iou50PctOfOverlapping": 19.4,
+            "quantiles": {
+              "n": 67,
+              "min": 0.062,
+              "p25": 0.303,
+              "median": 0.387,
+              "p75": 0.473,
+              "p90": 0.617,
+              "max": 0.796,
+              "mean": 0.398
+            }
+          },
+          "textMatch": {
+            "nWithTextAndOverlap": 3,
+            "iou50N": 1,
+            "iou50PctOfAllTags": 1.4,
+            "iou50PctOfTextMatches": 25.0,
+            "quantiles": {
+              "n": 3,
+              "min": 0.122,
+              "p25": 0.201,
+              "median": 0.281,
+              "p75": 0.456,
+              "p90": 0.561,
+              "max": 0.631,
+              "mean": 0.345
+            }
+          }
+        },
+        "errorModes": {
+          "wrong_word": 29,
+          "word_split": 27,
+          "big_boundary_error": 5,
+          "no_speech": 5,
+          "word_merge": 3,
+          "boundary_soft": 2,
+          "ok": 1
+        },
+        "errorModePct": {
+          "wrong_word": 40.3,
+          "word_split": 37.5,
+          "big_boundary_error": 6.9,
+          "no_speech": 6.9,
+          "word_merge": 4.2,
+          "boundary_soft": 2.8,
+          "ok": 1.4
+        }
+      },
+      "archivalMlCompare": {
+        "nCands": 139,
+        "anyOverlapPct": 100.0,
+        "iou50Pct": 11.1,
+        "iouQuantiles": {
+          "n": 72,
+          "min": 0.038,
+          "p25": 0.07,
+          "median": 0.116,
+          "p75": 0.295,
+          "p90": 0.54,
+          "max": 0.959,
+          "mean": 0.217
+        },
+        "note": "archival annotations.json vs same manual verbal tags (DJW/ML boxes)"
+      },
+      "samples": {
+        "no_speech": [
+          {
+            "word": "boot",
+            "tagSpan": [
+              164680.0,
+              165670.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "v\u00f6gu",
+            "tagSpan": [
+              188130.0,
+              189090.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "here",
+            "tagSpan": [
+              502610.0,
+              503340.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "da",
+            "tagSpan": [
+              507240.0,
+              508040.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          },
+          {
+            "word": "cozy",
+            "tagSpan": [
+              628560.0,
+              629580.0
+            ],
+            "best": null,
+            "textMatch": null,
+            "overlappingTexts": [],
+            "errorMode": "no_speech"
+          }
+        ],
+        "wrong_word": [
+          {
+            "word": "schuhe",
+            "tagSpan": [
+              53170.0,
+              54390.0
+            ],
+            "best": {
+              "text": "we're...",
+              "span": [
+                53130.0,
+                55110.0
+              ],
+              "iou": 0.6162,
+              "probability": 0.2794904187321663
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "we're..."
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "schuhe",
+            "tagSpan": [
+              55100.0,
+              56360.0
+            ],
+            "best": {
+              "text": "...we're...",
+              "span": [
+                55110.0,
+                56670.0
+              ],
+              "iou": 0.7962,
+              "probability": 0.7535377591848373
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "...we're...",
+              "we're..."
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "fuchs",
+            "tagSpan": [
+              84990.0,
+              86000.0
+            ],
+            "best": {
+              "text": "Das",
+              "span": [
+                84590.0,
+                86110.0
+              ],
+              "iou": 0.6645,
+              "probability": 0.15092521905899048
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Das"
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "fuchs",
+            "tagSpan": [
+              89280.0,
+              90220.0
+            ],
+            "best": {
+              "text": "Fult.",
+              "span": [
+                88880.0,
+                89740.0
+              ],
+              "iou": 0.3433,
+              "probability": 0.29114890843629837
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Fult."
+            ],
+            "errorMode": "wrong_word"
+          },
+          {
+            "word": "vijay",
+            "tagSpan": [
+              91950.0,
+              92610.0
+            ],
+            "best": {
+              "text": "Ja,",
+              "span": [
+                91660.0,
+                92440.0
+              ],
+              "iou": 0.5158,
+              "probability": 0.08175276964902878
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Ja,"
+            ],
+            "errorMode": "wrong_word"
+          }
+        ],
+        "word_split": [
+          {
+            "word": "\u00e4nteli",
+            "tagSpan": [
+              13160.0,
+              14190.0
+            ],
+            "best": {
+              "text": "kommen.",
+              "span": [
+                13620.0,
+                13900.0
+              ],
+              "iou": 0.2718,
+              "probability": 0.06998287886381149
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "kommen.",
+              "auch",
+              "ja"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "auui mini \u00e4nteli",
+            "tagSpan": [
+              21500.0,
+              26780.0
+            ],
+            "best": {
+              "text": "dich!",
+              "span": [
+                23240.0,
+                24440.0
+              ],
+              "iou": 0.2273,
+              "probability": 0.04556334763765335
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "dich!",
+              "machen",
+              "'k",
+              "Ah,",
+              "wir",
+              "'k"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "see",
+            "tagSpan": [
+              45650.0,
+              46500.0
+            ],
+            "best": {
+              "text": "ist",
+              "span": [
+                45650.0,
+                46070.0
+              ],
+              "iou": 0.4941,
+              "probability": 0.15096662938594818
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "ist",
+              "das?"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "wasser",
+            "tagSpan": [
+              48940.0,
+              50380.0
+            ],
+            "best": {
+              "text": "Das",
+              "span": [
+                50110.0,
+                50530.0
+              ],
+              "iou": 0.1698,
+              "probability": 0.00040724201244302094
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Das",
+              "Erinnerungs",
+              "-Wall"
+            ],
+            "errorMode": "word_split"
+          },
+          {
+            "word": "melanie",
+            "tagSpan": [
+              59350.0,
+              60280.0
+            ],
+            "best": {
+              "text": "nicht...",
+              "span": [
+                59930.0,
+                60650.0
+              ],
+              "iou": 0.2692,
+              "probability": 0.28967681527137756
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "nicht...",
+              "wenn",
+              "man",
+              "So,"
+            ],
+            "errorMode": "word_split"
+          }
+        ],
+        "word_merge": [
+          {
+            "word": "fisch",
+            "tagSpan": [
+              152480.0,
+              153020.0
+            ],
+            "best": {
+              "text": "mich",
+              "span": [
+                152080.0,
+                153180.0
+              ],
+              "iou": 0.4909,
+              "probability": 0.3803882896900177
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "mich"
+            ],
+            "errorMode": "word_merge"
+          },
+          {
+            "word": "schuhe",
+            "tagSpan": [
+              297620.0,
+              298200.0
+            ],
+            "best": {
+              "text": "Schnell,",
+              "span": [
+                297220.0,
+                298400.0
+              ],
+              "iou": 0.4915,
+              "probability": 0.3309031017124653
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Schnell,"
+            ],
+            "errorMode": "word_merge"
+          },
+          {
+            "word": "cozy",
+            "tagSpan": [
+              619700.0,
+              620460.0
+            ],
+            "best": {
+              "text": "Galsi!",
+              "span": [
+                618960.0,
+                620340.0
+              ],
+              "iou": 0.4267,
+              "probability": 0.9075559576352438
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Galsi!"
+            ],
+            "errorMode": "word_merge"
+          }
+        ],
+        "big_boundary_error": [
+          {
+            "word": "glace",
+            "tagSpan": [
+              74850.0,
+              76250.0
+            ],
+            "best": {
+              "text": "Danke!",
+              "span": [
+                74450.0,
+                75350.0
+              ],
+              "iou": 0.2778,
+              "probability": 0.2500110864639282
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "Danke!"
+            ],
+            "errorMode": "big_boundary_error"
+          },
+          {
+            "word": "wasser",
+            "tagSpan": [
+              161400.0,
+              162210.0
+            ],
+            "best": {
+              "text": "ist?",
+              "span": [
+                161740.0,
+                162000.0
+              ],
+              "iou": 0.321,
+              "probability": 0.7015439867973328
+            },
+            "textMatch": {
+              "text": "Was",
+              "span": [
+                161000.0,
+                161740.0
+              ],
+              "iou": 0.281,
+              "probability": 0.28241991996765137,
+              "fuzzy": true
+            },
+            "overlappingTexts": [
+              "ist?",
+              "Was"
+            ],
+            "errorMode": "boundary_soft"
+          },
+          {
+            "word": "fisch",
+            "tagSpan": [
+              187310.0,
+              187930.0
+            ],
+            "best": {
+              "text": "cool.",
+              "span": [
+                186910.0,
+                187590.0
+              ],
+              "iou": 0.2745,
+              "probability": 0.9371077418327332
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "cool."
+            ],
+            "errorMode": "big_boundary_error"
+          },
+          {
+            "word": "chue",
+            "tagSpan": [
+              247000.0,
+              247800.0
+            ],
+            "best": {
+              "text": "cool.",
+              "span": [
+                247300.0,
+                247350.0
+              ],
+              "iou": 0.0625,
+              "probability": 0.2678700089454651
+            },
+            "textMatch": null,
+            "overlappingTexts": [
+              "cool."
+            ],
+            "errorMode": "big_boundary_error"
+          },
+          {
+            "word": "d schuhe",
+            "tagSpan": [
+              300470.0,
+              302000.0
+            ],
+            "best": {
+              "text": "Schnell,",
+              "span": [
+                300560.0,
+                301200.0
+              ],
+              "iou": 0.4183,
+              "probability": 0.46277712658047676
+            },
+            "textMatch": {
+              "text": "Schuhe?",
+              "span": [
+                302060.0,
+                302380.0
+              ],
+              "iou": 0.0,
+              "probability": 0.9783598581949869,
+              "fuzzy": true
+            },
+            "overlappingTexts": [
+              "Schnell,",
+              "schnell,"
+            ],
+            "errorMode": "boundary_soft"
+          }
+        ],
+        "ok": [
+          {
+            "word": "jacke",
+            "tagSpan": [
+              390500.0,
+              391460.0
+            ],
+            "best": {
+              "text": "Jacke.",
+              "span": [
+                390430.0,
+                391150.0
+              ],
+              "iou": 0.6311,
+              "probability": 0.4911506325006485
+            },
+            "textMatch": {
+              "text": "Jacke.",
+              "span": [
+                390430.0,
+                391150.0
+              ],
+              "iou": 0.6311,
+              "probability": 0.4911506325006485,
+              "fuzzy": false
+            },
+            "overlappingTexts": [
+              "Jacke.",
+              "Kannst"
+            ],
+            "errorMode": "ok"
+          }
+        ]
+      },
+      "nMatches": 72,
+      "matches": [
+        {
+          "uuid": "01a3c706-e00e-4643-b8be-f4da1b447495",
+          "word": "\u00e4nteli",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            13160.0,
+            14190.0
+          ],
+          "tagDurMs": 1030.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "kommen.",
+            "span": [
+              13620.0,
+              13900.0
+            ],
+            "iou": 0.2718,
+            "probability": 0.06998287886381149
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "kommen.",
+            "auch",
+            "ja"
+          ]
+        },
+        {
+          "uuid": "c44c3858-342a-4014-acdd-b638ce9a48ac",
+          "word": "auui mini \u00e4nteli",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            21500.0,
+            26780.0
+          ],
+          "tagDurMs": 5280.0,
+          "nOverlappingWords": 18,
+          "bestOverlap": {
+            "text": "dich!",
+            "span": [
+              23240.0,
+              24440.0
+            ],
+            "iou": 0.2273,
+            "probability": 0.04556334763765335
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "dich!",
+            "machen",
+            "'k",
+            "Ah,",
+            "wir",
+            "'k"
+          ]
+        },
+        {
+          "uuid": "d8e46118-1242-45f2-8d31-7bb07eaf4296",
+          "word": "see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            45650.0,
+            46500.0
+          ],
+          "tagDurMs": 850.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "ist",
+            "span": [
+              45650.0,
+              46070.0
+            ],
+            "iou": 0.4941,
+            "probability": 0.15096662938594818
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "ist",
+            "das?"
+          ]
+        },
+        {
+          "uuid": "0d4f3321-d270-4f7d-96b5-3b3c8af767e6",
+          "word": "wasser",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            48940.0,
+            50380.0
+          ],
+          "tagDurMs": 1440.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "Das",
+            "span": [
+              50110.0,
+              50530.0
+            ],
+            "iou": 0.1698,
+            "probability": 0.00040724201244302094
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Das",
+            "Erinnerungs",
+            "-Wall"
+          ]
+        },
+        {
+          "uuid": "581efa82-c0c9-458d-b15c-8f25e4ef7bb5",
+          "word": "schuhe",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            53170.0,
+            54390.0
+          ],
+          "tagDurMs": 1220.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "we're...",
+            "span": [
+              53130.0,
+              55110.0
+            ],
+            "iou": 0.6162,
+            "probability": 0.2794904187321663
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "we're..."
+          ]
+        },
+        {
+          "uuid": "6a4866a8-02c8-46f8-8520-5d3a67e8378b",
+          "word": "schuhe",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            55100.0,
+            56360.0
+          ],
+          "tagDurMs": 1260.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "...we're...",
+            "span": [
+              55110.0,
+              56670.0
+            ],
+            "iou": 0.7962,
+            "probability": 0.7535377591848373
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "...we're...",
+            "we're..."
+          ]
+        },
+        {
+          "uuid": "6797aa6f-fc9a-45ee-917c-48d6c7556ffc",
+          "word": "melanie",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            59350.0,
+            60280.0
+          ],
+          "tagDurMs": 930.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "nicht...",
+            "span": [
+              59930.0,
+              60650.0
+            ],
+            "iou": 0.2692,
+            "probability": 0.28967681527137756
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "nicht...",
+            "wenn",
+            "man",
+            "So,"
+          ]
+        },
+        {
+          "uuid": "ffb90d2c-7e2c-4886-bdcf-5ab38e6b396c",
+          "word": "lorenzo",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            65640.0,
+            67370.0
+          ],
+          "tagDurMs": 1730.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Lame",
+            "span": [
+              65240.0,
+              66400.0
+            ],
+            "iou": 0.3568,
+            "probability": 0.12686387076973915
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Lame",
+            "so."
+          ]
+        },
+        {
+          "uuid": "b70f704f-fba2-43e3-a7a4-fd57b2aedf1b",
+          "word": "glace",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            74850.0,
+            76250.0
+          ],
+          "tagDurMs": 1400.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Danke!",
+            "span": [
+              74450.0,
+              75350.0
+            ],
+            "iou": 0.2778,
+            "probability": 0.2500110864639282
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Danke!"
+          ]
+        },
+        {
+          "uuid": "b4f54d19-efbe-4af5-96fe-e9b3b8106050",
+          "word": "v\u00f6gu",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            78760.0,
+            79840.0
+          ],
+          "tagDurMs": 1080.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "cool.",
+            "span": [
+              79080.0,
+              79500.0
+            ],
+            "iou": 0.3889,
+            "probability": 0.4478621184825897
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "cool.",
+            "es",
+            "auch"
+          ]
+        },
+        {
+          "uuid": "2370d268-dc7a-4e07-8387-30168d9e0614",
+          "word": "fuchs",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            84990.0,
+            86000.0
+          ],
+          "tagDurMs": 1010.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Das",
+            "span": [
+              84590.0,
+              86110.0
+            ],
+            "iou": 0.6645,
+            "probability": 0.15092521905899048
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Das"
+          ]
+        },
+        {
+          "uuid": "8d9db744-b178-4b36-b14a-902bfa43e210",
+          "word": "fuchs",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            89280.0,
+            90220.0
+          ],
+          "tagDurMs": 940.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Fult.",
+            "span": [
+              88880.0,
+              89740.0
+            ],
+            "iou": 0.3433,
+            "probability": 0.29114890843629837
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Fult."
+          ]
+        },
+        {
+          "uuid": "f2dc1143-3a6f-4be4-8fde-16058e0828f7",
+          "word": "fuchs",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            90530.0,
+            91670.0
+          ],
+          "tagDurMs": 1140.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Fult.",
+            "span": [
+              90220.0,
+              91160.0
+            ],
+            "iou": 0.4345,
+            "probability": 0.9228619039058685
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Fult.",
+            "Ja,"
+          ]
+        },
+        {
+          "uuid": "03c742cc-9682-4fe0-8427-074b93866400",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            91950.0,
+            92610.0
+          ],
+          "tagDurMs": 660.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Ja,",
+            "span": [
+              91660.0,
+              92440.0
+            ],
+            "iou": 0.5158,
+            "probability": 0.08175276964902878
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Ja,"
+          ]
+        },
+        {
+          "uuid": "f7c57764-7322-45b5-92f7-24c01391c93b",
+          "word": "fuchs",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            92600.0,
+            93290.0
+          ],
+          "tagDurMs": 690.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Fult.",
+            "span": [
+              92660.0,
+              92940.0
+            ],
+            "iou": 0.4058,
+            "probability": 0.7071192562580109
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Fult."
+          ]
+        },
+        {
+          "uuid": "45b292e9-387e-44cd-afc0-3b1920e74807",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            96020.0,
+            96640.0
+          ],
+          "tagDurMs": 620.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Tja,",
+            "span": [
+              95620.0,
+              96500.0
+            ],
+            "iou": 0.4706,
+            "probability": 0.23843510821461678
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Tja,"
+          ]
+        },
+        {
+          "uuid": "31122989-e0df-4b4e-b54c-53684e90f5ca",
+          "word": "fuchs",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            96840.0,
+            98010.0
+          ],
+          "tagDurMs": 1170.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "flunk.",
+            "span": [
+              96840.0,
+              97180.0
+            ],
+            "iou": 0.2906,
+            "probability": 0.11185130756348372
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "flunk.",
+            "Mhm."
+          ]
+        },
+        {
+          "uuid": "4cd1bc18-c434-4879-8801-289a41fc4eab",
+          "word": "UNK",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            128360.0,
+            129110.0
+          ],
+          "tagDurMs": 750.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Boah!",
+            "span": [
+              127960.0,
+              128700.0
+            ],
+            "iou": 0.2957,
+            "probability": 0.48975474387407303
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Boah!",
+            "Boah!"
+          ]
+        },
+        {
+          "uuid": "7c640db9-245e-4d35-af9b-d23a071a2db6",
+          "word": "tauji",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            132500.0,
+            133580.0
+          ],
+          "tagDurMs": 1080.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Diode.",
+            "span": [
+              132100.0,
+              133020.0
+            ],
+            "iou": 0.3514,
+            "probability": 0.014731087911059149
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Diode.",
+            "Diode."
+          ]
+        },
+        {
+          "uuid": "e4f1ba2d-bde5-48e1-ba2a-b85a435a1e87",
+          "word": "tram",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            134470.0,
+            135290.0
+          ],
+          "tagDurMs": 820.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Diode.",
+            "span": [
+              134680.0,
+              135520.0
+            ],
+            "iou": 0.581,
+            "probability": 0.7402172088623047
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Diode."
+          ]
+        },
+        {
+          "uuid": "0f2feb47-c3ed-457b-b255-d4e6a2ba782d",
+          "word": "grosi",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            142200.0,
+            143230.0
+          ],
+          "tagDurMs": 1030.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "sch\u00f6n.",
+            "span": [
+              142500.0,
+              142980.0
+            ],
+            "iou": 0.466,
+            "probability": 0.5255246162414551
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "sch\u00f6n.",
+            "ist",
+            "sehr"
+          ]
+        },
+        {
+          "uuid": "ecf852c4-073a-4346-ba74-90403ada3f40",
+          "word": "fisch",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            152480.0,
+            153020.0
+          ],
+          "tagDurMs": 540.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "mich",
+            "span": [
+              152080.0,
+              153180.0
+            ],
+            "iou": 0.4909,
+            "probability": 0.3803882896900177
+          },
+          "textMatch": null,
+          "errorMode": "word_merge",
+          "overlappingTexts": [
+            "mich"
+          ]
+        },
+        {
+          "uuid": "0e6c5119-39f9-442b-9874-e27e59305c4f",
+          "word": "melanie",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            153680.0,
+            154810.0
+          ],
+          "tagDurMs": 1130.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "mich",
+            "span": [
+              154140.0,
+              154580.0
+            ],
+            "iou": 0.3894,
+            "probability": 0.9467056393623352
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "mich",
+            "Ich",
+            "sagen.",
+            "w\u00fcrde"
+          ]
+        },
+        {
+          "uuid": "1a09f23a-3484-4a7d-a9e6-4107448f0ab5",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            154930.0,
+            155470.0
+          ],
+          "tagDurMs": 540.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "sagen.",
+            "span": [
+              154580.0,
+              155300.0
+            ],
+            "iou": 0.4157,
+            "probability": 0.7274324297904968
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "sagen."
+          ]
+        },
+        {
+          "uuid": "89c22716-1e48-471d-b5ab-06ec64514d0d",
+          "word": "wasser",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            161400.0,
+            162210.0
+          ],
+          "tagDurMs": 810.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "ist?",
+            "span": [
+              161740.0,
+              162000.0
+            ],
+            "iou": 0.321,
+            "probability": 0.7015439867973328
+          },
+          "textMatch": {
+            "text": "Was",
+            "span": [
+              161000.0,
+              161740.0
+            ],
+            "iou": 0.281,
+            "probability": 0.28241991996765137,
+            "fuzzy": true
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "ist?",
+            "Was"
+          ]
+        },
+        {
+          "uuid": "c7550895-94e1-4f74-af9c-e9b7b353b5dc",
+          "word": "boot",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            164680.0,
+            165670.0
+          ],
+          "tagDurMs": 990.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "b1c6a363-00a2-4f85-bbc7-437f7b0f676d",
+          "word": "boot",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            170410.0,
+            171070.0
+          ],
+          "tagDurMs": 660.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Komplett.",
+            "span": [
+              170010.0,
+              170970.0
+            ],
+            "iou": 0.5283,
+            "probability": 0.5719478856772184
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Komplett."
+          ]
+        },
+        {
+          "uuid": "933ca03d-b29d-4656-a154-2cbb2788f6ed",
+          "word": "boot",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            172060.0,
+            172830.0
+          ],
+          "tagDurMs": 770.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Hart.",
+            "span": [
+              171930.0,
+              172350.0
+            ],
+            "iou": 0.3222,
+            "probability": 0.0017366199754178524
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Hart."
+          ]
+        },
+        {
+          "uuid": "6ac6c9f5-aa8e-42ae-9dae-3836d49ce650",
+          "word": "boot",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            176560.0,
+            177570.0
+          ],
+          "tagDurMs": 1010.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Boah!",
+            "span": [
+              176160.0,
+              177160.0
+            ],
+            "iou": 0.4255,
+            "probability": 0.42778461799025536
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Boah!"
+          ]
+        },
+        {
+          "uuid": "448df3dd-41f8-4556-88d6-9975d1e92e52",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            182990.0,
+            183650.0
+          ],
+          "tagDurMs": 660.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "Wir",
+            "span": [
+              182590.0,
+              183270.0
+            ],
+            "iou": 0.2642,
+            "probability": 0.0796409547328949
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Wir",
+            "sind",
+            "ja"
+          ]
+        },
+        {
+          "uuid": "1190560d-0312-4ca4-ad86-18b5e6c9fd90",
+          "word": "v\u00f6gu",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            184250.0,
+            185190.0
+          ],
+          "tagDurMs": 940.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "cool.",
+            "span": [
+              184450.0,
+              184890.0
+            ],
+            "iou": 0.4681,
+            "probability": 0.7014968991279602
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "cool.",
+            "voll"
+          ]
+        },
+        {
+          "uuid": "17c30122-ce14-49ec-89b1-f4faa030a775",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            185860.0,
+            186730.0
+          ],
+          "tagDurMs": 870.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "ja",
+            "span": [
+              186250.0,
+              186530.0
+            ],
+            "iou": 0.3218,
+            "probability": 0.7847799062728882
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "ja",
+            "Wir",
+            "sind",
+            "voll"
+          ]
+        },
+        {
+          "uuid": "baea0b87-cd8c-41f8-b1da-5beb27237fba",
+          "word": "fisch",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            187310.0,
+            187930.0
+          ],
+          "tagDurMs": 620.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "cool.",
+            "span": [
+              186910.0,
+              187590.0
+            ],
+            "iou": 0.2745,
+            "probability": 0.9371077418327332
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "cool."
+          ]
+        },
+        {
+          "uuid": "337795a3-ddbc-4027-b628-c53a71f212ce",
+          "word": "v\u00f6gu",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            188130.0,
+            189090.0
+          ],
+          "tagDurMs": 960.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "41cfdcc2-f3d6-4c59-8238-19c0d30cbf0f",
+          "word": "vijay",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            189680.0,
+            190320.0
+          ],
+          "tagDurMs": 640.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "Wir",
+            "span": [
+              189710.0,
+              189910.0
+            ],
+            "iou": 0.3125,
+            "probability": 0.3477585017681122
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Wir",
+            "voll",
+            "ja",
+            "sind"
+          ]
+        },
+        {
+          "uuid": "3ec39140-45c9-44f1-a058-c8b5e95e0a45",
+          "word": "v\u00f6gu",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            191400.0,
+            192360.0
+          ],
+          "tagDurMs": 960.0,
+          "nOverlappingWords": 5,
+          "bestOverlap": {
+            "text": "cool.",
+            "span": [
+              191630.0,
+              191950.0
+            ],
+            "iou": 0.3333,
+            "probability": 0.9887824654579163
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "cool.",
+            "voll",
+            "Ja,",
+            "Fogel",
+            "die"
+          ]
+        },
+        {
+          "uuid": "af98b021-28af-44d4-ae96-987721bce222",
+          "word": "zeichne",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            210580.0,
+            211750.0
+          ],
+          "tagDurMs": 1170.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "mehr",
+            "span": [
+              210640.0,
+              210840.0
+            ],
+            "iou": 0.1709,
+            "probability": 0.09247998148202896
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "mehr",
+            "sein.",
+            "nicht"
+          ]
+        },
+        {
+          "uuid": "af5aa83c-1064-44c2-a925-8ead9089b33c",
+          "word": "zeichne",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            213380.0,
+            214500.0
+          ],
+          "tagDurMs": 1120.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "sein.",
+            "span": [
+              213620.0,
+              213880.0
+            ],
+            "iou": 0.2321,
+            "probability": 0.8414678573608398
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "sein.",
+            "mehr",
+            "nicht"
+          ]
+        },
+        {
+          "uuid": "79ac72c6-869d-4d18-bc5b-96d917b19ca6",
+          "word": "da",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            226090.0,
+            226830.0
+          ],
+          "tagDurMs": 740.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Ja!",
+            "span": [
+              225690.0,
+              226470.0
+            ],
+            "iou": 0.3333,
+            "probability": 0.035708650946617126
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Ja!"
+          ]
+        },
+        {
+          "uuid": "ccb83c40-911c-4dbf-b5b2-7847734b5ac0",
+          "word": "da",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            227640.0,
+            228370.0
+          ],
+          "tagDurMs": 730.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Ja!",
+            "span": [
+              227130.0,
+              228030.0
+            ],
+            "iou": 0.3145,
+            "probability": 0.5160905122756958
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Ja!"
+          ]
+        },
+        {
+          "uuid": "78233946-c887-455b-8265-200de5cc7e15",
+          "word": "zie",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            241180.0,
+            241750.0
+          ],
+          "tagDurMs": 570.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "ja...",
+            "span": [
+              241280.0,
+              241940.0
+            ],
+            "iou": 0.6184,
+            "probability": 0.16078080609440804
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "ja...",
+            "ist"
+          ]
+        },
+        {
+          "uuid": "f3403c7f-85ba-4568-9bfb-0c6b9e56fde7",
+          "word": "chue",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            247000.0,
+            247800.0
+          ],
+          "tagDurMs": 800.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "cool.",
+            "span": [
+              247300.0,
+              247350.0
+            ],
+            "iou": 0.0625,
+            "probability": 0.2678700089454651
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "cool."
+          ]
+        },
+        {
+          "uuid": "f1acb792-62e9-4c19-8e83-96eb6220fa4b",
+          "word": "schn\u00e4u ufe zug",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            279940.0,
+            281420.0
+          ],
+          "tagDurMs": 1480.0,
+          "nOverlappingWords": 5,
+          "bestOverlap": {
+            "text": "so.",
+            "span": [
+              280760.0,
+              281260.0
+            ],
+            "iou": 0.3378,
+            "probability": 0.18185406923294067
+          },
+          "textMatch": {
+            "text": "schon",
+            "span": [
+              280580.0,
+              280760.0
+            ],
+            "iou": 0.1216,
+            "probability": 0.0988784059882164,
+            "fuzzy": true
+          },
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "so.",
+            "auch",
+            "schon",
+            "ich",
+            "war"
+          ]
+        },
+        {
+          "uuid": "cfc9c34b-cf0c-4b57-9da5-1581e85be8d2",
+          "word": "fahre",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            283500.0,
+            284460.0
+          ],
+          "tagDurMs": 960.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Harte.",
+            "span": [
+              283400.0,
+              283940.0
+            ],
+            "iou": 0.4151,
+            "probability": 0.577106699347496
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Harte."
+          ]
+        },
+        {
+          "uuid": "123ddb3d-4154-45e8-a9ea-9d5613fc4f4e",
+          "word": "schuhe",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            297620.0,
+            298200.0
+          ],
+          "tagDurMs": 580.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Schnell,",
+            "span": [
+              297220.0,
+              298400.0
+            ],
+            "iou": 0.4915,
+            "probability": 0.3309031017124653
+          },
+          "textMatch": null,
+          "errorMode": "word_merge",
+          "overlappingTexts": [
+            "Schnell,"
+          ]
+        },
+        {
+          "uuid": "ab1054f5-15d7-45d4-a12c-f1e4455ee56d",
+          "word": "d schuhe",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            300470.0,
+            302000.0
+          ],
+          "tagDurMs": 1530.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Schnell,",
+            "span": [
+              300560.0,
+              301200.0
+            ],
+            "iou": 0.4183,
+            "probability": 0.46277712658047676
+          },
+          "textMatch": {
+            "text": "Schuhe?",
+            "span": [
+              302060.0,
+              302380.0
+            ],
+            "iou": 0.0,
+            "probability": 0.9783598581949869,
+            "fuzzy": true
+          },
+          "errorMode": "boundary_soft",
+          "overlappingTexts": [
+            "Schnell,",
+            "schnell,"
+          ]
+        },
+        {
+          "uuid": "e37a4781-89ee-4738-af6f-58fe5eb3d1ce",
+          "word": "rund ume see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            329880.0,
+            331540.0
+          ],
+          "tagDurMs": 1660.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "so.",
+            "span": [
+              330480.0,
+              330980.0
+            ],
+            "iou": 0.3012,
+            "probability": 0.05424623191356659
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "so.",
+            "Oh,"
+          ]
+        },
+        {
+          "uuid": "e989aa6b-b8ce-45c6-89f2-8e9f3f6c1a6d",
+          "word": "fahre",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            348080.0,
+            349380.0
+          ],
+          "tagDurMs": 1300.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Alter!",
+            "span": [
+              347680.0,
+              348780.0
+            ],
+            "iou": 0.4118,
+            "probability": 0.13048715889453888
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Alter!"
+          ]
+        },
+        {
+          "uuid": "700c94ea-8829-42c8-a72e-4f85e8e62d7d",
+          "word": "happy birthday to you",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            364320.0,
+            365590.0
+          ],
+          "tagDurMs": 1270.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "teuer!",
+            "span": [
+              364580.0,
+              365020.0
+            ],
+            "iou": 0.3465,
+            "probability": 0.37677132338285446
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "teuer!",
+            "Also,"
+          ]
+        },
+        {
+          "uuid": "3374172c-4514-4e10-b5d2-56f3c971d7d8",
+          "word": "baloon",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            370310.0,
+            371620.0
+          ],
+          "tagDurMs": 1310.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Hallo.",
+            "span": [
+              369910.0,
+              370830.0
+            ],
+            "iou": 0.3041,
+            "probability": 0.07841359823942184
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Hallo."
+          ]
+        },
+        {
+          "uuid": "4c566ec9-b8d5-4fba-a274-0c8726aec441",
+          "word": "luege",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            377010.0,
+            377850.0
+          ],
+          "tagDurMs": 840.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Okay.",
+            "span": [
+              376610.0,
+              377490.0
+            ],
+            "iou": 0.3871,
+            "probability": 0.08909914642572403
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Okay."
+          ]
+        },
+        {
+          "uuid": "2daebdbb-14a4-4b0f-b61a-8dec6d7193cc",
+          "word": "truurig",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            388390.0,
+            389390.0
+          ],
+          "tagDurMs": 1000.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Kusik.",
+            "span": [
+              387990.0,
+              389030.0
+            ],
+            "iou": 0.4571,
+            "probability": 0.1546457769970099
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Kusik."
+          ]
+        },
+        {
+          "uuid": "e60a5b00-3692-494b-99b7-f0024cb3229e",
+          "word": "jacke",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            390500.0,
+            391460.0
+          ],
+          "tagDurMs": 960.0,
+          "nOverlappingWords": 2,
+          "bestOverlap": {
+            "text": "Jacke.",
+            "span": [
+              390430.0,
+              391150.0
+            ],
+            "iou": 0.6311,
+            "probability": 0.4911506325006485
+          },
+          "textMatch": {
+            "text": "Jacke.",
+            "span": [
+              390430.0,
+              391150.0
+            ],
+            "iou": 0.6311,
+            "probability": 0.4911506325006485,
+            "fuzzy": false
+          },
+          "errorMode": "ok",
+          "overlappingTexts": [
+            "Jacke.",
+            "Kannst"
+          ]
+        },
+        {
+          "uuid": "79ef8338-1886-4fec-b4fa-f1ff14c1abbd",
+          "word": "das da",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            393700.0,
+            394650.0
+          ],
+          "tagDurMs": 950.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Bitte.",
+            "span": [
+              393690.0,
+              394010.0
+            ],
+            "iou": 0.3229,
+            "probability": 0.15635083615779877
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Bitte."
+          ]
+        },
+        {
+          "uuid": "5a947a0b-d449-402b-ae58-3d2412157a0d",
+          "word": "v\u00f6gu",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            403220.0,
+            404150.0
+          ],
+          "tagDurMs": 930.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Fokus!",
+            "span": [
+              402820.0,
+              403480.0
+            ],
+            "iou": 0.1955,
+            "probability": 0.11288424953818321
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Fokus!"
+          ]
+        },
+        {
+          "uuid": "2d7f2bee-aac1-40e6-9eee-23619639a1b4",
+          "word": "roue",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            414390.0,
+            415560.0
+          ],
+          "tagDurMs": 1170.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "Oh,",
+            "span": [
+              413990.0,
+              414930.0
+            ],
+            "iou": 0.3439,
+            "probability": 0.12861360609531403
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Oh,",
+            "ist",
+            "das"
+          ]
+        },
+        {
+          "uuid": "23a2f6d2-ef50-4738-b7e5-d63e887abbf7",
+          "word": "see",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            443930.0,
+            444690.0
+          ],
+          "tagDurMs": 760.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Ja.",
+            "span": [
+              443530.0,
+              444270.0
+            ],
+            "iou": 0.2931,
+            "probability": 0.06539486348628998
+          },
+          "textMatch": null,
+          "errorMode": "big_boundary_error",
+          "overlappingTexts": [
+            "Ja."
+          ]
+        },
+        {
+          "uuid": "0ccad73e-94d8-49b9-a525-2f614a44be76",
+          "word": "here",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            502610.0,
+            503340.0
+          ],
+          "tagDurMs": 730.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "ab3589a1-06e8-4bda-943d-61995821950d",
+          "word": "da",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            507240.0,
+            508040.0
+          ],
+          "tagDurMs": 800.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "95c33d09-c8df-464f-ad51-15d2cf769caf",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            516710.0,
+            517550.0
+          ],
+          "tagDurMs": 840.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "sch\u00f6n.",
+            "span": [
+              516950.0,
+              517350.0
+            ],
+            "iou": 0.4762,
+            "probability": 0.28240033984184265
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "sch\u00f6n.",
+            "so",
+            "ist",
+            "Das"
+          ]
+        },
+        {
+          "uuid": "fb515ff7-62d5-42e4-a9b2-6f37150599a0",
+          "word": "schlafsack",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            526010.0,
+            527060.0
+          ],
+          "tagDurMs": 1050.0,
+          "nOverlappingWords": 3,
+          "bestOverlap": {
+            "text": "Was",
+            "span": [
+              525610.0,
+              526430.0
+            ],
+            "iou": 0.2897,
+            "probability": 0.04188300669193268
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Was",
+            "das?",
+            "ist"
+          ]
+        },
+        {
+          "uuid": "c0695fe0-2421-4a51-86a8-bdac790ad33d",
+          "word": "g\u00e4 luege",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            552500.0,
+            553600.0
+          ],
+          "tagDurMs": 1100.0,
+          "nOverlappingWords": 4,
+          "bestOverlap": {
+            "text": "Da",
+            "span": [
+              552100.0,
+              552780.0
+            ],
+            "iou": 0.1867,
+            "probability": 0.12088944017887115
+          },
+          "textMatch": null,
+          "errorMode": "word_split",
+          "overlappingTexts": [
+            "Da",
+            "ich",
+            "bin",
+            "da."
+          ]
+        },
+        {
+          "uuid": "a0d7e898-6e73-4c1a-85f8-4cd736729895",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            617860.0,
+            618780.0
+          ],
+          "tagDurMs": 920.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Galsi!",
+            "span": [
+              617460.0,
+              618680.0
+            ],
+            "iou": 0.6212,
+            "probability": 0.07175223405162494
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Galsi!"
+          ]
+        },
+        {
+          "uuid": "303f3ffa-beef-472b-8a88-163c9bb51ed1",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            619700.0,
+            620460.0
+          ],
+          "tagDurMs": 760.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Galsi!",
+            "span": [
+              618960.0,
+              620340.0
+            ],
+            "iou": 0.4267,
+            "probability": 0.9075559576352438
+          },
+          "textMatch": null,
+          "errorMode": "word_merge",
+          "overlappingTexts": [
+            "Galsi!"
+          ]
+        },
+        {
+          "uuid": "85710fd5-d201-44e3-881a-7487d8e7ea30",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            622460.0,
+            623640.0
+          ],
+          "tagDurMs": 1180.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Galsi!",
+            "span": [
+              622080.0,
+              623120.0
+            ],
+            "iou": 0.4231,
+            "probability": 0.9042697747548422
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Galsi!"
+          ]
+        },
+        {
+          "uuid": "8d1a10b7-a803-4d29-9882-7fcdbcbc34a6",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            624300.0,
+            625350.0
+          ],
+          "tagDurMs": 1050.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Galsi!",
+            "span": [
+              624460.0,
+              625020.0
+            ],
+            "iou": 0.5333,
+            "probability": 0.9696961641311646
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Galsi!"
+          ]
+        },
+        {
+          "uuid": "a61a737d-d94a-4403-be72-d72e9b09bacd",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            627330.0,
+            627950.0
+          ],
+          "tagDurMs": 620.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Galsi!",
+            "span": [
+              627140.0,
+              627920.0
+            ],
+            "iou": 0.7284,
+            "probability": 0.9775772293408712
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Galsi!"
+          ]
+        },
+        {
+          "uuid": "dc6c309f-4d43-4ee4-b976-3c715d80cc46",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            628560.0,
+            629580.0
+          ],
+          "tagDurMs": 1020.0,
+          "nOverlappingWords": 0,
+          "bestOverlap": null,
+          "textMatch": null,
+          "errorMode": "no_speech",
+          "overlappingTexts": []
+        },
+        {
+          "uuid": "448e873e-f162-45be-97ae-2f09dd012214",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            638930.0,
+            640010.0
+          ],
+          "tagDurMs": 1080.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Kasi,",
+            "span": [
+              638530.0,
+              639550.0
+            ],
+            "iou": 0.4189,
+            "probability": 0.1957481913268566
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Kasi,"
+          ]
+        },
+        {
+          "uuid": "41967f54-a4b6-4435-b3e7-8c87e70d1582",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            640260.0,
+            641590.0
+          ],
+          "tagDurMs": 1330.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Kasi",
+            "span": [
+              640250.0,
+              640990.0
+            ],
+            "iou": 0.5448,
+            "probability": 0.8343265950679779
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Kasi"
+          ]
+        },
+        {
+          "uuid": "7aaab7a8-d735-48a2-8ea5-f80c81426658",
+          "word": "cozy",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            648290.0,
+            649380.0
+          ],
+          "tagDurMs": 1090.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Kussik",
+            "span": [
+              647890.0,
+              649350.0
+            ],
+            "iou": 0.7114,
+            "probability": 0.18481582899888357
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Kussik"
+          ]
+        },
+        {
+          "uuid": "74dfde55-2346-4360-9a14-3b58982eca93",
+          "word": "night night",
+          "category": "verbal vocalization",
+          "speaker": "Baby",
+          "source": "user",
+          "tagSpan": [
+            676140.0,
+            678210.0
+          ],
+          "tagDurMs": 2070.0,
+          "nOverlappingWords": 1,
+          "bestOverlap": {
+            "text": "Nein.",
+            "span": [
+              675740.0,
+              677020.0
+            ],
+            "iou": 0.3563,
+            "probability": 0.07150738686323166
+          },
+          "textMatch": null,
+          "errorMode": "wrong_word",
+          "overlappingTexts": [
+            "Nein."
+          ]
+        }
+      ]
+    }
+  ],
+  "qualitativeFailureModes": [
+    "ASR spelling unreliable (8.9% fuzzy text); Swiss German worse than English kit",
+    "Whisper word_split 40.8% \u2014 same over-fragment class as DJW syllables",
+    "Occasional good IoU with wrong text (e.g. teacher\u2194a... ~0.72) but rare overall",
+    "Clean ok cases mostly short clear tokens (do, Jacke)"
+  ]
+}

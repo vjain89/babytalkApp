@@ -1,0 +1,383 @@
+{
+  "metric": "manual excl non-verbal IoU\u22650.5 (north star); also verbal / manual / all",
+  "params": {
+    "max_gap_ms": 100.0,
+    "max_merged_ms": 1800.0,
+    "short_piece_ms": 550.0,
+    "weak_dip_db": 5.0,
+    "weak_sep_ms": 280.0,
+    "energy_drop_db": 6.0,
+    "cut_window_ms": 80.0
+  },
+  "complexity": "M",
+  "scopePath": "tools/analysis/out/merge_back_scope.md",
+  "kits": [
+    {
+      "sessionName": "26_07_27__19:53:00",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "elapsedSec": 167.7,
+      "vadStats": {
+        "rawRuns": 3534,
+        "merged": 580,
+        "nonSpeechRejected": 6,
+        "regionsScreened": 143,
+        "segmentation": "vad",
+        "regions": 380,
+        "pauseSplit": 198,
+        "hardCapped": 0,
+        "resegParents": 661,
+        "resegSplits": 936,
+        "resegTrimmedOnly": 93,
+        "resegSkipped": 10,
+        "resegChildren": 1587,
+        "resegMethod": "dejong_wempe",
+        "wordSplitMinSepMs": 300.0,
+        "wordSplitMinDipDb": 4.0,
+        "resegTargetMs": 1600.0,
+        "resegMinPartMs": 420.0,
+        "speechGateRejected": 572,
+        "speechGateFlagged": 274,
+        "split": 1217,
+        "candidates": 1015
+      },
+      "mergeStats": {
+        "nIn": 1015,
+        "nParents": 510,
+        "nMerges": 168,
+        "nConsidered": 505,
+        "rejectReasons": {
+          "energy_drop": 67,
+          "long_pause": 261,
+          "max_merged": 9
+        },
+        "mergeReasons": {
+          "short_piece+weak_valley": 139,
+          "weak_valley": 13,
+          "short_piece": 16
+        },
+        "nOut": 847
+      },
+      "before": {
+        "manual_excl_nonverbal": {
+          "label": "manual_excl_nonverbal",
+          "nTags": 109,
+          "nCands": 1015,
+          "anyOverlapPct": 90.8,
+          "iou50Pct": 47.7,
+          "medianIou": 0.5,
+          "medianDurRatio": 0.65,
+          "candTooShortPct": 64.6,
+          "candTooLong2xPct": 7.1
+        },
+        "verbal": {
+          "label": "verbal",
+          "nTags": 203,
+          "nCands": 1015,
+          "anyOverlapPct": 95.6,
+          "iou50Pct": 72.9,
+          "medianIou": 0.941,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 33.0,
+          "candTooLong2xPct": 3.1
+        },
+        "manual": {
+          "label": "manual",
+          "nTags": 135,
+          "nCands": 1015,
+          "anyOverlapPct": 91.9,
+          "iou50Pct": 47.4,
+          "medianIou": 0.5,
+          "medianDurRatio": 0.65,
+          "candTooShortPct": 70.2,
+          "candTooLong2xPct": 5.6
+        },
+        "all": {
+          "label": "all",
+          "nTags": 267,
+          "nCands": 1015,
+          "anyOverlapPct": 95.9,
+          "iou50Pct": 73.4,
+          "medianIou": 1.0,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 34.0,
+          "candTooLong2xPct": 2.7
+        }
+      },
+      "after": {
+        "manual_excl_nonverbal": {
+          "label": "manual_excl_nonverbal",
+          "nTags": 109,
+          "nCands": 847,
+          "anyOverlapPct": 90.8,
+          "iou50Pct": 51.4,
+          "medianIou": 0.536,
+          "medianDurRatio": 0.93,
+          "candTooShortPct": 40.4,
+          "candTooLong2xPct": 11.1
+        },
+        "verbal": {
+          "label": "verbal",
+          "nTags": 203,
+          "nCands": 847,
+          "anyOverlapPct": 95.6,
+          "iou50Pct": 64.5,
+          "medianIou": 0.66,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 20.6,
+          "candTooLong2xPct": 16.0
+        },
+        "manual": {
+          "label": "manual",
+          "nTags": 135,
+          "nCands": 847,
+          "anyOverlapPct": 91.9,
+          "iou50Pct": 54.8,
+          "medianIou": 0.558,
+          "medianDurRatio": 0.8,
+          "candTooShortPct": 49.2,
+          "candTooLong2xPct": 8.9
+        },
+        "all": {
+          "label": "all",
+          "nTags": 267,
+          "nCands": 847,
+          "anyOverlapPct": 95.9,
+          "iou50Pct": 66.3,
+          "medianIou": 0.689,
+          "medianDurRatio": 1.0,
+          "candTooShortPct": 23.8,
+          "candTooLong2xPct": 15.6
+        }
+      }
+    },
+    {
+      "sessionName": "26_07_05__00:00:00",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "elapsedSec": 57.0,
+      "vadStats": {
+        "rawRuns": 1341,
+        "merged": 221,
+        "nonSpeechRejected": 2,
+        "regionsScreened": 60,
+        "segmentation": "vad",
+        "regions": 146,
+        "pauseSplit": 34,
+        "hardCapped": 0,
+        "resegParents": 226,
+        "resegSplits": 354,
+        "resegTrimmedOnly": 36,
+        "resegSkipped": 1,
+        "resegChildren": 579,
+        "resegMethod": "dejong_wempe",
+        "wordSplitMinSepMs": 300.0,
+        "wordSplitMinDipDb": 4.0,
+        "resegTargetMs": 1600.0,
+        "resegMinPartMs": 420.0,
+        "speechGateRejected": 210,
+        "speechGateFlagged": 76,
+        "split": 434,
+        "candidates": 369
+      },
+      "mergeStats": {
+        "nIn": 369,
+        "nParents": 192,
+        "nMerges": 50,
+        "nConsidered": 177,
+        "rejectReasons": {
+          "energy_drop": 42,
+          "long_pause": 80,
+          "max_merged": 5
+        },
+        "mergeReasons": {
+          "short_piece+weak_valley": 45,
+          "short_piece": 4,
+          "weak_valley": 1
+        },
+        "nOut": 319
+      },
+      "before": {
+        "manual_excl_nonverbal": {
+          "label": "manual_excl_nonverbal",
+          "nTags": 72,
+          "nCands": 369,
+          "anyOverlapPct": 98.6,
+          "iou50Pct": 51.4,
+          "medianIou": 0.5,
+          "medianDurRatio": 0.61,
+          "candTooShortPct": 76.1,
+          "candTooLong2xPct": 0.0
+        },
+        "verbal": {
+          "label": "verbal",
+          "nTags": 82,
+          "nCands": 369,
+          "anyOverlapPct": 98.8,
+          "iou50Pct": 47.6,
+          "medianIou": 0.491,
+          "medianDurRatio": 0.59,
+          "candTooShortPct": 79.0,
+          "candTooLong2xPct": 0.0
+        },
+        "manual": {
+          "label": "manual",
+          "nTags": 78,
+          "nCands": 369,
+          "anyOverlapPct": 98.7,
+          "iou50Pct": 53.8,
+          "medianIou": 0.515,
+          "medianDurRatio": 0.62,
+          "candTooShortPct": 74.0,
+          "candTooLong2xPct": 0.0
+        },
+        "all": {
+          "label": "all",
+          "nTags": 90,
+          "nCands": 369,
+          "anyOverlapPct": 96.7,
+          "iou50Pct": 48.9,
+          "medianIou": 0.5,
+          "medianDurRatio": 0.6,
+          "candTooShortPct": 77.0,
+          "candTooLong2xPct": 0.0
+        }
+      },
+      "after": {
+        "manual_excl_nonverbal": {
+          "label": "manual_excl_nonverbal",
+          "nTags": 72,
+          "nCands": 319,
+          "anyOverlapPct": 98.6,
+          "iou50Pct": 56.9,
+          "medianIou": 0.562,
+          "medianDurRatio": 0.66,
+          "candTooShortPct": 67.6,
+          "candTooLong2xPct": 2.8
+        },
+        "verbal": {
+          "label": "verbal",
+          "nTags": 82,
+          "nCands": 319,
+          "anyOverlapPct": 98.8,
+          "iou50Pct": 52.4,
+          "medianIou": 0.512,
+          "medianDurRatio": 0.65,
+          "candTooShortPct": 71.6,
+          "candTooLong2xPct": 2.5
+        },
+        "manual": {
+          "label": "manual",
+          "nTags": 78,
+          "nCands": 319,
+          "anyOverlapPct": 98.7,
+          "iou50Pct": 59.0,
+          "medianIou": 0.565,
+          "medianDurRatio": 0.68,
+          "candTooShortPct": 64.9,
+          "candTooLong2xPct": 2.6
+        },
+        "all": {
+          "label": "all",
+          "nTags": 90,
+          "nCands": 319,
+          "anyOverlapPct": 96.7,
+          "iou50Pct": 53.3,
+          "medianIou": 0.528,
+          "medianDurRatio": 0.66,
+          "candTooShortPct": 69.0,
+          "candTooLong2xPct": 2.3
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "before": {
+      "manual_excl_nonverbal": {
+        "label": "manual_excl_nonverbal",
+        "nTags": 181,
+        "nCands": 1384,
+        "anyOverlapPct": 93.9,
+        "iou50Pct": 49.2,
+        "medianDurRatio": 0.65,
+        "candTooShortPct": 69.4
+      },
+      "verbal": {
+        "label": "verbal",
+        "nTags": 285,
+        "nCands": 1384,
+        "anyOverlapPct": 96.5,
+        "iou50Pct": 65.6,
+        "medianDurRatio": 1.0,
+        "candTooShortPct": 46.5
+      },
+      "manual": {
+        "label": "manual",
+        "nTags": 213,
+        "nCands": 1384,
+        "anyOverlapPct": 94.4,
+        "iou50Pct": 49.8,
+        "medianDurRatio": 0.65,
+        "candTooShortPct": 71.6
+      },
+      "all": {
+        "label": "all",
+        "nTags": 357,
+        "nCands": 1384,
+        "anyOverlapPct": 96.1,
+        "iou50Pct": 67.2,
+        "medianDurRatio": 1.0,
+        "candTooShortPct": 44.9
+      }
+    },
+    "after": {
+      "manual_excl_nonverbal": {
+        "label": "manual_excl_nonverbal",
+        "nTags": 181,
+        "nCands": 1166,
+        "anyOverlapPct": 93.9,
+        "iou50Pct": 53.6,
+        "medianDurRatio": 0.93,
+        "candTooShortPct": 51.8
+      },
+      "verbal": {
+        "label": "verbal",
+        "nTags": 285,
+        "nCands": 1166,
+        "anyOverlapPct": 96.5,
+        "iou50Pct": 61.1,
+        "medianDurRatio": 1.0,
+        "candTooShortPct": 35.6
+      },
+      "manual": {
+        "label": "manual",
+        "nTags": 213,
+        "nCands": 1166,
+        "anyOverlapPct": 94.4,
+        "iou50Pct": 56.3,
+        "medianDurRatio": 0.8,
+        "candTooShortPct": 55.2
+      },
+      "all": {
+        "label": "all",
+        "nTags": 357,
+        "nCands": 1166,
+        "anyOverlapPct": 96.1,
+        "iou50Pct": 63.0,
+        "medianDurRatio": 1.0,
+        "candTooShortPct": 35.3
+      }
+    }
+  },
+  "deltaManualExclNvIou50Pct": 4.4,
+  "recommendation": "Ship/continue conservative DJW merge-back as the primary over-split lever (+4.4 pp manual-excl-nv IoU\u22650.5; fewer too-short cands). Watch verbal IoU on kits with many already-good spans \u2014 may need stricter max_merged / short_piece gates. Do not wait for Whisper as a replacement: Whisper word-box IoU\u22650.5 is only 25.7% on the same kits.",
+  "whisperComparison": {
+    "found": [
+      "tools/analysis/out/whisper_word_ts.json",
+      "tools/analysis/out/whisper_word_ts_report_fragment.md"
+    ],
+    "whisperPooledIou50Pct": 25.7,
+    "whisperPooledAnyOverlapPct": 94.4,
+    "mergeBackDeltaManualExclNvIou50Pct": 4.4,
+    "paragraph": "Same kits (26_07_27__19:53:00, 26_07_05__00:00:00). DJW baseline \u2192 merge-back (manual excl non-verbal): IoU\u22650.5 49.2% \u2192 53.6% (+4.4 pp), any-overlap flat at 93.9%, nCands 1384\u21921166, candTooShort 69.4%\u219251.8%, median durRatio 0.65\u21920.93. Verbal-all tags moved IoU\u22650.5 65.6%\u219261.1% (regression on the English-leaning kit where many verbal tags were already well-sized). Whisper word boxes alone (faster-whisper/base, n=179 manual word tags): any-overlap 94.4% but IoU\u22650.5 only 25.7% \u2014 worse than DJW and dominated by word_split (40.8%). From merge-back\u2019s perspective: prefer acoustic merge-back over waiting on Whisper as a replacement; Whisper remains an optional weak prior only.",
+    "note": "Same kits (26_07_27__19:53:00, 26_07_05__00:00:00). DJW baseline \u2192 merge-back (manual excl non-verbal): IoU\u22650.5 49.2% \u2192 53.6% (+4.4 pp), any-overlap flat at 93.9%, nCands 1384\u21921166, candTooShort 69.4%\u219251.8%, median durRatio 0.65\u21920.93. Verbal-all tags moved IoU\u22650.5 65.6%\u219261.1% (regression on the English-leaning kit where many verbal tags were already well-sized). Whisper word boxes alone (faster-whisper/base, n=179 manual word tags): any-overlap 94.4% but IoU\u22650.5 only 25.7% \u2014 worse than DJW and dominated by word_split (40.8%). From merge-back\u2019s perspective: prefer acoustic merge-back over waiting on Whisper as a replacement; Whisper remains an optional weak prior only."
+  }
+}
