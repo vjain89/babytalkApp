@@ -1,7 +1,13 @@
 """Acoustic clustering of BabyTalk spans within a session kit (cluster_v0).
 
 Collects confirmed tags + non-dismissed annotations, fingerprints each clip
-(log-mel summary), groups similar sounds, and writes ``clusters.json``.
+(log-mel summary), groups similar sounds **per speaker**, and writes
+``clusters.json``.
+
+By default, likely syllable fragments (kit-adaptive ~400–500ms, same cue as
+the review UI SHORT badge) are excluded from seeding clusters and listed under
+``ignoredShort``. Auto-clusters never mix ``speaker`` / ``speakerCluster``;
+unlabeled spans only merge with other unlabeled spans.
 
 Cluster labels (word / phonetic / language / category) live on the cluster
 only — members stay linked by id for training and future concepts (M:N).
@@ -11,7 +17,8 @@ Requires: numpy, soundfile, scikit-learn
 
 Usage:
   python3 tools/cluster_sounds.py ~/Documents/BabyTalk/Library/<kit>
-  python3 tools/cluster_sounds.py <kit> --distance 0.55
+  python3 tools/cluster_sounds.py <kit> --distance 0.40
+  python3 tools/cluster_sounds.py <kit> --include-short
 """
 
 from __future__ import annotations
@@ -41,13 +48,21 @@ SCHEMA_VERSION = 1
 SOURCE = "cluster_v0"
 # Cosine distance threshold for agglomerative clustering (lower = tighter groups).
 # Log-mel temporal fingerprints need a fairly low threshold to split word-like units.
-DEFAULT_DISTANCE = 0.45
+# Slightly tighter than the old 0.45 default once short shards are filtered out.
+DEFAULT_DISTANCE = 0.40
 MIN_DUR_MS = 120
 PAD_MS = 40
 N_MELS = 40
 N_FFT = 512
 HOP = 160
 EMBED_CACHE = "cluster_embeddings.npz"
+
+# Likely syllable-fragment cue — keep in sync with review_server.js FRAGMENT_*.
+FRAGMENT_FLOOR_MS = 400
+FRAGMENT_DEFAULT_MS = 450
+FRAGMENT_CEIL_MS = 500
+FRAGMENT_MEDIAN_RATIO = 0.55
+UNLABELED_SPEAKER = "unlabeled"
 
 
 def load_json(path: Path):
@@ -91,6 +106,7 @@ def collect_spans(kit: Path) -> list[dict]:
             if end - start < MIN_DUR_MS:
                 continue
             seen.add(uid)
+            sc = (t.get("speakerCluster") or "").strip() or None
             spans.append(
                 {
                     "memberId": uid,
@@ -99,6 +115,7 @@ def collect_spans(kit: Path) -> list[dict]:
                     "startMs": start,
                     "endMs": end,
                     "speaker": (t.get("speaker") or "").strip() or None,
+                    "speakerCluster": sc,
                     "source": t.get("source") or "user",
                 }
             )
@@ -126,6 +143,7 @@ def collect_spans(kit: Path) -> list[dict]:
             if end - start < MIN_DUR_MS:
                 continue
             seen.add(uid)
+            sc = (a.get("speakerCluster") or "").strip() or None
             spans.append(
                 {
                     "memberId": uid,
@@ -134,11 +152,106 @@ def collect_spans(kit: Path) -> list[dict]:
                     "startMs": start,
                     "endMs": end,
                     "speaker": (a.get("speaker") or "").strip() or None,
+                    "speakerCluster": sc,
                     "source": a.get("source") or "vad_v0",
                     "status": a.get("status") or "provisional",
                 }
             )
     return spans
+
+
+def span_duration_ms(sp: dict) -> int:
+    start = sp.get("startMs")
+    end = sp.get("endMs")
+    if start is None or end is None:
+        return 0
+    return max(0, int(end) - int(start))
+
+
+def median_tag_duration_ms(spans: list[dict]) -> float | None:
+    """Median duration of tag spans (≥3), matching review UI kitMedianTagDurationMs."""
+    durs = [span_duration_ms(sp) for sp in spans if sp.get("refType") == "tag"]
+    durs = [d for d in durs if d > 0]
+    if len(durs) < 3:
+        return None
+    durs.sort()
+    return float(durs[len(durs) // 2])
+
+
+def fragment_cutoff_ms(spans: list[dict] | None = None) -> int:
+    """Kit-adaptive short-fragment cutoff (ms): median×0.55 clamped to 400–500.
+
+    Same heuristic as the Clustering tab SHORT badges in review_server.
+    """
+    med = median_tag_duration_ms(spans or [])
+    if med is not None:
+        return int(
+            min(
+                FRAGMENT_CEIL_MS,
+                max(FRAGMENT_FLOOR_MS, round(FRAGMENT_MEDIAN_RATIO * med)),
+            )
+        )
+    return FRAGMENT_DEFAULT_MS
+
+
+def is_likely_fragment(sp: dict, cutoff_ms: int | None = None) -> bool:
+    cut = FRAGMENT_DEFAULT_MS if cutoff_ms is None else int(cutoff_ms)
+    dur = span_duration_ms(sp)
+    return dur > 0 and dur < cut
+
+
+def speaker_bucket(sp: dict) -> str:
+    """Homogeneity key for clustering.
+
+    Prefer reviewer ``speaker`` (Baby/Parent/Other), else diarization
+    ``speakerCluster`` (SPEAKER_xx). Unlabeled spans only merge with other
+    unlabeled spans — they never join a named-speaker cluster.
+    """
+    spk = (sp.get("speaker") or "").strip()
+    if spk:
+        return spk
+    sc = (sp.get("speakerCluster") or "").strip()
+    if sc:
+        return sc
+    return UNLABELED_SPEAKER
+
+
+def _split_mixed_speaker_clusters(clusters: list[dict]) -> list[dict]:
+    """Safety net: split any cluster whose members disagree on speaker_bucket."""
+    out: list[dict] = []
+    for cl in clusters:
+        members = cl.get("members") or []
+        if len(members) <= 1:
+            out.append(cl)
+            continue
+        buckets: dict[str, list[dict]] = {}
+        for m in members:
+            buckets.setdefault(speaker_bucket(m), []).append(m)
+        if len(buckets) == 1:
+            key = next(iter(buckets))
+            cl = dict(cl)
+            cl["speaker"] = key if key != UNLABELED_SPEAKER else None
+            cl["speakerHomogeneous"] = True
+            out.append(cl)
+            continue
+        # Mixed → one cluster per speaker bucket (do not keep a mixed group).
+        for key, group in buckets.items():
+            part = dict(cl)
+            part["id"] = str(uuid.uuid4())
+            part["members"] = group
+            part["speaker"] = key if key != UNLABELED_SPEAKER else None
+            part["speakerHomogeneous"] = True
+            part["curated"] = False
+            conf = dict(part.get("confidence") or {})
+            conf["size"] = len(group)
+            part["confidence"] = conf
+            # Drop labels — they belonged to the mixed set.
+            for lab in ("word", "phonetic", "language", "category", "note"):
+                part[lab] = None
+            part.pop("preservedFrom", None)
+            part.pop("locked", None)
+            out.append(part)
+    return out
 
 
 def _hz_to_mel(hz: float) -> float:
@@ -409,20 +522,36 @@ def process_kit(
     distance_threshold: float = DEFAULT_DISTANCE,
     write: bool = True,
     include_singletons: bool = True,
+    exclude_short_fragments: bool = True,
 ) -> dict:
+    """Cluster spans within a kit.
+
+    Defaults aim at “same word / same voice”:
+    - Short syllable shards (kit-adaptive ~400–500ms) are excluded from seeding
+      clusters and listed under ``ignoredShort``.
+    - Mel clustering runs **per speaker bucket** (``speaker``, else
+      ``speakerCluster``, else unlabeled-only) so auto-clusters never mix voices.
+    """
     kit = kit.resolve()
     if not (kit / "manifest.json").exists():
         return {"ok": False, "error": "no manifest", "kit": kit.name}
 
     spans = collect_spans(kit)
+    cutoff = fragment_cutoff_ms(spans)
     if not spans:
         doc = {
             "schemaVersion": SCHEMA_VERSION,
             "source": SOURCE,
             "kit": kit.name,
             "updatedAt": datetime.now(timezone.utc).isoformat(),
-            "params": {"distanceThreshold": distance_threshold},
+            "params": {
+                "distanceThreshold": distance_threshold,
+                "excludeShortFragments": exclude_short_fragments,
+                "fragmentCutoffMs": cutoff,
+                "speakerHomogeneous": True,
+            },
             "clusters": [],
+            "ignoredShort": [],
             "unclustered": [],
         }
         if write:
@@ -454,6 +583,21 @@ def process_kit(
                 locked_ids.add(m["memberId"])
 
     free_spans = [sp for sp in spans if sp["memberId"] not in locked_ids]
+
+    ignored_short: list[dict] = []
+    clusterable: list[dict] = []
+    if exclude_short_fragments:
+        for sp in free_spans:
+            if is_likely_fragment(sp, cutoff):
+                rec = dict(sp)
+                rec["ignoredReason"] = "short_fragment"
+                rec["fragmentCutoffMs"] = cutoff
+                ignored_short.append(rec)
+            else:
+                clusterable.append(sp)
+    else:
+        clusterable = list(free_spans)
+
     audio_path = resolve_audio(kit)
     audio, sr = sf.read(str(audio_path), always_2d=False)
     if getattr(audio, "ndim", 1) > 1:
@@ -461,7 +605,7 @@ def process_kit(
     audio = np.asarray(audio, dtype=np.float64)
     sr = int(sr)
 
-    # Embeddings for all spans (cache); clustering only on free spans.
+    # Embeddings for all spans (cache); clustering only on clusterable free spans.
     all_embeds = []
     for sp in spans:
         all_embeds.append(slice_embed(audio, sr, sp["startMs"], sp["endMs"]))
@@ -469,17 +613,25 @@ def process_kit(
     span_index = {sp["memberId"]: i for i, sp in enumerate(spans)}
 
     new_clusters: list[dict] = []
-    if free_spans:
-        free_idx = [span_index[sp["memberId"]] for sp in free_spans]
+    # Per-speaker (or per-speakerCluster) agglomerative clustering — never mix voices.
+    by_speaker: dict[str, list[dict]] = {}
+    for sp in clusterable:
+        by_speaker.setdefault(speaker_bucket(sp), []).append(sp)
+
+    for bucket, group in sorted(by_speaker.items(), key=lambda kv: kv[0]):
+        if not group:
+            continue
+        free_idx = [span_index[sp["memberId"]] for sp in group]
         X = X_all[np.array(free_idx)]
         labels = cluster_labels(X, distance_threshold)
+        speaker_label = None if bucket == UNLABELED_SPEAKER else bucket
         for cid in sorted(set(labels.tolist())):
             idx = np.where(labels == cid)[0]
             conf = compute_confidence(X, labels, int(cid))
             members = []
             outlier_idxs = set(conf.pop("outlierMemberIndexes"))
             for local_i, gi in enumerate(idx):
-                m = dict(free_spans[int(gi)])
+                m = dict(group[int(gi)])
                 m["outlier"] = local_i in outlier_idxs
                 members.append(m)
             members.sort(key=lambda m: m["startMs"])
@@ -490,6 +642,8 @@ def process_kit(
                     "id": str(uuid.uuid4()),
                     "members": members,
                     "confidence": conf,
+                    "speaker": speaker_label,
+                    "speakerHomogeneous": True,
                     "word": None,
                     "phonetic": None,
                     "language": None,
@@ -520,6 +674,10 @@ def process_kit(
             conf["meanDistanceToCentroid"] = round(mean_d, 4)
             conf.setdefault("separation", 0.0)
 
+    # Locked curated clusters may still mix speakers; leave them intact.
+    # New auto-clusters are already per-bucket; safety-split just in case.
+    new_clusters = _split_mixed_speaker_clusters(new_clusters)
+
     clusters = locked_clusters + new_clusters
     clusters.sort(
         key=lambda c: (
@@ -545,10 +703,20 @@ def process_kit(
         "params": {
             "distanceThreshold": distance_threshold,
             "minDurMs": MIN_DUR_MS,
+            "fragmentCutoffMs": cutoff,
+            "excludeShortFragments": exclude_short_fragments,
+            "speakerHomogeneous": True,
             "embed": "logmel_fixedgrid_v1",
             "preserve": "locked_labeled_or_curated",
+            "speakerNote": (
+                "Auto-clusters are built per speaker (Baby/Parent/Other) or, when "
+                "unnamed, per speakerCluster (SPEAKER_xx). Unlabeled spans only "
+                "merge with other unlabeled spans."
+            ),
         },
         "clusters": clusters,
+        "ignoredShort": ignored_short,
+        "ignoredShortCount": len(ignored_short),
         "spanCount": len(spans),
         "lockedClusterCount": len(locked_clusters),
         "conceptsNote": "Concepts (developmental threads) are not stored here yet; cluster.conceptIds reserved.",
@@ -564,6 +732,9 @@ def process_kit(
         "multiMember": sum(1 for c in clusters if (c.get("confidence") or {}).get("size", 0) >= 2),
         "lockedClusters": len(locked_clusters),
         "freeSpans": len(free_spans),
+        "clusterableSpans": len(clusterable),
+        "ignoredShort": len(ignored_short),
+        "fragmentCutoffMs": cutoff,
         "backup": True,
         "doc": doc,
     }
@@ -904,6 +1075,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Omit size-1 clusters from the output",
     )
+    p.add_argument(
+        "--include-short",
+        action="store_true",
+        help="Include short syllable fragments in clustering (default: exclude)",
+    )
     args = p.parse_args(argv)
     kit = args.kit.expanduser().resolve()
     if not kit.is_dir():
@@ -914,6 +1090,7 @@ def main(argv: list[str] | None = None) -> int:
         distance_threshold=args.distance,
         write=True,
         include_singletons=not args.no_singletons,
+        exclude_short_fragments=not args.include_short,
     )
     if not result.get("ok"):
         print(json.dumps(result, indent=2))

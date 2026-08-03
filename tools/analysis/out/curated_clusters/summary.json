@@ -1,0 +1,1025 @@
+{
+  "mode": "curated_cluster_membership",
+  "library": "/Users/vijayjain/Documents/BabyTalk/Library",
+  "discovery": {
+    "n_kits_scanned": 5,
+    "n_kits_with_curated_raw": 5,
+    "n_kits_kept": 5,
+    "kits_kept": [
+      "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+      "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+      "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+    ],
+    "n_clusters_raw": 34,
+    "n_clusters_kept": 34,
+    "n_members_raw": 177,
+    "n_members_kept": 169,
+    "labels": [
+      "armadillo",
+      "baby",
+      "ballon",
+      "bear",
+      "bett",
+      "boot",
+      "brown",
+      "bus",
+      "cappuccino",
+      "children",
+      "cozy",
+      "da",
+      "fahre",
+      "fisch",
+      "fuchs",
+      "giraffe",
+      "gorilla",
+      "leu",
+      "melanie",
+      "nase",
+      "night night",
+      "schuhe",
+      "see",
+      "teacher",
+      "tüchli",
+      "vijay",
+      "vogu",
+      "wasser",
+      "zeichne"
+    ]
+  },
+  "filters": {
+    "clusters_in": 34,
+    "members_raw": 177,
+    "dropped_short": 8,
+    "dropped_missing_span": 0,
+    "dropped_nonverbal_tag": 0,
+    "dropped_no_audio": 0,
+    "kept": 169,
+    "clusters_kept": 34,
+    "fragment_cutoffs_ms": {
+      "2026-07-20T20-56-36-042Z_353_Mississippi_St_75": 500,
+      "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73": 473,
+      "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78": 500,
+      "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho": 400,
+      "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87": 400
+    },
+    "exclude_short": true,
+    "exclude_nonverbal": true,
+    "short_rule": "kit-adaptive median_tag_dur×0.55 clamped [400,500] ms (cluster_sounds.fragment_cutoff_ms); matches Clustering SHORT badge",
+    "nonverbal_rule": "category == 'non-verbal vocalization'",
+    "curated_rule": "curated=true OR non-empty word/phonetic/language/category/note; ≥2 members; prefer human word/phonetic/note label"
+  },
+  "embed": {
+    "mel": "cluster_sounds.log_mel_embed (production)",
+    "mel_norm": "analysis RMS→0.1 + fixed grid + per-bin z-score, no duration",
+    "hubert": "facebook/hubert-base-ls960",
+    "distance": "sklearn cosine_distances (= 1 − cosine similarity)",
+    "same_key": "curated cluster id (kit::cluster_id), not raw word string"
+  },
+  "gap_table": [
+    {
+      "space": "mel",
+      "mean_within": 0.7011098013516961,
+      "mean_between": 0.8524634487009138,
+      "gap": 0.15135364734921775,
+      "n_within": 492,
+      "n_between": 13704,
+      "within": {
+        "n": 492,
+        "mean": 0.7011098013516961,
+        "median": 0.6834031706073262,
+        "std": 0.18383047617022932,
+        "min": 0.3209616564031752,
+        "max": 1.450269738291634
+      },
+      "between": {
+        "n": 13704,
+        "mean": 0.8524634487009138,
+        "median": 0.8465669964800282,
+        "std": 0.16090677290553135,
+        "min": 0.31284174237668216,
+        "max": 1.46483459747844
+      }
+    },
+    {
+      "space": "mel_norm",
+      "mean_within": 0.7057839400469977,
+      "mean_between": 0.8581680174181995,
+      "gap": 0.15238407737120174,
+      "n_within": 492,
+      "n_between": 13704,
+      "within": {
+        "n": 492,
+        "mean": 0.7057839400469977,
+        "median": 0.68814693779838,
+        "std": 0.18501306342223955,
+        "min": 0.32330754263874306,
+        "max": 1.4603745168036766
+      },
+      "between": {
+        "n": 13704,
+        "mean": 0.8581680174181995,
+        "median": 0.8523478797765397,
+        "std": 0.16197262376012606,
+        "min": 0.3148898264594294,
+        "max": 1.475040568700096
+      }
+    },
+    {
+      "space": "hubert",
+      "mean_within": 0.16744066049866702,
+      "mean_between": 0.2644974817737082,
+      "gap": 0.09705682127504117,
+      "n_within": 492,
+      "n_between": 13704,
+      "within": {
+        "n": 492,
+        "mean": 0.16744066049866702,
+        "median": 0.14912218596738253,
+        "std": 0.08463355708428683,
+        "min": 0.02090540943455299,
+        "max": 0.43856395551437766
+      },
+      "between": {
+        "n": 13704,
+        "mean": 0.2644974817737082,
+        "median": 0.25698851729666167,
+        "std": 0.09688341282553686,
+        "min": 0.04464998699573497,
+        "max": 0.6512288088970511
+      }
+    }
+  ],
+  "prior_comparison": {
+    "word_string_mel_norm_gap": 0.1543,
+    "word_string_hubert_gap": 0.0949,
+    "mel_norm_gap": 0.15238407737120174,
+    "mel_gap": 0.15135364734921775,
+    "hubert_gap": 0.09705682127504117
+  },
+  "clusters_ranked": [
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::ff5e7e60-c652-47e4-8092-874d08f4c62b",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "ff5e7e60-c652-47e4-8092-874d08f4c62b",
+      "label": "zeichne",
+      "label_key": "zeichne",
+      "category": null,
+      "n_members": 2,
+      "mean_within_mel": 0.3209616564031752,
+      "duration_ms": {
+        "median": 1145.0,
+        "min": 1120.0,
+        "max": 1170.0,
+        "mean": 1145.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.32330754263874306
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::2613b1cf-3bd4-4ea6-a336-a6f67e098289",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "2613b1cf-3bd4-4ea6-a336-a6f67e098289",
+      "label": "fahre",
+      "label_key": "fahre",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.44323635354820257,
+      "duration_ms": {
+        "median": 1130.0,
+        "min": 960.0,
+        "max": 1300.0,
+        "mean": 1130.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.44644837544939653
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::2e43992a-a537-4197-965c-6b6d5497c341",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "2e43992a-a537-4197-965c-6b6d5497c341",
+      "label": "boot",
+      "label_key": "boot",
+      "category": "verbal vocalization",
+      "n_members": 4,
+      "mean_within_mel": 0.5202482773893159,
+      "duration_ms": {
+        "median": 880.0,
+        "min": 660.0,
+        "max": 1010.0,
+        "mean": 857.5
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 4
+        }
+      },
+      "mean_within_mel_norm": 0.5237303097956115
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::5c8917fd-4546-4977-91db-fb9e45be6241",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "5c8917fd-4546-4977-91db-fb9e45be6241",
+      "label": "da",
+      "label_key": "da",
+      "category": "verbal vocalization",
+      "n_members": 3,
+      "mean_within_mel": 0.5231763462274724,
+      "duration_ms": {
+        "median": 740.0,
+        "min": 730.0,
+        "max": 800.0,
+        "mean": 756.6666666666666
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 3
+        }
+      },
+      "mean_within_mel_norm": 0.5265626721542825
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::4d05641b-b4cc-4989-973f-bb4bca02a55c",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "4d05641b-b4cc-4989-973f-bb4bca02a55c",
+      "label": "vijay",
+      "label_key": "vijay",
+      "category": null,
+      "n_members": 6,
+      "mean_within_mel": 0.5269902844472139,
+      "duration_ms": {
+        "median": 650.0,
+        "min": 540.0,
+        "max": 870.0,
+        "mean": 665.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 6
+        }
+      },
+      "mean_within_mel_norm": 0.5302517323454424
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::6cccb639-73f2-4426-a3cf-030b3fa660e6",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "6cccb639-73f2-4426-a3cf-030b3fa660e6",
+      "label": "children",
+      "label_key": "children",
+      "category": "verbal vocalization",
+      "n_members": 7,
+      "mean_within_mel": 0.5339165328654022,
+      "duration_ms": {
+        "median": 970.0,
+        "min": 860.0,
+        "max": 1170.0,
+        "mean": 995.7142857142857
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 7
+        }
+      },
+      "mean_within_mel_norm": 0.5376572375994195
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::438f6360-7bcd-4642-9382-8541880e5547",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "438f6360-7bcd-4642-9382-8541880e5547",
+      "label": "see",
+      "label_key": "see",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.5514771671249599,
+      "duration_ms": {
+        "median": 805.0,
+        "min": 760.0,
+        "max": 850.0,
+        "mean": 805.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.5551126868574985
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::6bc150a6-4547-449a-9d7d-7e7efbd406bc",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "6bc150a6-4547-449a-9d7d-7e7efbd406bc",
+      "label": "fisch",
+      "label_key": "fisch",
+      "category": null,
+      "n_members": 2,
+      "mean_within_mel": 0.5522095637430025,
+      "duration_ms": {
+        "median": 580.0,
+        "min": 540.0,
+        "max": 620.0,
+        "mean": 580.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.5555005688377093
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::a4c95f0a-7be7-4d66-b21f-445affc5e3f2",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "a4c95f0a-7be7-4d66-b21f-445affc5e3f2",
+      "label": "vijay",
+      "label_key": "vijay",
+      "category": "verbal vocalization",
+      "n_members": 5,
+      "mean_within_mel": 0.5554321473416028,
+      "duration_ms": {
+        "median": 710.0,
+        "min": 470.0,
+        "max": 790.0,
+        "mean": 652.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 5
+        }
+      },
+      "mean_within_mel_norm": 0.5588620246695377
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::1fa05d9b-0a99-4af2-94f0-24822bafe826",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "1fa05d9b-0a99-4af2-94f0-24822bafe826",
+      "label": "teacher",
+      "label_key": "teacher",
+      "category": "verbal vocalization",
+      "n_members": 6,
+      "mean_within_mel": 0.5857296489081115,
+      "duration_ms": {
+        "median": 950.0,
+        "min": 820.0,
+        "max": 1080.0,
+        "mean": 955.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 6
+        }
+      },
+      "mean_within_mel_norm": 0.5897788038364737
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::3983679b-0bbd-49d9-8e22-d034cd80fc0f",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "3983679b-0bbd-49d9-8e22-d034cd80fc0f",
+      "label": "night night",
+      "label_key": "night night",
+      "category": "verbal vocalization",
+      "n_members": 7,
+      "mean_within_mel": 0.6181816150551098,
+      "duration_ms": {
+        "median": 980.0,
+        "min": 700.0,
+        "max": 1240.0,
+        "mean": 962.8571428571429
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 7
+        }
+      },
+      "mean_within_mel_norm": 0.6224385339995248
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::7b19f22c-b1a6-4e2f-b0e9-81e98131faf7",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "7b19f22c-b1a6-4e2f-b0e9-81e98131faf7",
+      "label": "wasser",
+      "label_key": "wasser",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.6373577598255511,
+      "duration_ms": {
+        "median": 830.0,
+        "min": 700.0,
+        "max": 960.0,
+        "mean": 830.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.6415799666842499
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::d1506909-0fa8-4626-9544-d4af0062fb9b",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "d1506909-0fa8-4626-9544-d4af0062fb9b",
+      "label": "cozy",
+      "label_key": "cozy",
+      "category": "verbal vocalization",
+      "n_members": 15,
+      "mean_within_mel": 0.6381645174407855,
+      "duration_ms": {
+        "median": 860.0,
+        "min": 580.0,
+        "max": 1160.0,
+        "mean": 858.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 15
+        }
+      },
+      "mean_within_mel_norm": 0.6424180065396319
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::a36dd478-9ed6-4a40-9744-a6154ae721d8",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "a36dd478-9ed6-4a40-9744-a6154ae721d8",
+      "label": "vogu",
+      "label_key": "vogu",
+      "category": "verbal vocalization",
+      "n_members": 5,
+      "mean_within_mel": 0.6455385757200996,
+      "duration_ms": {
+        "median": 960.0,
+        "min": 930.0,
+        "max": 1080.0,
+        "mean": 974.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 5
+        }
+      },
+      "mean_within_mel_norm": 0.6500360603876928
+    },
+    {
+      "cluster_key": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78::cbd77634-94e1-4a85-b1e5-b6273a2a0b50",
+      "kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+      "cluster_id": "cbd77634-94e1-4a85-b1e5-b6273a2a0b50",
+      "label": "tüchli",
+      "label_key": "tüchli",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.6550670998734228,
+      "duration_ms": {
+        "median": 1060.0,
+        "min": 910.0,
+        "max": 1210.0,
+        "mean": 1060.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.6597334728696553
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::1681f4e0-13ef-47d2-8491-ce451cb944da",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "1681f4e0-13ef-47d2-8491-ce451cb944da",
+      "label": "giraffe",
+      "label_key": "giraffe",
+      "category": "verbal vocalization",
+      "n_members": 3,
+      "mean_within_mel": 0.6817168577092474,
+      "duration_ms": {
+        "median": 750.0,
+        "min": 670.0,
+        "max": 1500.0,
+        "mean": 973.3333333333334
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 3
+        }
+      },
+      "mean_within_mel_norm": 0.6864042646229377
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::ea2a6ebe-bfc5-4445-aea7-ffd5af1b6614",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "ea2a6ebe-bfc5-4445-aea7-ffd5af1b6614",
+      "label": "see",
+      "label_key": "see",
+      "category": "verbal vocalization",
+      "n_members": 7,
+      "mean_within_mel": 0.6932501718057414,
+      "duration_ms": {
+        "median": 800.0,
+        "min": 430.0,
+        "max": 1070.0,
+        "mean": 768.5714285714286
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 7
+        }
+      },
+      "mean_within_mel_norm": 0.6976661452179763
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::a15821c0-265e-4bda-9073-8dc283c3aed4",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "a15821c0-265e-4bda-9073-8dc283c3aed4",
+      "label": "nase",
+      "label_key": "nase",
+      "category": "verbal vocalization",
+      "n_members": 7,
+      "mean_within_mel": 0.7114016574856855,
+      "duration_ms": {
+        "median": 850.0,
+        "min": 660.0,
+        "max": 940.0,
+        "mean": 834.2857142857143
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 7
+        }
+      },
+      "mean_within_mel_norm": 0.7161201408420995
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::dd819930-6d8c-4d5d-8f7c-5b25059ca983",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "dd819930-6d8c-4d5d-8f7c-5b25059ca983",
+      "label": "cozy",
+      "label_key": "cozy",
+      "category": "verbal vocalization",
+      "n_members": 10,
+      "mean_within_mel": 0.7186069331451225,
+      "duration_ms": {
+        "median": 1035.0,
+        "min": 620.0,
+        "max": 1330.0,
+        "mean": 989.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 10
+        }
+      },
+      "mean_within_mel_norm": 0.723613837306525
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::2b32dcf6-df1e-46f9-b51e-2ad395c1671f",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "2b32dcf6-df1e-46f9-b51e-2ad395c1671f",
+      "label": "gorilla",
+      "label_key": "gorilla",
+      "category": "verbal vocalization",
+      "n_members": 4,
+      "mean_within_mel": 0.7207863739143939,
+      "duration_ms": {
+        "median": 900.0,
+        "min": 720.0,
+        "max": 1120.0,
+        "mean": 910.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 4
+        }
+      },
+      "mean_within_mel_norm": 0.7256999406358275
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::d9e3e5e9-eba8-4203-a23a-3e8b1c1b2815",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "d9e3e5e9-eba8-4203-a23a-3e8b1c1b2815",
+      "label": "baby",
+      "label_key": "baby",
+      "category": "verbal vocalization",
+      "n_members": 9,
+      "mean_within_mel": 0.7336912525620375,
+      "duration_ms": {
+        "median": 770.0,
+        "min": 590.0,
+        "max": 1020.0,
+        "mean": 782.2222222222222
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 9
+        }
+      },
+      "mean_within_mel_norm": 0.7384593779402131
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::ebd1635c-ed82-434a-84f2-c42821d72cc3",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "ebd1635c-ed82-434a-84f2-c42821d72cc3",
+      "label": "leu",
+      "label_key": "leu",
+      "category": "verbal vocalization",
+      "n_members": 11,
+      "mean_within_mel": 0.7403908348549666,
+      "duration_ms": {
+        "median": 790.0,
+        "min": 640.0,
+        "max": 1240.0,
+        "mean": 850.9090909090909
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 11
+        }
+      },
+      "mean_within_mel_norm": 0.7453126951576722
+    },
+    {
+      "cluster_key": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78::73e618bc-7dec-4dda-a632-4b9bc92b147d",
+      "kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+      "cluster_id": "73e618bc-7dec-4dda-a632-4b9bc92b147d",
+      "label": "cappuccino",
+      "label_key": "cappuccino",
+      "category": "verbal vocalization",
+      "n_members": 4,
+      "mean_within_mel": 0.757935428306797,
+      "duration_ms": {
+        "median": 1580.0,
+        "min": 1440.0,
+        "max": 2440.0,
+        "mean": 1760.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 4
+        }
+      },
+      "mean_within_mel_norm": 0.7641230472694743
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::f9a6a421-03f6-48b9-8a30-8a12e4604bd0",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "f9a6a421-03f6-48b9-8a30-8a12e4604bd0",
+      "label": "bear",
+      "label_key": "bear",
+      "category": "verbal vocalization",
+      "n_members": 5,
+      "mean_within_mel": 0.7625104833496339,
+      "duration_ms": {
+        "median": 420.0,
+        "min": 400.0,
+        "max": 420.0,
+        "mean": 415.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 5
+        }
+      },
+      "mean_within_mel_norm": 0.7665925266931389
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::575ca08f-6bc5-4771-ae54-5c2cdb8d337c",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "575ca08f-6bc5-4771-ae54-5c2cdb8d337c",
+      "label": "wasser",
+      "label_key": "wasser",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.7645469938126503,
+      "duration_ms": {
+        "median": 1125.0,
+        "min": 810.0,
+        "max": 1440.0,
+        "mean": 1125.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.7700281223716428
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::9c2afb0f-b285-4305-813f-b39db833663d",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "9c2afb0f-b285-4305-813f-b39db833663d",
+      "label": "melanie",
+      "label_key": "melanie",
+      "category": "verbal vocalization",
+      "n_members": 4,
+      "mean_within_mel": 0.7671606133528229,
+      "duration_ms": {
+        "median": 890.0,
+        "min": 530.0,
+        "max": 1110.0,
+        "mean": 855.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 4
+        }
+      },
+      "mean_within_mel_norm": 0.7722531004418717
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::03bf9983-4098-43be-bf90-74c42b27f244",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "03bf9983-4098-43be-bf90-74c42b27f244",
+      "label": "schuhe",
+      "label_key": "schuhe",
+      "category": "verbal vocalization",
+      "n_members": 4,
+      "mean_within_mel": 0.7768332613828237,
+      "duration_ms": {
+        "median": 1240.0,
+        "min": 580.0,
+        "max": 1530.0,
+        "mean": 1147.5
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 4
+        }
+      },
+      "mean_within_mel_norm": 0.7823501605502493
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::34b9776f-9a17-4975-9fdb-f4ad51ff2859",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "34b9776f-9a17-4975-9fdb-f4ad51ff2859",
+      "label": "ballon",
+      "label_key": "ballon",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.7949413277401581,
+      "duration_ms": {
+        "median": 705.0,
+        "min": 620.0,
+        "max": 790.0,
+        "mean": 705.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.7999653589783192
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::3f3d8ab9-cdf7-453a-a302-49853fe4d33d",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "3f3d8ab9-cdf7-453a-a302-49853fe4d33d",
+      "label": "armadillo",
+      "label_key": "armadillo",
+      "category": "verbal vocalization",
+      "n_members": 5,
+      "mean_within_mel": 0.8446889649884456,
+      "duration_ms": {
+        "median": 1310.0,
+        "min": 960.0,
+        "max": 1400.0,
+        "mean": 1218.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 5
+        }
+      },
+      "mean_within_mel_norm": 0.8509412361412837
+    },
+    {
+      "cluster_key": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73::b148f38a-d593-4f7c-b397-1246a9b7f898",
+      "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "cluster_id": "b148f38a-d593-4f7c-b397-1246a9b7f898",
+      "label": "bett",
+      "label_key": "bett",
+      "category": "verbal vocalization",
+      "n_members": 3,
+      "mean_within_mel": 0.8526798866334208,
+      "duration_ms": {
+        "median": 670.0,
+        "min": 500.0,
+        "max": 740.0,
+        "mean": 636.6666666666666
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 3
+        }
+      },
+      "mean_within_mel_norm": 0.8578957363792451
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::64263bf5-cb8e-459a-87fa-4e20e3026c47",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "64263bf5-cb8e-459a-87fa-4e20e3026c47",
+      "label": "fuchs",
+      "label_key": "fuchs",
+      "category": "verbal vocalization",
+      "n_members": 5,
+      "mean_within_mel": 0.912618829422278,
+      "duration_ms": {
+        "median": 1010.0,
+        "min": 690.0,
+        "max": 1170.0,
+        "mean": 990.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 5
+        }
+      },
+      "mean_within_mel_norm": 0.9189926657157101
+    },
+    {
+      "cluster_key": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75::a5f51b58-31fb-4820-9083-142041c4b11e",
+      "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "cluster_id": "a5f51b58-31fb-4820-9083-142041c4b11e",
+      "label": "melanie",
+      "label_key": "melanie",
+      "category": "verbal vocalization",
+      "n_members": 2,
+      "mean_within_mel": 0.9230816124932754,
+      "duration_ms": {
+        "median": 1030.0,
+        "min": 930.0,
+        "max": 1130.0,
+        "mean": 1030.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 2
+        }
+      },
+      "mean_within_mel_norm": 0.9296172494920685
+    },
+    {
+      "cluster_key": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho::e215e6ef-6416-4749-9f09-1c6cf158d321",
+      "kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+      "cluster_id": "e215e6ef-6416-4749-9f09-1c6cf158d321",
+      "label": "bus",
+      "label_key": "bus",
+      "category": "verbal vocalization",
+      "n_members": 3,
+      "mean_within_mel": 0.9269788129098355,
+      "duration_ms": {
+        "median": 590.0,
+        "min": 430.0,
+        "max": 930.0,
+        "mean": 650.0
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 3
+        }
+      },
+      "mean_within_mel_norm": 0.9326241416819575
+    },
+    {
+      "cluster_key": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87::9a2f409b-7e07-434a-82ec-0eddc803673d",
+      "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+      "cluster_id": "9a2f409b-7e07-434a-82ec-0eddc803673d",
+      "label": "brown",
+      "label_key": "brown",
+      "category": "verbal vocalization",
+      "n_members": 9,
+      "mean_within_mel": 0.9728415953300702,
+      "duration_ms": {
+        "median": 650.0,
+        "min": 480.0,
+        "max": 1330.0,
+        "mean": 784.4444444444445
+      },
+      "speaker": {
+        "purity": 1.0,
+        "majority": "Baby",
+        "n_speakers": 1,
+        "counts": {
+          "Baby": 9
+        }
+      },
+      "mean_within_mel_norm": 0.979042493545935
+    }
+  ],
+  "plots": {
+    "hist_mel_vs_hubert": "tools/analysis/out/curated_clusters/hist_mel_vs_hubert.png",
+    "umap_mel": "tools/analysis/out/curated_clusters/umap_mel.png",
+    "umap_hubert": "tools/analysis/out/curated_clusters/umap_hubert.png"
+  },
+  "takeaways": [
+    "Curated-id mel gap is 0.152 (similar to word-string study 0.154, Δ=-0.002) — human cluster membership agrees with same-word tags on mel separation; use curated IDs as the cleaner training target when both exist.",
+    "HuBERT gap (0.097) is smaller than mel (0.152); keep production mel fingerprints as the default clustering embed — HuBERT is not worth the cost here.",
+    "Tightest curated words (low within): 'zeichne' (0.32), 'fahre' (0.44), 'boot' (0.52), 'da' (0.52).",
+    "Messiest curated groups (high within / review candidates): 'brown' (0.97), 'bus' (0.93), 'melanie' (0.92), 'fuchs' (0.91).",
+    "SHORT filter removed 8 member(s) (5% of raw curated members before keep); keep SHORT excluded when seeding auto-clusters — curated truth still leans word-length."
+  ]
+}

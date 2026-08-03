@@ -416,12 +416,16 @@ def run_cluster_for_kit(kit: Path, body: dict | None = None) -> dict:
     include_singletons = body.get("includeSingletons")
     if include_singletons is None:
         include_singletons = True
+    exclude_short = body.get("excludeShortFragments")
+    if exclude_short is None:
+        exclude_short = True
     try:
         result = process_kit(
             kit,
             distance_threshold=distance_f,
             write=True,
             include_singletons=bool(include_singletons),
+            exclude_short_fragments=bool(exclude_short),
         )
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e), "kit": kit.name}
@@ -2254,22 +2258,27 @@ function renderShell() {
     </div>
     <div id="clusterTab">
       <p class="muted sans" style="margin:0 0 10px">
-        Groups similar spans in this session (tags + non-dismissed VAD). Labels are stored on the
+        Groups similar spans in this session (tags + non-dismissed VAD) into
+        <strong>same-voice</strong> clusters (Baby/Parent/Other, else SPEAKER_xx).
+        Unlabeled spans only merge with other unlabeled spans. Labels are stored on the
         <strong>cluster</strong> only (not auto-copied onto tags). <code>conceptIds</code> reserved for
         future many↔many developmental concepts. Exclude outliers before trusting a group.
         Amber <span class="cue-badge fragment">short</span> marks spans below the fragment cutoff
-        (~400–500ms, or ~55% of this kit’s median tag duration) — likely syllable pieces to skip or merge later.
+        (~400–500ms, or ~55% of this kit’s median tag duration) — by default those are
+        <em>not</em> used to seed clusters (see checkbox).
       </p>
       <div class="cluster-toolbar">
         <button type="button" class="primary" id="btnClusterRun">Run clustering</button>
         <label class="muted">Sensitivity
           <select id="clusterDistance">
-            <option value="0.40">Tight (fewer merges)</option>
-            <option value="0.45" selected>Default</option>
+            <option value="0.35">Very tight</option>
+            <option value="0.40" selected>Tight (default)</option>
+            <option value="0.45">Medium</option>
             <option value="0.55">Loose (larger groups)</option>
             <option value="0.65">Very loose</option>
           </select>
         </label>
+        <label class="muted" title="Same cutoff as SHORT badges (~400–500ms kit-adaptive)"><input type="checkbox" id="chkExcludeShort" checked/> Exclude short fragments</label>
         <label class="muted"><input type="checkbox" id="chkSingletons"/> Show size-1 clusters</label>
         <span class="muted" id="clusterStatus">Loading…</span>
       </div>
@@ -2279,6 +2288,7 @@ function renderShell() {
         <h3>Unassigned tags</h3>
         <p class="muted sans" style="margin:0 0 8px">
           Tags (and non-dismissed VAD) not in any cluster. Search, multi-select, then create a new curated cluster.
+          Short fragments skipped by clustering still appear here so you can promote them manually.
         </p>
         <div class="add-snippet-box">
           <input type="search" id="unassignedSearch" placeholder="Search time, speaker, word…" autocomplete="off"/>
@@ -2407,7 +2417,9 @@ function wireClusterTab() {
       runBtn.textContent = 'Clustering…';
       const st = document.getElementById('clusterStatus');
       const distEl = document.getElementById('clusterDistance');
-      const distance = distEl ? Number(distEl.value) : 0.45;
+      const distance = distEl ? Number(distEl.value) : 0.40;
+      const excludeShortEl = document.getElementById('chkExcludeShort');
+      const excludeShortFragments = excludeShortEl ? !!excludeShortEl.checked : true;
       if (st) st.textContent = 'Fingerprinting spans…';
       try {
         const labeled = (clusterDoc && clusterDoc.clusters || []).filter(cl =>
@@ -2434,10 +2446,12 @@ function wireClusterTab() {
         const data = await postJson('/api/cluster/run', {
           kit: current.folder,
           distance,
+          excludeShortFragments,
         });
         if (!data.ok) throw new Error(data.error || 'cluster failed');
         flashSaveStatus(
           `Clustering: ${data.multiMember || 0} multi · ${data.clusters || 0} total` +
+          (data.ignoredShort != null ? ` · skipped ${data.ignoredShort} short` : '') +
           (data.lockedClusters != null ? ` · kept ${data.lockedClusters} curated` : '')
         );
         await loadClusters();
@@ -2466,7 +2480,15 @@ async function loadClusters() {
     }
     clusterDoc = data;
     const multi = (data.clusters || []).filter(c => (c.confidence && c.confidence.size) >= 2).length;
-    if (st) st.textContent = `${(data.clusters || []).length} clusters · ${multi} with repeats · ${data.spanCount || '?'} spans`;
+    const ignored = data.ignoredShortCount != null
+      ? data.ignoredShortCount
+      : (Array.isArray(data.ignoredShort) ? data.ignoredShort.length : null);
+    const cut = (data.params && data.params.fragmentCutoffMs) || fragmentCutoffMs();
+    if (st) {
+      st.textContent =
+        `${(data.clusters || []).length} clusters · ${multi} with repeats · ${data.spanCount || '?'} spans` +
+        (ignored != null ? ` · ${ignored} short excluded (<${cut}ms)` : '');
+    }
     renderClusterList();
     renderUnassignedPanel();
     if (activeClusterId) renderClusterDetail(activeClusterId);
@@ -2493,14 +2515,18 @@ function renderClusterList() {
   el.innerHTML = list.map(c => {
     const conf = c.confidence || {};
     const label = [c.word, c.phonetic].filter(Boolean).join(' · ') || 'Unlabeled';
-    const speakers = [...new Set((c.members || []).map(m => m.speaker || '?'))].join(', ');
+    const speakerSet = [...new Set((c.members || []).map(m =>
+      (m.speaker || m.speakerCluster || c.speaker || '?')
+    ))];
+    const speakerLabel = c.speaker || (speakerSet.length === 1 ? speakerSet[0] : speakerSet.join(', '));
     const shortN = (c.members || []).filter(m => isLikelyFragment(m)).length;
     const shortBadge = shortN
       ? ` <span class="cue-badge fragment" title="${shortN} member(s) below fragment cutoff (${fragmentCutoffMs()}ms)">${shortN} short</span>`
       : '';
+    const n = conf.size || (c.members || []).length || 0;
     return `<div class="cluster-card${c.id === activeClusterId ? ' active' : ''}" data-cid="${esc(c.id)}">
-      <strong>${esc(label)}</strong> · ${conf.size || 0} members${shortBadge}
-      <div class="meta">tight ${Number(conf.tightness || 0).toFixed(2)} · sep ${Number(conf.separation || 0).toFixed(2)} · speakers ${esc(speakers)}</div>
+      <strong>${esc(label)}</strong> · ${esc(speakerLabel)} · ${n} members${shortBadge}
+      <div class="meta">tight ${Number(conf.tightness || 0).toFixed(2)} · sep ${Number(conf.separation || 0).toFixed(2)} · short ${shortN}</div>
     </div>`;
   }).join('');
   el.querySelectorAll('.cluster-card').forEach(card => {
@@ -2782,12 +2808,16 @@ async function renderClusterDetail(cid) {
   memEl.innerHTML = (c.members || []).map(m => {
     const dur = spanDurationMs(m);
     const frag = isLikelyFragment(m);
+    const spk = m.speaker || '?';
+    const sc = m.speakerCluster && m.speakerCluster !== m.speaker
+      ? ` <span class="muted" title="Diarization cluster">${esc(m.speakerCluster)}</span>`
+      : '';
     return `
     <div class="cluster-member${frag ? ' is-fragment' : ''}" data-mid="${esc(m.memberId)}">
       <span>${(m.startMs/1000).toFixed(2)}s–${(m.endMs/1000).toFixed(2)}s</span>
       <span class="muted" style="font-variant-numeric:tabular-nums">${Math.round(dur)}ms</span>
       ${fragmentCueHtml(m)}
-      <span class="pill">${esc(m.speaker || '?')}</span>
+      <span class="pill">${esc(spk)}</span>${sc}
       <span class="muted">${esc(m.refType)} · ${esc(m.source || '')}${m.outlier ? ' · outlier' : ''}</span>
       <button type="button" data-act="play">Play</button>
       <button type="button" data-act="exclude">Exclude</button>

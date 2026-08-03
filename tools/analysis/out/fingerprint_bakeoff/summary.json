@@ -1,0 +1,625 @@
+{
+  "mode": "curated_fingerprint_bakeoff_loko",
+  "library": "/Users/vijayjain/Documents/BabyTalk/Library",
+  "discovery": {
+    "n_kits_scanned": 5,
+    "n_kits_with_curated_raw": 5,
+    "n_kits_kept": 5,
+    "kits_kept": [
+      "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+      "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+      "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+      "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+      "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+    ],
+    "n_clusters_raw": 34,
+    "n_clusters_kept": 34,
+    "n_members_raw": 177,
+    "n_members_kept": 169,
+    "labels": [
+      "armadillo",
+      "baby",
+      "ballon",
+      "bear",
+      "bett",
+      "boot",
+      "brown",
+      "bus",
+      "cappuccino",
+      "children",
+      "cozy",
+      "da",
+      "fahre",
+      "fisch",
+      "fuchs",
+      "giraffe",
+      "gorilla",
+      "leu",
+      "melanie",
+      "nase",
+      "night night",
+      "schuhe",
+      "see",
+      "teacher",
+      "t\u00fcchli",
+      "vijay",
+      "vogu",
+      "wasser",
+      "zeichne"
+    ]
+  },
+  "filters": {
+    "clusters_in": 34,
+    "members_raw": 177,
+    "dropped_short": 8,
+    "dropped_missing_span": 0,
+    "dropped_nonverbal_tag": 0,
+    "dropped_no_audio": 0,
+    "kept": 169,
+    "clusters_kept": 34,
+    "fragment_cutoffs_ms": {
+      "2026-07-20T20-56-36-042Z_353_Mississippi_St_75": 500,
+      "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73": 473,
+      "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78": 500,
+      "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho": 400,
+      "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87": 400
+    }
+  },
+  "protocol": {
+    "distance": "sklearn cosine_distances (= 1 \u2212 cosine similarity)",
+    "same_key": "curated cluster id (kit::cluster_id)",
+    "pooled": "all kits together",
+    "loko": "for each holdout kit, gap using only that kit\u2019s members; require \u22652 multi-member curated clusters in the holdout kit; report mean/std of scorable fold gaps. Encoders frozen \u2014 no label training."
+  },
+  "spaces": [
+    {
+      "name": "mel",
+      "status": "ok",
+      "dim": 1281,
+      "pooled": {
+        "space": "mel",
+        "mean_within": 0.7011098013516961,
+        "mean_between": 0.8524634487009138,
+        "gap": 0.15135364734921775,
+        "n_within": 492,
+        "n_between": 13704,
+        "within": {
+          "n": 492,
+          "mean": 0.7011098013516961,
+          "median": 0.6834031706073262,
+          "std": 0.18383047617022932,
+          "min": 0.3209616564031752,
+          "max": 1.450269738291634
+        },
+        "between": {
+          "n": 13704,
+          "mean": 0.8524634487009138,
+          "median": 0.8465669964800282,
+          "std": 0.16090677290553135,
+          "min": 0.31284174237668216,
+          "max": 1.46483459747844
+        }
+      },
+      "loko": {
+        "n_kits": 5,
+        "n_scorable_folds": 4,
+        "mean_gap": 0.12380555548112615,
+        "std_gap": 0.05987783054874143,
+        "folds": [
+          {
+            "holdout_kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+            "n_members": 49,
+            "scorable": true,
+            "gap": 0.2054037491199221,
+            "mean_within": 0.6805076428525051,
+            "mean_between": 0.8859113919724272,
+            "n_within": 101,
+            "n_between": 1075
+          },
+          {
+            "holdout_kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+            "n_members": 46,
+            "scorable": true,
+            "gap": 0.11359934478377798,
+            "mean_within": 0.7417714193413268,
+            "mean_between": 0.8553707641251048,
+            "n_within": 136,
+            "n_between": 899
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+            "n_members": 6,
+            "scorable": true,
+            "gap": 0.03795690302005161,
+            "mean_within": 0.7432399528163148,
+            "mean_between": 0.7811968558363664,
+            "n_within": 7,
+            "n_between": 8
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+            "n_members": 3,
+            "scorable": false,
+            "gap": null,
+            "mean_within": null,
+            "mean_between": null,
+            "n_within": 0,
+            "n_between": 0,
+            "reason": "need \u22652 multi-member curated clusters in holdout kit"
+          },
+          {
+            "holdout_kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+            "n_members": 65,
+            "scorable": true,
+            "gap": 0.13826222500075291,
+            "mean_within": 0.6830621273390501,
+            "mean_between": 0.821324352339803,
+            "n_within": 245,
+            "n_between": 1835
+          }
+        ]
+      }
+    },
+    {
+      "name": "hubert",
+      "status": "ok",
+      "dim": 768,
+      "pooled": {
+        "space": "hubert",
+        "mean_within": 0.16744066049866702,
+        "mean_between": 0.2644974817737082,
+        "gap": 0.09705682127504117,
+        "n_within": 492,
+        "n_between": 13704,
+        "within": {
+          "n": 492,
+          "mean": 0.16744066049866702,
+          "median": 0.14912218596738253,
+          "std": 0.08463355708428683,
+          "min": 0.02090540943455299,
+          "max": 0.43856395551437766
+        },
+        "between": {
+          "n": 13704,
+          "mean": 0.2644974817737082,
+          "median": 0.25698851729666167,
+          "std": 0.09688341282553686,
+          "min": 0.04464998699573497,
+          "max": 0.6512288088970511
+        }
+      },
+      "loko": {
+        "n_kits": 5,
+        "n_scorable_folds": 4,
+        "mean_gap": 0.07656370576746829,
+        "std_gap": 0.006733563147893252,
+        "folds": [
+          {
+            "holdout_kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+            "n_members": 49,
+            "scorable": true,
+            "gap": 0.07814765737929072,
+            "mean_within": 0.17223558656805457,
+            "mean_between": 0.2503832439473453,
+            "n_within": 101,
+            "n_between": 1075
+          },
+          {
+            "holdout_kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+            "n_members": 46,
+            "scorable": true,
+            "gap": 0.08418247226127376,
+            "mean_within": 0.1636850784452996,
+            "mean_between": 0.24786755070657335,
+            "n_within": 136,
+            "n_between": 899
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+            "n_members": 6,
+            "scorable": true,
+            "gap": 0.06569880239833029,
+            "mean_within": 0.22942679563633847,
+            "mean_between": 0.29512559803466876,
+            "n_within": 7,
+            "n_between": 8
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+            "n_members": 3,
+            "scorable": false,
+            "gap": null,
+            "mean_within": null,
+            "mean_between": null,
+            "n_within": 0,
+            "n_between": 0,
+            "reason": "need \u22652 multi-member curated clusters in holdout kit"
+          },
+          {
+            "holdout_kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+            "n_members": 65,
+            "scorable": true,
+            "gap": 0.0782258910309784,
+            "mean_within": 0.16696612222219567,
+            "mean_between": 0.24519201325317408,
+            "n_within": 245,
+            "n_between": 1835
+          }
+        ]
+      }
+    },
+    {
+      "name": "yamnet",
+      "status": "ok",
+      "dim": 1024,
+      "pooled": {
+        "space": "yamnet",
+        "mean_within": 0.21207721194744475,
+        "mean_between": 0.30590160881958084,
+        "gap": 0.09382439687213609,
+        "n_within": 492,
+        "n_between": 13704,
+        "within": {
+          "n": 492,
+          "mean": 0.21207721194744475,
+          "median": 0.20224049575858755,
+          "std": 0.09907682323345195,
+          "min": 0.031774207341535465,
+          "max": 0.5427892056539381
+        },
+        "between": {
+          "n": 13704,
+          "mean": 0.30590160881958084,
+          "median": 0.28819236534138687,
+          "std": 0.12914268991137745,
+          "min": 0.0438458941358959,
+          "max": 0.8518868566602872
+        }
+      },
+      "loko": {
+        "n_kits": 5,
+        "n_scorable_folds": 4,
+        "mean_gap": 0.05048955611645381,
+        "std_gap": 0.05332171680665472,
+        "folds": [
+          {
+            "holdout_kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+            "n_members": 49,
+            "scorable": true,
+            "gap": 0.07945080799808765,
+            "mean_within": 0.1935891144046014,
+            "mean_between": 0.27303992240268904,
+            "n_within": 101,
+            "n_between": 1075
+          },
+          {
+            "holdout_kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+            "n_members": 46,
+            "scorable": true,
+            "gap": 0.07103035718500916,
+            "mean_within": 0.19492852494638413,
+            "mean_between": 0.2659588821313933,
+            "n_within": 136,
+            "n_between": 899
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+            "n_members": 6,
+            "scorable": true,
+            "gap": -0.040920740871470684,
+            "mean_within": 0.24869962768385348,
+            "mean_between": 0.2077788868123828,
+            "n_within": 7,
+            "n_between": 8
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+            "n_members": 3,
+            "scorable": false,
+            "gap": null,
+            "mean_within": null,
+            "mean_between": null,
+            "n_within": 0,
+            "n_between": 0,
+            "reason": "need \u22652 multi-member curated clusters in holdout kit"
+          },
+          {
+            "holdout_kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+            "n_members": 65,
+            "scorable": true,
+            "gap": 0.09239780015418911,
+            "mean_within": 0.22658735551350875,
+            "mean_between": 0.31898515566769786,
+            "n_within": 245,
+            "n_between": 1835
+          }
+        ]
+      }
+    },
+    {
+      "name": "vggish",
+      "status": "ok",
+      "dim": 128,
+      "pooled": {
+        "space": "vggish",
+        "mean_within": 0.05630674730396806,
+        "mean_between": 0.08493196110115282,
+        "gap": 0.02862521379718476,
+        "n_within": 492,
+        "n_between": 13704,
+        "within": {
+          "n": 492,
+          "mean": 0.05630674730396806,
+          "median": 0.0521972164268647,
+          "std": 0.026555736336922636,
+          "min": 0.013799115547668661,
+          "max": 0.1596127274501089
+        },
+        "between": {
+          "n": 13704,
+          "mean": 0.08493196110115282,
+          "median": 0.07983612749126706,
+          "std": 0.03565582781124735,
+          "min": 0.011340717326861594,
+          "max": 0.2549517572067479
+        }
+      },
+      "loko": {
+        "n_kits": 5,
+        "n_scorable_folds": 4,
+        "mean_gap": 0.011798812819611076,
+        "std_gap": 0.010164331689633118,
+        "folds": [
+          {
+            "holdout_kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+            "n_members": 49,
+            "scorable": true,
+            "gap": 0.026972134781432927,
+            "mean_within": 0.04705458690519551,
+            "mean_between": 0.07402672168662844,
+            "n_within": 101,
+            "n_between": 1075
+          },
+          {
+            "holdout_kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+            "n_members": 46,
+            "scorable": true,
+            "gap": 0.007300052404438012,
+            "mean_within": 0.05091247899803328,
+            "mean_between": 0.05821253140247129,
+            "n_within": 136,
+            "n_between": 899
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+            "n_members": 6,
+            "scorable": true,
+            "gap": -0.0008121492105010453,
+            "mean_within": 0.0628680720798918,
+            "mean_between": 0.06205592286939075,
+            "n_within": 7,
+            "n_between": 8
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+            "n_members": 3,
+            "scorable": false,
+            "gap": null,
+            "mean_within": null,
+            "mean_between": null,
+            "n_within": 0,
+            "n_between": 0,
+            "reason": "need \u22652 multi-member curated clusters in holdout kit"
+          },
+          {
+            "holdout_kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+            "n_members": 65,
+            "scorable": true,
+            "gap": 0.013735213303074409,
+            "mean_within": 0.062631395591569,
+            "mean_between": 0.0763666088946434,
+            "n_within": 245,
+            "n_between": 1835
+          }
+        ]
+      }
+    },
+    {
+      "name": "panns",
+      "status": "ok",
+      "dim": 2048,
+      "pooled": {
+        "space": "panns",
+        "mean_within": 0.07694094838877368,
+        "mean_between": 0.11409904068166586,
+        "gap": 0.037158092292892186,
+        "n_within": 492,
+        "n_between": 13704,
+        "within": {
+          "n": 492,
+          "mean": 0.07694094838877368,
+          "median": 0.05253225582973031,
+          "std": 0.06597381651109775,
+          "min": 0.0049370015687775215,
+          "max": 0.3010284369555267
+        },
+        "between": {
+          "n": 13704,
+          "mean": 0.11409904068166586,
+          "median": 0.0979002308162083,
+          "std": 0.07070021344669802,
+          "min": 0.0051898363901092814,
+          "max": 0.4207071822954689
+        }
+      },
+      "loko": {
+        "n_kits": 5,
+        "n_scorable_folds": 4,
+        "mean_gap": 0.02495886785203519,
+        "std_gap": 0.019849787735235866,
+        "folds": [
+          {
+            "holdout_kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+            "n_members": 49,
+            "scorable": true,
+            "gap": 0.03958754115752501,
+            "mean_within": 0.08227870125181276,
+            "mean_between": 0.12186624240933777,
+            "n_within": 101,
+            "n_between": 1075
+          },
+          {
+            "holdout_kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+            "n_members": 46,
+            "scorable": true,
+            "gap": 0.04418204439946949,
+            "mean_within": 0.06274607759913933,
+            "mean_between": 0.10692812199860882,
+            "n_within": 136,
+            "n_between": 899
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+            "n_members": 6,
+            "scorable": true,
+            "gap": -0.006450734508881201,
+            "mean_within": 0.042710845795212324,
+            "mean_between": 0.03626011128633112,
+            "n_within": 7,
+            "n_between": 8
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+            "n_members": 3,
+            "scorable": false,
+            "gap": null,
+            "mean_within": null,
+            "mean_between": null,
+            "n_within": 0,
+            "n_between": 0,
+            "reason": "need \u22652 multi-member curated clusters in holdout kit"
+          },
+          {
+            "holdout_kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+            "n_members": 65,
+            "scorable": true,
+            "gap": 0.022516620360027467,
+            "mean_within": 0.0827296287636518,
+            "mean_between": 0.10524624912367926,
+            "n_within": 245,
+            "n_between": 1835
+          }
+        ]
+      }
+    },
+    {
+      "name": "byola",
+      "status": "ok",
+      "dim": 512,
+      "pooled": {
+        "space": "byola",
+        "mean_within": 0.1135687773149854,
+        "mean_between": 0.18273299349630523,
+        "gap": 0.06916421618131983,
+        "n_within": 492,
+        "n_between": 13704,
+        "within": {
+          "n": 492,
+          "mean": 0.1135687773149854,
+          "median": 0.10316275283677195,
+          "std": 0.05441703324072561,
+          "min": 0.021148001794767612,
+          "max": 0.29161459901418896
+        },
+        "between": {
+          "n": 13704,
+          "mean": 0.18273299349630523,
+          "median": 0.17949627472848595,
+          "std": 0.057329322408450976,
+          "min": 0.03402739130274157,
+          "max": 0.41443078529434907
+        }
+      },
+      "loko": {
+        "n_kits": 5,
+        "n_scorable_folds": 4,
+        "mean_gap": 0.035716690466390144,
+        "std_gap": 0.029986414631518247,
+        "folds": [
+          {
+            "holdout_kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+            "n_members": 49,
+            "scorable": true,
+            "gap": 0.07978920268764218,
+            "mean_within": 0.10523805082257164,
+            "mean_between": 0.18502725351021382,
+            "n_within": 101,
+            "n_between": 1075
+          },
+          {
+            "holdout_kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+            "n_members": 46,
+            "scorable": true,
+            "gap": 0.032648691901568674,
+            "mean_within": 0.08881659479454995,
+            "mean_between": 0.12146528669611863,
+            "n_within": 136,
+            "n_between": 899
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+            "n_members": 6,
+            "scorable": true,
+            "gap": -0.004838698673598388,
+            "mean_within": 0.11459197223732723,
+            "mean_between": 0.10975327356372884,
+            "n_within": 7,
+            "n_between": 8
+          },
+          {
+            "holdout_kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+            "n_members": 3,
+            "scorable": false,
+            "gap": null,
+            "mean_within": null,
+            "mean_between": null,
+            "n_within": 0,
+            "n_between": 0,
+            "reason": "need \u22652 multi-member curated clusters in holdout kit"
+          },
+          {
+            "holdout_kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+            "n_members": 65,
+            "scorable": true,
+            "gap": 0.03526756594994809,
+            "mean_within": 0.13004834178198332,
+            "mean_between": 0.16531590773193142,
+            "n_within": 245,
+            "n_between": 1835
+          }
+        ]
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "name": "Audio-JEPA / EAT",
+      "reason": "No clearly installable pip package / weights path in tools/.venv without cloning research codebases; skipped (not heroic effort)."
+    }
+  ],
+  "mewehv": {
+    "paper": "https://arxiv.org/abs/2209.14078",
+    "title": "MeWEHV: Mel and Wave Embeddings for Human Voice Tasks",
+    "plain": "**MeWEHV** (Mel and Wave Embeddings for Human Voice Tasks) is a research recipe that glues together two views of the same clip: (1) a big pretrained **wave** encoder (things like HuBERT / WavLM / Wav2Vec-style models) and (2) a small network that reads **MFCCs** (a classic speech feature related to mel). The combo is aimed at **who is speaking**, **which language**, and **which accent** \u2014 not at grouping toddler word takes like \u201cboot\u201d vs \u201cfisch.\u201d",
+    "helps_word_clustering": false,
+    "might_help_elsewhere": "vocalization type / emotion / child-directed vs adult speech *only if* you later build labeled datasets for those jobs \u2014 still not the next lever for word Clustering.",
+    "recommendation": "**Don\u2019t use MeWEHV now for BabyTalk word clustering.** It solves a different problem (speaker/language/accent), adds training complexity, and we already have a simpler frozen-fingerprint bake-off path. Revisit only if you pivot to speaker/language ID.",
+    "one_liner": "MeWEHV mixes wave+MFCC embeddings for speaker/language/accent ID \u2014 not word clustering; skip for now."
+  },
+  "embeddings_cache": "/Users/vijayjain/babytalkApp-1/tools/analysis/out/fingerprint_bakeoff/embeddings_cache.npz",
+  "weekly_workflow": [
+    "Keep mel as Clustering default unless a fingerprint clearly wins LOKO on more kits.",
+    "Review: confirm speech-segment children \u2192 curate multi-member word clusters; spot-check loose words.",
+    "Skip MeWEHV and SSL-across-datasets until curated set grows; re-run this bake-off then."
+  ]
+}
