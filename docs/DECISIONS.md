@@ -1,0 +1,40 @@
+# BabyTalk decision log
+
+Product / ML decisions with dates and evidence. Keep **Status** accurate
+(`accepted` / `pending` / `rejected` / `superseded`).
+
+**Format:** Date | Decision | Why | Evidence | Status
+
+---
+
+## Accepted
+
+| Date | Decision | Why | Evidence | Status |
+|------|----------|-----|----------|--------|
+| 2026-07-29 | Emit **word-like** Find-speech candidates (tag-sized), not raw DJW syllable children. Keep longer VAD/diarization regions as internal parents (`parentSpanId`). Ship **DJW + short-gated merge-back** on the production path. | Reviewers tag whole words; raw syllable boxes fail north-star IoU≥0.5 even when they overlap. Whisper word timestamps were worse (over-split + unreliable ASR on baby / Swiss German). Merge-back reunites weak DJW cuts under energy continuity. | `docs/IOU_WHISPER_VS_MERGEBACK.md`; `docs/ARCHITECTURE.md` §4.3; `tools/resegment.py` | accepted |
+| 2026-07-29 | Production merge-back defaults: `require_clearly_short=True`, **`short_piece_ms=400`**, **`max_gap_ms=100`**. Weak valley alone is never sufficient. | Short-gate sweep: **400** protects English verbal IoU (−1.5 vs legacy −8.4) while still helping over-split kits. Tight **100 ms** gap is the conservative production choice until active-audio (not raw oracle gaps) justifies loosening toward &lt;0.5 s word breaks. | `tools/analysis/out/merge_back_short_gate.md`; `tools/analysis/out/merge_back_short_gate.json`; `tools/resegment.py` (`MERGE_BACK_*`) | accepted |
+| ~2026-08 | **Skip vs Dismiss** semantics in Review Browser. **Dismiss** = reject (hide + exclude from clustering). **Skip** = park for later (hidden from open list unless “Show skipped”, still clusterable, preserved on VAD re-run). **Confirm** → Tags. | Reviewers need a third action between “wrong forever” and “confirm now” — e.g. ambiguous / revisit later without poisoning clustering or losing the span on re-find. | `tools/review_server.py` (ML list copy + status handlers); `tools/cluster_sounds.py` (non-dismissed includes skipped); `tools/vad_segments.py` (preserve confirmed/dismissed/skipped) | accepted |
+| 2026-08-02 | Keep **mel** fingerprints for production clustering; do **not** switch to frozen HuBERT / YAMNet / VGGish / PANNs / BYOL-A based on the bake-off alone. | On curated word groups, mel leads (or ties) on leave-one-kit-out gap (mel LOKO mean **0.124** vs HuBERT **0.077**, YAMNet **0.050**). Heavier SSL/event models did not beat mel on this gold set. | `tools/analysis/out/fingerprint_bakeoff/report.md`; `tools/analysis/out/fingerprint_bakeoff/summary.json`; `tools/analysis/out/curated_clusters/report.md` | accepted |
+| 2026-08-02 | Use **human curated / labeled clusters** (not auto-cluster mush or bare word-string matches) as the **gold set** for embedding / fingerprint eval. Filter SHORT fragments and non-verbal where applicable. | Auto clusters and string-collisions mix unrelated acoustics; curated multi-member word groups are the only reliable “same word?” ground truth for gap / within-between scoring. | `tools/analysis/out/curated_clusters/report.md`; `tools/analysis/out/curated_clusters/summary.json`; Clustering tab curation UX | accepted |
+| 2026-08-03 | Ship a **Vocabulary** tab / library-wide **tightness** tracker: rank curated words by mel within-cluster mean cosine distance, with daily history. | Need an ongoing signal for which vocabulary items are loose (prosody / bad members) vs tight — guides curation and future embedding work without re-running one-off bake-offs. | `tools/vocab_tightness.py`; `tools/analysis/out/vocab_tightness/`; `tools/analysis/out/cluster_tightness_history.json`; Review Browser Vocabulary UI | accepted |
+| 2026-08-03 | Treat dismiss+retag boundary misses as mostly **`too_short` / under-cover** on **raw** timestamps (kit `26_07_27__19:53:00`): ~81% of hand-drawn rescue pairs; median cand/tag dur ratio ~0.5; many tags hit by ≥2 dismissed boxes (syllable split). Prefer merge-back / word-like glue over flat edge-pad — but do **not** retune gap/short from raw alone. | Raw-only dismiss-vs-tag deltas: median Δstart −230 ms (ML late), Δend +150 ms (ML early cut). Pad at tens-of-ms cannot fix 200–500 ms under-cover. Raw boxes may include silence; active-audio later accepted **max_gap 100→200** only. | `tools/analysis/out/dismiss_vs_tag_delta_26_07_27.md`; `tools/analysis/out/dismiss_vs_tag_delta_26_07_27.json` | accepted |
+| 2026-08-03 | **Accepted:** keep `short_piece_ms=400`, loosen production **`max_gap_ms` 100 → 200** (`require_clearly_short=True`). Active-audio dismiss-vs-tag showed under-cover is mostly **speech**, not silence; modest gap loosen only. **450/300 remains not accepted.** | Raw and active modes both ~**81% too_short**; median tag/cand active fraction ~1.0 (silence lead/trail median 0; p90 ~30–60 ms). Active median Δstart **−230 ms**, Δend **+140 ms**, dur ratio **0.512** — hundreds of ms of missed *speech*, supporting gap loosen toward &lt;0.5 s word breaks, not a raw-oracle 300 ms jump. Shipped in `MERGE_BACK_MAX_GAP_MS`. | `tools/analysis/out/dismiss_vs_tag_delta_26_07_27_active.md`; `tools/analysis/out/dismiss_vs_tag_delta_26_07_27_active.json`; `tools/analysis/out/dismiss_vs_tag_delta_26_07_27.md` (raw); `tools/resegment.py` | accepted |
+| 2026-08-04 | **Do not** add band-pass pre-filtering before production Find speech / VAD. **Keep** current baseline defaults: no band-pass (fullband); `speechDeltaDb=6`; merge-back on with `short_piece_ms=400`, `max_gap_ms=200`, `require_clearly_short=True`; diarization as in prod (`auto` in Review Browser). | Snippet explorer lab: band-pass + looser gain/merge knobs held any-overlap ~**95%** but hurt north-star — IoU≥0.5 ~**50–59%** vs baseline ~**71%** in the find window, errors shifted toward `too_long`, and `ok` stayed ~**17–22%** vs baseline ~**45%**. Band-pass/gain/merge noodling did not beat fullband baseline; stop pursuing band-pass for now. | User lab runs via `tools/snippet_explorer_server.py` on kit `26_07_27__19:53:00`, find window **120000–720000 ms**; baseline params in `tools/vad_segments.py` (`SPEECH_DELTA_DB`), `tools/resegment.py` (`MERGE_BACK_*`); lab tool remains non-production | accepted |
+
+---
+
+## Pending
+
+| Date | Decision | Why | Evidence | Status |
+|------|----------|-----|----------|--------|
+| 2026-08-04 | **Snippet explorer lab** band-pass + VAD/merge-back exploration (port 8766). **Superseded:** do not ship band-pass; keep production baseline (Accepted 2026-08-04 above). Lab tool may remain for ad-hoc probes. | Closed by lab window runs: band-pass held any-overlap but dropped IoU≥0.5 / `ok` vs fullband baseline — see Accepted row. | `tools/snippet_explorer_server.py`; `tools/README.md` (Snippet explorer lab); Accepted 2026-08-04 | superseded |
+| 2026-08-03 | **`short_piece_ms=450` / `max_gap_ms=300` explored from raw oracle gaps — not accepted for production.** Premature raw sibling-gap wiring rejected; production is **400/200** after active-audio acceptance (Accepted above), not 450/300. | Raw timestamp gaps conflate silence with speech. Active-audio dismiss-vs-tag endorsed only a modest gap loosen (100→200), **not** jumping to 450/300. | `tools/analysis/out/merge_back_gap_tune.json` (raw exploration); `tools/analysis/out/merge_back_short_gate.md`; `tools/analysis/out/dismiss_vs_tag_delta_26_07_27_active.md` | pending |
+
+---
+
+## How to add an entry
+
+1. One row per decision (or pending question). Prefer paths under `docs/` or `tools/analysis/out/`.
+2. Date ≈ when the decision was made (commit date, report mtime, or conversation day).
+3. Keep **Why** to 1–3 sentences; link evidence, don’t paste tables here.
+4. Flip `pending` → `accepted` (or `rejected`) when production defaults or product copy change; leave a one-line note in Why if numbers moved.

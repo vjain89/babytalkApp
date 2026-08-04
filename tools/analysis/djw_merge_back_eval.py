@@ -8,9 +8,8 @@ abutting/near cuts), decide keep-cut vs merge using weak-valley / short-gap
 signals (invert ``WORD_SPLIT``), short piece duration, continuous energy, and
 hard guards (no speaker cross, no long pause, max merged duration).
 
-Pipeline slot: post-resegment (prototype applies on SoTA annotations offline).
-Risks: re-gluing multi-word turns; Complexity **M** for production + calibration
-(S for this standalone eval).
+Pipeline slot: post-resegment (now also wired in production ``resegment.py`` /
+``vad_segments.py`` with short-gated defaults). This script A/B-tests offline.
 
 North-star: manual tags excluding non-verbal (IoU≥0.5); also report verbal-only.
 
@@ -26,8 +25,7 @@ import argparse
 import json
 import sys
 import time
-import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 
 TOOLS_DIR = Path(__file__).resolve().parent.parent
@@ -38,8 +36,8 @@ sys.path.insert(0, str(ANALYSIS_DIR))
 import numpy as np
 import soundfile as sf
 
-import resegment as reseg_mod
 from ml_delta import LIBRARY, VERBAL, compare, load, pct
+from resegment import MergeBackParams, apply_merge_back
 from vad_segments import run_vad_on_audio
 
 OUT_JSON = ANALYSIS_DIR / "out" / "merge_back_eval.json"
@@ -55,35 +53,6 @@ DEFAULT_KITS = ["26_07_27__19:53:00", "26_07_05__00:00:00"]
 SHORT_GATE_ABS_MS = (350.0, 400.0, 450.0, 500.0)
 # Relative gate: min(piece)/session_median_tag < this (~over-split median durRatio).
 SHORT_GATE_DUR_RATIO = 0.65
-
-
-@dataclass(frozen=True)
-class MergeBackParams:
-    """Documented merge-back policy knobs.
-
-    Old (OR) policy: merge when ``short_piece OR weak_valley`` (plus guards).
-
-    Short-gated policy (``require_clearly_short=True``): weak valley alone is
-    **not** enough. Merge only when a piece is clearly short by absolute ms
-    and/or vs session tag-duration median (``dur_ratio_max``), then treat
-    weak-valley as a secondary label only.
-    """
-
-    max_gap_ms: float = 100.0
-    max_merged_ms: float = 1800.0
-    short_piece_ms: float = 550.0
-    weak_dip_db: float = 5.0
-    weak_sep_ms: float = 280.0
-    energy_drop_db: float = 6.0
-    cut_window_ms: float = 80.0
-    # Short-gate refinements (analysis):
-    require_clearly_short: bool = False
-    # If set, also treat min(left,right)/session_median_tag_ms < this as short.
-    # None disables the relative gate. Informed by ~0.65 median durRatio on
-    # over-split cases.
-    dur_ratio_max: float | None = None
-    # Session median tag duration (ms) for dur_ratio_max; filled per kit.
-    session_median_tag_ms: float | None = None
 
 
 def session_median_tag_ms(tags: list[dict], mode: str = "manual_excl_nonverbal") -> float | None:
@@ -133,239 +102,6 @@ def find_kits(library: Path, needles: list[str]) -> list[tuple[str, Path]]:
             print(f"[warn] multiple kits match {needle!r}: {names}; using {matches[0].name}")
         found.append((needle, matches[0]))
     return found
-
-
-# --------------------------------------------------------------------------
-# merge-back
-# --------------------------------------------------------------------------
-
-
-def _mono(audio: np.ndarray) -> np.ndarray:
-    x = np.asarray(audio, dtype=np.float64)
-    if x.ndim > 1:
-        x = x.mean(axis=1)
-    return x
-
-
-def _piece_intensity(
-    audio: np.ndarray, sr: int, start_ms: float, end_ms: float
-) -> tuple[np.ndarray, np.ndarray]:
-    s = max(0, int(start_ms / 1000.0 * sr))
-    e = min(len(audio), int(end_ms / 1000.0 * sr))
-    if e <= s:
-        return np.asarray([0.0]), np.asarray([-80.0])
-    times, intensity = reseg_mod._praat_like_intensity(audio[s:e], sr)
-    return times + start_ms, intensity
-
-
-def _median_db(intensity: np.ndarray) -> float:
-    if intensity.size == 0:
-        return -80.0
-    return float(np.median(intensity))
-
-
-def _region_median(
-    times: np.ndarray, intensity: np.ndarray, lo: float, hi: float
-) -> float:
-    if hi <= lo or times.size == 0:
-        return -80.0
-    mask = (times >= lo) & (times <= hi)
-    if not np.any(mask):
-        # nearest samples
-        mid = 0.5 * (lo + hi)
-        i = int(np.argmin(np.abs(times - mid)))
-        return float(intensity[i])
-    return float(np.median(intensity[mask]))
-
-
-def _cut_features(
-    audio: np.ndarray,
-    sr: int,
-    left: dict,
-    right: dict,
-    params: MergeBackParams,
-) -> dict:
-    a0 = float(left["startMs"])
-    a1 = float(left["endMs"])
-    b0 = float(right["startMs"])
-    b1 = float(right["endMs"])
-    gap = b0 - a1
-    merged_dur = b1 - a0
-
-    times, intensity = _piece_intensity(audio, sr, a0, b1)
-    left_med = _region_median(times, intensity, a0, a1)
-    right_med = _region_median(times, intensity, b0, b1)
-    cut = 0.5 * (a1 + b0) if gap >= 0 else 0.5 * (a1 + b0)
-    win = params.cut_window_ms
-    gap_lo = min(a1, b0) - 0.0
-    gap_hi = max(a1, b0)
-    # Include a thin band around the cut for valley measurement.
-    valley = _region_median(times, intensity, cut - win, cut + win)
-    if gap_hi > gap_lo:
-        valley = min(valley, _region_median(times, intensity, gap_lo, gap_hi))
-    flank = min(left_med, right_med)
-    prom = flank - valley
-    energy_ok = (flank - valley) <= params.energy_drop_db
-
-    min_dur = min(a1 - a0, b1 - b0)
-    short_abs = min_dur < params.short_piece_ms
-    short_rel = False
-    dur_ratio_proxy = None
-    if (
-        params.dur_ratio_max is not None
-        and params.session_median_tag_ms is not None
-        and params.session_median_tag_ms > 0
-    ):
-        dur_ratio_proxy = min_dur / params.session_median_tag_ms
-        short_rel = dur_ratio_proxy < params.dur_ratio_max
-    clearly_short = short_abs or short_rel
-
-    return {
-        "gapMs": round(gap, 1),
-        "mergedDurMs": round(merged_dur, 1),
-        "leftDurMs": round(a1 - a0, 1),
-        "rightDurMs": round(b1 - b0, 1),
-        "minDurMs": round(min_dur, 1),
-        "promDb": round(prom, 2),
-        "valleyDb": round(valley, 2),
-        "leftMedDb": round(left_med, 2),
-        "rightMedDb": round(right_med, 2),
-        "energyOk": bool(energy_ok),
-        "shortPiece": short_abs,
-        "shortRel": short_rel,
-        "clearlyShort": clearly_short,
-        "durRatioProxy": None if dur_ratio_proxy is None else round(dur_ratio_proxy, 3),
-        "weakValley": prom < params.weak_dip_db and gap <= params.weak_sep_ms,
-    }
-
-
-def should_merge(
-    left: dict,
-    right: dict,
-    feats: dict,
-    params: MergeBackParams,
-) -> tuple[bool, str]:
-    if left.get("parentSpanId") and right.get("parentSpanId"):
-        if left["parentSpanId"] != right["parentSpanId"]:
-            return False, "diff_parent"
-    else:
-        return False, "missing_parent"
-
-    sc_l = left.get("speakerCluster")
-    sc_r = right.get("speakerCluster")
-    if sc_l is not None and sc_r is not None and sc_l != sc_r:
-        return False, "diff_speaker"
-
-    gap = feats["gapMs"]
-    if gap < -20:
-        return False, "overlap"
-    if gap > params.max_gap_ms:
-        return False, "long_pause"
-    if feats["mergedDurMs"] > params.max_merged_ms:
-        return False, "max_merged"
-    if not feats["energyOk"]:
-        return False, "energy_drop"
-
-    if params.require_clearly_short:
-        # Short-gated: clearly short is required; weak valley alone insufficient.
-        if not feats["clearlyShort"]:
-            return False, "not_clearly_short"
-        why = []
-        if feats["shortPiece"]:
-            why.append("short_abs")
-        if feats.get("shortRel"):
-            why.append("short_rel")
-        if feats["weakValley"]:
-            why.append("weak_valley")  # secondary signal only
-        return True, "+".join(why) if why else "clearly_short"
-
-    # Legacy OR policy.
-    if feats["shortPiece"] or feats["weakValley"]:
-        why = []
-        if feats["shortPiece"]:
-            why.append("short_piece")
-        if feats["weakValley"]:
-            why.append("weak_valley")
-        return True, "+".join(why)
-    return False, "no_signal"
-
-
-def merge_pair(left: dict, right: dict) -> dict:
-    out = dict(left)
-    out["uuid"] = str(uuid.uuid4())
-    out["endMs"] = int(round(right["endMs"]))
-    out["startMs"] = int(round(left["startMs"]))
-    out["tMs"] = out["startMs"]
-    # Keep the stronger speechScore if present.
-    scores = [left.get("speechScore"), right.get("speechScore")]
-    scores = [s for s in scores if s is not None]
-    if scores:
-        out["speechScore"] = max(scores)
-    scores2 = [left.get("score"), right.get("score")]
-    scores2 = [s for s in scores2 if s is not None]
-    if scores2:
-        out["score"] = max(scores2)
-    flags = list(left.get("flags") or [])
-    for f in right.get("flags") or []:
-        if f not in flags:
-            flags.append(f)
-    flags.append("merge_back")
-    out["flags"] = flags
-    out["splitBy"] = "merge_back"
-    out["_mergedFrom"] = [left.get("uuid"), right.get("uuid")]
-    return out
-
-
-def apply_merge_back(
-    cands: list[dict],
-    audio: np.ndarray,
-    sr: int,
-    params: MergeBackParams,
-) -> tuple[list[dict], dict]:
-    """Greedy left-to-right merge of sibling DJW children."""
-    audio = _mono(audio)
-    by_parent: dict[str, list[dict]] = {}
-    orphans: list[dict] = []
-    for c in cands:
-        pid = c.get("parentSpanId")
-        if not pid:
-            orphans.append(dict(c))
-            continue
-        by_parent.setdefault(pid, []).append(dict(c))
-
-    stats = {
-        "nIn": len(cands),
-        "nParents": len(by_parent),
-        "nMerges": 0,
-        "nConsidered": 0,
-        "rejectReasons": {},
-        "mergeReasons": {},
-    }
-
-    out: list[dict] = list(orphans)
-    for _pid, sibs in by_parent.items():
-        sibs = sorted(sibs, key=lambda x: (float(x["startMs"]), float(x["endMs"])))
-        if len(sibs) == 1:
-            out.append(sibs[0])
-            continue
-        acc = sibs[0]
-        for nxt in sibs[1:]:
-            feats = _cut_features(audio, sr, acc, nxt, params)
-            stats["nConsidered"] += 1
-            ok, reason = should_merge(acc, nxt, feats, params)
-            if ok:
-                acc = merge_pair(acc, nxt)
-                stats["nMerges"] += 1
-                stats["mergeReasons"][reason] = stats["mergeReasons"].get(reason, 0) + 1
-            else:
-                stats["rejectReasons"][reason] = stats["rejectReasons"].get(reason, 0) + 1
-                out.append(acc)
-                acc = nxt
-        out.append(acc)
-
-    out.sort(key=lambda x: (float(x["startMs"]), float(x["endMs"])))
-    stats["nOut"] = len(out)
-    return out, stats
 
 
 # --------------------------------------------------------------------------
@@ -521,7 +257,14 @@ def _policy_label(params: MergeBackParams) -> str:
 def short_gate_policies(base: MergeBackParams) -> list[tuple[str, MergeBackParams]]:
     """Legacy OR + short-required absolute sweep + one relative gate."""
     out: list[tuple[str, MergeBackParams]] = []
-    legacy = MergeBackParams(**{**asdict(base), "require_clearly_short": False, "dur_ratio_max": None})
+    legacy = MergeBackParams(
+        **{
+            **asdict(base),
+            "short_piece_ms": 550.0,
+            "require_clearly_short": False,
+            "dur_ratio_max": None,
+        }
+    )
     out.append((_policy_label(legacy), legacy))
     for ms in SHORT_GATE_ABS_MS:
         p = MergeBackParams(
@@ -668,7 +411,8 @@ def run_short_gate_sweep(
         audio, sr, audio_path = load_audio(kit)
         t0 = time.time()
         baseline, stats = run_vad_on_audio(
-            audio_path, diarization=diarization, resegment=True
+            audio_path, diarization=diarization, resegment=True,
+            merge_back=False,
         )
         elapsed = time.time() - t0
         before = score_kit(tags, baseline)
@@ -993,7 +737,7 @@ def main() -> int:
         audio, sr, audio_path = load_audio(kit)
         t0 = time.time()
         baseline, stats = run_vad_on_audio(
-            audio_path, diarization=args.diarization, resegment=True
+            audio_path, diarization=args.diarization, resegment=True, merge_back=False
         )
         elapsed = time.time() - t0
         print(

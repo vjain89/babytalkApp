@@ -9,9 +9,10 @@ Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - vegetative: optional note (no language)
   - language defaults to Swiss German dialect; also Spanish / English
   - find speech segments (VAD → speaker diarization) → provisional ML candidates
-  - confirm or dismiss ML candidates (assign category + speaker / word+phonetic / language)
+  - confirm, skip, or dismiss ML candidates (assign category + speaker / word+phonetic / language)
   - optional local Whisper suggestion per snippet (never overwrites your labels)
   - Clustering tab: group similar spans, review confidence, label clusters
+  - Vocabulary tab: curated word clusters across kits, ranked by mel tightness
   - Sync with iPhone (USB) to pull kits and push tags.json
 
 Usage:
@@ -285,7 +286,12 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
             SPLIT_TARGET_MS,
             process_kit,
         )
-        from resegment import RESEG_TARGET_MS
+        from resegment import (
+            MERGE_BACK_MAX_GAP_MS,
+            MERGE_BACK_SHORT_PIECE_MS,
+            MergeBackParams,
+            RESEG_TARGET_MS,
+        )
     except ImportError as e:
         return {
             "ok": False,
@@ -312,6 +318,10 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
     except (TypeError, ValueError):
         num_speakers = None
 
+    mb_params = MergeBackParams(
+        short_piece_ms=_num("mergeBackShortPieceMs", MERGE_BACK_SHORT_PIECE_MS),
+        max_gap_ms=_num("mergeBackMaxGapMs", MERGE_BACK_MAX_GAP_MS),
+    )
     try:
         result = process_kit(
             kit,
@@ -324,6 +334,8 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
             num_speakers=num_speakers,
             resegment=bool(body.get("resegment", True)),
             reseg_target_ms=_num("resegTargetMs", RESEG_TARGET_MS),
+            merge_back=bool(body.get("mergeBack", True)),
+            merge_back_params=mb_params,
             segmentation=segmentation,
             write=True,
         )
@@ -832,9 +844,69 @@ HTML = r"""<!DOCTYPE html>
   .main-tabs button.active {
     background: var(--ink); color: var(--on-ink); border-color: var(--ink);
   }
-  #clusterTab { display: none; }
-  #clusterTab.active { display: block; }
+  #clusterTab, #vocabTab { display: none; }
+  #clusterTab.active, #vocabTab.active { display: block; }
   #reviewTab.hidden { display: none; }
+  .vocab-blurb {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px; line-height: 1.5;
+    margin: 0 0 12px; padding: 10px 12px;
+    background: var(--help-bg); border: 1px solid var(--help-line); border-radius: 8px;
+    color: var(--ink); max-width: 760px;
+  }
+  .vocab-blurb strong { font-weight: 600; }
+  .vocab-blurb ol { margin: 8px 0 0; padding-left: 1.25em; }
+  .vocab-blurb li { margin: 4px 0; }
+  .vocab-toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin: 0 0 12px; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .vocab-chart-wrap {
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+    padding: 10px 12px; margin: 0 0 14px; max-width: 760px;
+  }
+  .vocab-chart-wrap h3 {
+    margin: 0 0 6px; font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+  }
+  .vocab-chart-wrap canvas { display: block; width: 100%; height: 120px; }
+  .vocab-table-wrap {
+    overflow: auto; max-height: min(52vh, 520px);
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  }
+  table.vocab-table {
+    width: 100%; border-collapse: collapse;
+    font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
+  }
+  table.vocab-table th, table.vocab-table td {
+    padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  table.vocab-table th {
+    position: sticky; top: 0; background: var(--surface-2); color: var(--muted);
+    font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+    z-index: 1;
+  }
+  table.vocab-table tr { cursor: pointer; }
+  table.vocab-table tr:hover td { background: var(--hover); }
+  table.vocab-table tr.active td { background: var(--selected-row); }
+  table.vocab-table .num { font-variant-numeric: tabular-nums; text-align: right; }
+  table.vocab-table .muted-cell { color: var(--muted); }
+  table.vocab-table .rank-up { color: #3d8b5f; }
+  table.vocab-table .rank-down { color: #b85c38; }
+  table.vocab-table .rank-new { color: var(--accent, #7aa2ff); font-size: 11px; }
+  .vocab-detail {
+    margin-top: 14px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); padding: 12px 14px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .vocab-detail h3 { margin: 0 0 8px; font-size: 16px; }
+  .vocab-kit-block { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .vocab-kit-block h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .vocab-member {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    font-size: 13px; margin: 4px 0;
+  }
   .cluster-toolbar {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
     margin: 0 0 14px; font-family: ui-sans-serif, system-ui, sans-serif;
@@ -1192,9 +1264,15 @@ applyTheme(false);
 
 let kits = [];
 let current = null;
+let showSkippedAnns = false;
 let clusterDoc = null;
 let activeClusterId = null;
 let showSingletonClusters = false;
+let vocabDoc = null;
+let activeVocabKey = null;
+let vocabPollTimer = null;
+let vocabAudioStopTimer = null;
+let vocabAudioKit = null;
 /** Tag whose row is expanded in the compact Tags list (null = all collapsed). */
 let selectedTagUuid = null;
 let tagFilterText = '';
@@ -1610,6 +1688,13 @@ function hasSnippet() {
   return selStart != null && selEnd != null && (selEnd - selStart) >= MIN_SNIPPET;
 }
 
+/** After selStart/selEnd change: sync inputs and redraw so amplitude auto-scale updates. */
+function refreshWaveSel() {
+  syncSelInputs();
+  if (audioBuf) drawWave();
+  else paintOverlays();
+}
+
 function normalizeSel() {
   if (selStart == null || selEnd == null) return;
   if (selStart > selEnd) {
@@ -1824,8 +1909,7 @@ function seekWordFromCloud(word) {
   const b = tag.endMs != null ? tag.endMs / 1000 : a + 0.3;
   selStart = a; selEnd = b; normalizeSel();
   setPlayhead(selStart);
-  syncSelInputs();
-  paintOverlays();
+  refreshWaveSel();
   startBufferPlayback(selStart, selEnd);
 }
 
@@ -2032,7 +2116,7 @@ async function refresh() {
       const list = months.get(mi).slice().sort((a, b) => kitCreatedAt(b) - kitCreatedAt(a));
       for (const k of list) {
         const nTags = (k.tags || []).length;
-        const nOpen = (k.annotations || []).filter(a => a.status !== 'confirmed' && a.status !== 'dismissed').length;
+        const nOpen = (k.annotations || []).filter(a => a.status !== 'confirmed' && a.status !== 'dismissed' && a.status !== 'skipped').length;
         const name = displayName(k);
         const orig = originalName(k);
         const origBit = orig && orig !== name
@@ -2087,6 +2171,7 @@ function renderShell() {
     <div class="main-tabs">
       <button type="button" class="active" data-tab="review">Review</button>
       <button type="button" data-tab="cluster">Clustering</button>
+      <button type="button" data-tab="vocab">Vocabulary</button>
     </div>
     <div id="reviewTab">
     <div class="help">
@@ -2205,17 +2290,21 @@ function renderShell() {
         clusters them, and cuts each span wherever the speaker changes, so a parent/baby/parent
         stretch becomes separate candidates tagged <span class="sub">SPEAKER_00</span> etc.
         Same-speaker spans still over 4s are then split at their deepest internal pause.
-        Each remaining span is cut into <strong>syllable / short-utterance</strong> pieces
-        via a de Jong &amp; Wempe–style intensity-peak detector (preceding-dip + voiced nuclei,
-        target ~1.2s) so multi-word blobs become tag-sized proposals. Speaker ids are a <em>guess and unnamed</em> — they group turns,
+        Each remaining span is cut with de Jong &amp; Wempe nuclei, then
+        <strong>short-gated merge-back</strong> (clearly-short pieces under ~400&nbsp;ms,
+        gaps up to ~200&nbsp;ms)
+        so Review sees <strong>word-like</strong> tag-sized candidates — not raw syllable
+        shards. Speaker ids are a <em>guess and unnamed</em> — they group turns,
         they don't know who's the baby — so on confirm you still assign a <strong>category</strong> and
         <strong>speaker</strong> (verbal: <strong>word</strong> + optional <strong>phonetic</strong>;
         non-verbal: optional <strong>phonetic</strong>).
         <span class="sub">Limits</span> overlapping speech goes to one speaker only, and a
-        toddler imitating a parent can land in the wrong cluster. Syllable cuts are acoustic
-        (not dictionary words) — run-together words may stay one piece.
+        toddler imitating a parent can land in the wrong cluster. Cuts are acoustic
+        (not dictionary words) — run-together phrases may stay one piece.
         Use <strong>Suggest</strong> for a local Whisper draft (comparison only; never auto-fills your labels).
-        Confirm removes it from this list and adds it to Tags; dismiss hides it here.
+        Confirm removes it from this list and adds it to Tags; dismiss hides it here and
+        excludes it from clustering; <strong>Skip</strong> parks it for later (hidden from
+        the open list, still eligible for clustering, preserved on re-run).
         Re-run replaces provisional VAD/ml_v0 suggestions only, and skips spans already tagged.
       </p>
       <div class="meta-actions" style="margin:0 0 10px">
@@ -2228,6 +2317,9 @@ function renderShell() {
             <option value="3">3</option>
             <option value="4">4</option>
           </select>
+        </label>
+        <label class="muted" id="showSkippedLabel" style="display:none">
+          <input type="checkbox" id="chkShowSkipped"/> Show skipped (<span id="skippedCount">0</span>)
         </label>
         <span class="muted" id="vadHint"></span>
       </div>
@@ -2258,8 +2350,10 @@ function renderShell() {
     </div>
     <div id="clusterTab">
       <p class="muted sans" style="margin:0 0 10px">
-        Groups similar spans in this session (tags + non-dismissed VAD) into
-        <strong>same-voice</strong> clusters (Baby/Parent/Other, else SPEAKER_xx).
+        Groups similar <strong>word-like</strong> spans in this session (manual tags +
+        non-dismissed VAD candidates) into <strong>same-voice</strong> clusters
+        (Baby/Parent/Other, else SPEAKER_xx). Inputs match Find speech segments:
+        tag-sized proposals after DJW + merge-back — not raw syllable shards.
         Unlabeled spans only merge with other unlabeled spans. Labels are stored on the
         <strong>cluster</strong> only (not auto-copied onto tags). <code>conceptIds</code> reserved for
         future many↔many developmental concepts. Exclude outliers before trusting a group.
@@ -2306,6 +2400,38 @@ function renderShell() {
         </div>
       </div>
     </div>
+    <div id="vocabTab">
+      <div class="vocab-blurb">
+        <strong>What is this?</strong>
+        Each row is one word you’ve curated in Clustering — same spelling is
+        merged across sessions. <em>Tightness</em> is how similar those clips
+        sound (mel fingerprint, mean pairwise cosine distance).
+        <strong>Lower = tighter</strong> (more consistent). Rank&nbsp;1 is
+        today’s tightest group.
+        <ol>
+          <li><strong>Listen to loose words</strong> (bottom of the table) — a bad member or two pronunciations mixed together often explain them.</li>
+          <li><strong>Keep labeling</strong> the same word in other kits; cross-kit rows get more trustworthy.</li>
+          <li><strong>Refresh snapshot</strong> after big curation sessions so today’s ranks and the chart update (opening the tab also picks up new clusters automatically).</li>
+        </ol>
+      </div>
+      <div class="vocab-toolbar">
+        <button type="button" class="primary" id="btnVocabRefresh">Refresh snapshot</button>
+        <span class="muted" id="vocabStatus">Open this tab to load rankings…</span>
+      </div>
+      <div class="vocab-chart-wrap">
+        <h3>Merged word clusters over time</h3>
+        <canvas id="vocabChart" width="760" height="120"></canvas>
+        <p class="muted" style="margin:6px 0 0;font-size:12px" id="vocabChartHint">Needs at least one daily snapshot.</p>
+      </div>
+      <div class="vocab-table-wrap">
+        <table class="vocab-table">
+          <thead id="vocabThead"></thead>
+          <tbody id="vocabTbody"></tbody>
+        </table>
+      </div>
+      <div id="vocabDetail" class="vocab-detail" style="display:none"></div>
+      <audio id="vocabAudio" preload="none" style="display:none"></audio>
+    </div>
   `;
   wireMainTabs();
   wireTransport();
@@ -2314,6 +2440,7 @@ function renderShell() {
   wireMetaForm();
   wireVad();
   wireClusterTab();
+  wireVocabTab();
   wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
   wireCategoryDetail(document.querySelector('.tag-form'));
   renderLists();
@@ -2393,9 +2520,12 @@ function wireMainTabs() {
       const tab = btn.dataset.tab;
       const review = document.getElementById('reviewTab');
       const cluster = document.getElementById('clusterTab');
+      const vocab = document.getElementById('vocabTab');
       if (review) review.classList.toggle('hidden', tab !== 'review');
       if (cluster) cluster.classList.toggle('active', tab === 'cluster');
+      if (vocab) vocab.classList.toggle('active', tab === 'vocab');
       if (tab === 'cluster') void loadClusters();
+      if (tab === 'vocab') void loadVocabTightness();
     };
   });
 }
@@ -2464,6 +2594,310 @@ function wireClusterTab() {
       }
     };
   }
+}
+
+function wireVocabTab() {
+  const btn = document.getElementById('btnVocabRefresh');
+  if (btn) {
+    btn.onclick = () => void loadVocabTightness({ force: true });
+  }
+}
+
+function setVocabStatus(msg) {
+  const el = document.getElementById('vocabStatus');
+  if (el) el.textContent = msg || '';
+}
+
+function stopVocabPoll() {
+  if (vocabPollTimer) {
+    clearInterval(vocabPollTimer);
+    vocabPollTimer = null;
+  }
+}
+
+async function pollVocabStatus() {
+  try {
+    const res = await fetch('/api/vocab/status');
+    const st = await res.json();
+    if (!st) return st;
+    if (st.busy) {
+      const tot = st.total || 0;
+      const done = st.done || 0;
+      const pct = tot ? ` ${done}/${tot}` : '';
+      setVocabStatus((st.message || st.phase || 'Working…') + pct);
+    }
+    return st;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function loadVocabTightness(opts) {
+  const force = !!(opts && opts.force);
+  const btn = document.getElementById('btnVocabRefresh');
+  if (btn) btn.disabled = true;
+  stopVocabPoll();
+  setVocabStatus(force ? 'Refreshing snapshot…' : 'Loading vocabulary rankings…');
+  try {
+    // Kick async compute when needed; poll until ready.
+    const startRes = await fetch('/api/vocab/tightness?async=1' + (force ? '&force=1' : ''));
+    let data = await startRes.json();
+    if (data.pending || (data.status && data.status.busy)) {
+      setVocabStatus(data.status && data.status.message ? data.status.message : 'Computing embeddings…');
+      await new Promise((resolve, reject) => {
+        let tries = 0;
+        vocabPollTimer = setInterval(async () => {
+          tries += 1;
+          const st = await pollVocabStatus();
+          if (st && !st.busy) {
+            stopVocabPoll();
+            resolve();
+          } else if (tries > 600) {
+            stopVocabPoll();
+            reject(new Error('Timed out waiting for vocabulary ranking'));
+          }
+        }, 500);
+      });
+      const res2 = await fetch('/api/vocab/tightness');
+      data = await res2.json();
+    }
+    if (!data.ok) throw new Error(data.error || 'vocab load failed');
+    vocabDoc = data;
+    const n = (data.clusters || []).length;
+    const snap = data.snapshot_written ? ' · snapshot saved' : (data.from_cache ? ' · cached' : '');
+    const days = (data.history_days || []).length;
+    setVocabStatus(`${n} word clusters · ${days} day(s) of history${snap}`);
+    renderVocabTable();
+    renderVocabChart();
+    if (activeVocabKey) renderVocabDetail(activeVocabKey);
+  } catch (err) {
+    setVocabStatus(err.message || String(err));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderVocabTable() {
+  const thead = document.getElementById('vocabThead');
+  const tbody = document.getElementById('vocabTbody');
+  if (!thead || !tbody) return;
+  if (!vocabDoc || !(vocabDoc.clusters || []).length) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td class="muted-cell" style="padding:14px">No curated multi-member word clusters found yet. Label clusters in the Clustering tab first.</td></tr>';
+    return;
+  }
+  const histDays = vocabDoc.history_days || [];
+  const dayHeads = histDays.map(d => {
+    const short = String(d).slice(5); // MM-DD
+    return `<th class="num" title="${esc(d)}">${esc(short)}</th>`;
+  }).join('');
+  thead.innerHTML = `<tr>
+    <th class="num">Rank</th>
+    <th class="num" title="Change vs previous snapshot day">Δ</th>
+    <th>Word</th>
+    <th class="num">Tightness</th>
+    <th class="num">Members</th>
+    <th class="num">Kits</th>
+    ${dayHeads}
+  </tr>`;
+  tbody.innerHTML = vocabDoc.clusters.map(c => {
+    const tight = c.tightness == null ? '—' : Number(c.tightness).toFixed(3);
+    const byDay = c.rank_by_day || {};
+    const dayCells = histDays.map(d => {
+      const r = byDay[d];
+      return `<td class="num muted-cell">${r == null ? '—' : r}</td>`;
+    }).join('');
+    let deltaCell = '<td class="num muted-cell">—</td>';
+    if (c.is_new) {
+      deltaCell = '<td class="num rank-new">new</td>';
+    } else if (c.rank_delta != null && c.rank_delta !== 0) {
+      const up = c.rank_delta > 0;
+      const cls = up ? 'rank-up' : 'rank-down';
+      const arrow = up ? '↑' : '↓';
+      deltaCell = `<td class="num ${cls}" title="${up ? 'tighter' : 'looser'} vs prior day">${arrow}${Math.abs(c.rank_delta)}</td>`;
+    } else if (c.rank_delta === 0) {
+      deltaCell = '<td class="num muted-cell">·</td>';
+    }
+    const active = c.label_key === activeVocabKey ? ' active' : '';
+    return `<tr class="${active}" data-vkey="${esc(c.label_key)}">
+      <td class="num">${c.rank}</td>
+      ${deltaCell}
+      <td><strong>${esc(c.label)}</strong></td>
+      <td class="num">${tight}</td>
+      <td class="num">${c.n_members}</td>
+      <td class="num">${c.n_kits}</td>
+      ${dayCells}
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-vkey]').forEach(row => {
+    row.onclick = () => {
+      activeVocabKey = row.dataset.vkey;
+      renderVocabTable();
+      renderVocabDetail(activeVocabKey);
+    };
+  });
+}
+
+function renderVocabChart() {
+  const canvas = document.getElementById('vocabChart');
+  const hint = document.getElementById('vocabChartHint');
+  if (!canvas) return;
+  const series = (vocabDoc && vocabDoc.history_series) || [];
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const styles = getComputedStyle(document.documentElement);
+  const ink = styles.getPropertyValue('--ink').trim() || '#efe9e0';
+  const muted = styles.getPropertyValue('--muted').trim() || '#9a9288';
+  const line = styles.getPropertyValue('--line').trim() || '#3a342c';
+  const accent = styles.getPropertyValue('--accent').trim() || '#7aa2ff';
+  const surface = styles.getPropertyValue('--surface').trim() || '#25211c';
+  ctx.fillStyle = surface;
+  ctx.fillRect(0, 0, w, h);
+  if (series.length < 1) {
+    if (hint) hint.textContent = 'Needs at least one daily snapshot.';
+    ctx.fillStyle = muted;
+    ctx.font = '12px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillText('No history yet', 16, h / 2);
+    return;
+  }
+  if (hint) {
+    hint.textContent = series.length === 1
+      ? 'First snapshot only — more days will appear as you refresh over time.'
+      : `${series.length} snapshots · total merged clusters per day`;
+  }
+  const padL = 36, padR = 12, padT = 12, padB = 28;
+  const vals = series.map(s => Number(s.n_clusters) || 0);
+  const vmin = 0;
+  const vmax = Math.max(1, ...vals);
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  // grid
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + plotH);
+  ctx.lineTo(padL + plotW, padT + plotH);
+  ctx.stroke();
+  ctx.fillStyle = muted;
+  ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
+  ctx.fillText(String(vmax), 4, padT + 8);
+  ctx.fillText('0', 8, padT + plotH);
+  const n = series.length;
+  const xAt = i => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const yAt = v => padT + plotH - ((v - vmin) / (vmax - vmin)) * plotH;
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  series.forEach((s, i) => {
+    const x = xAt(i);
+    const y = yAt(vals[i]);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  series.forEach((s, i) => {
+    const x = xAt(i);
+    const y = yAt(vals[i]);
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = muted;
+    const lab = String(s.date || '').slice(5);
+    ctx.fillText(lab, x - 12, h - 8);
+  });
+}
+
+function stopVocabAudio() {
+  const a = document.getElementById('vocabAudio');
+  if (vocabAudioStopTimer) {
+    clearTimeout(vocabAudioStopTimer);
+    vocabAudioStopTimer = null;
+  }
+  if (a) {
+    try { a.pause(); } catch (_) {}
+  }
+}
+
+function playVocabMember(m) {
+  const a = document.getElementById('vocabAudio');
+  if (!a || !m) return;
+  stopVocabAudio();
+  const url = m.audioUrl || ('/audio?kit=' + encodeURIComponent(m.kit || ''));
+  const start = (m.startMs || 0) / 1000;
+  const end = (m.endMs || 0) / 1000;
+  const dur = Math.max(0.05, end - start);
+  const needLoad = vocabAudioKit !== url || !a.src || a.src.indexOf(url) < 0;
+  const startPlay = () => {
+    try {
+      a.currentTime = start;
+    } catch (_) {}
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+    vocabAudioStopTimer = setTimeout(() => {
+      try { a.pause(); } catch (_) {}
+    }, dur * 1000 + 40);
+  };
+  if (needLoad) {
+    vocabAudioKit = url;
+    a.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+    a.onloadeddata = () => {
+      a.onloadeddata = null;
+      startPlay();
+    };
+    a.load();
+  } else {
+    startPlay();
+  }
+}
+
+function renderVocabDetail(labelKey) {
+  const el = document.getElementById('vocabDetail');
+  if (!el || !vocabDoc) return;
+  const c = (vocabDoc.clusters || []).find(x => x.label_key === labelKey);
+  if (!c) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.style.display = 'block';
+  const tight = c.tightness == null ? '—' : Number(c.tightness).toFixed(3);
+  const kitsHtml = (c.kit_clusters || []).map(kc => {
+    const members = (kc.members || []).map(m => `
+      <div class="vocab-member">
+        <span>${((m.startMs || 0) / 1000).toFixed(2)}s–${((m.endMs || 0) / 1000).toFixed(2)}s</span>
+        <span class="muted" style="font-variant-numeric:tabular-nums">${m.durMs != null ? m.durMs + 'ms' : ''}</span>
+        <span class="pill">${esc(m.speaker || '?')}</span>
+        <button type="button" data-act="play">Play</button>
+      </div>`).join('');
+    return `<div class="vocab-kit-block" data-kit="${esc(kc.kit)}">
+      <h4>${esc(kc.kit_display || kc.kit)} · ${esc(kc.label || c.label)} · ${(kc.members || []).length} clips</h4>
+      <p class="muted" style="margin:0 0 6px;font-size:11px">${esc(kc.kit)}</p>
+      ${members || '<p class="muted">No members</p>'}
+    </div>`;
+  }).join('');
+  el.innerHTML = `
+    <h3>${esc(c.label)} <span class="muted" style="font-weight:400;font-size:13px">rank ${c.rank} · tightness ${tight} · ${c.n_members} members · ${c.n_kits} kit(s)</span></h3>
+    <p class="muted" style="margin:0 0 4px;font-size:12px">Play uses each kit’s audio (does not switch the Review session).</p>
+    ${kitsHtml || '<p class="muted">No kit detail</p>'}
+  `;
+  el.querySelectorAll('.vocab-kit-block').forEach(block => {
+    const kitName = block.dataset.kit;
+    const kc = (c.kit_clusters || []).find(x => x.kit === kitName);
+    if (!kc) return;
+    block.querySelectorAll('.vocab-member').forEach((row, idx) => {
+      const m = (kc.members || [])[idx];
+      const btn = row.querySelector('button[data-act="play"]');
+      if (btn && m) {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          playVocabMember(m);
+        };
+      }
+    });
+  });
 }
 
 async function loadClusters() {
@@ -2836,7 +3270,7 @@ async function renderClusterDetail(cid) {
           selEnd = m.endMs / 1000;
           normalizeSel();
           setPlayhead(selStart);
-          syncSelInputs();
+          refreshWaveSel();
           startBufferPlayback(selStart, selEnd);
           return;
         }
@@ -3078,7 +3512,7 @@ function wireTransport() {
       selEnd = Math.min(durationSec, selStart + 0.3);
     }
     normalizeSel();
-    syncSelInputs(); paintOverlays();
+    refreshWaveSel();
   };
   document.getElementById('btnMarkOut').onclick = () => {
     pauseIfPlaying();
@@ -3087,11 +3521,11 @@ function wireTransport() {
       selStart = Math.max(0, selEnd - 0.3);
     }
     normalizeSel();
-    syncSelInputs(); paintOverlays();
+    refreshWaveSel();
   };
   document.getElementById('btnClearSel').onclick = () => {
     pauseIfPlaying();
-    selStart = selEnd = null; syncSelInputs(); paintOverlays();
+    selStart = selEnd = null; refreshWaveSel();
   };
   document.getElementById('btnAdd').onclick = addTag;
   document.getElementById('btnZoomIn').onclick = () => zoomBy(0.7);
@@ -3106,7 +3540,7 @@ function wireTransport() {
     selStart = Math.max(0, Math.min(v, (selEnd ?? durationSec) - MIN_SNIPPET));
     if (selEnd == null) selEnd = Math.min(durationSec, selStart + 0.3);
     normalizeSel();
-    syncSelInputs(); paintOverlays();
+    refreshWaveSel();
   };
   document.getElementById('endInput').onchange = () => {
     const v = parseFloat(document.getElementById('endInput').value);
@@ -3115,7 +3549,7 @@ function wireTransport() {
     selEnd = Math.min(durationSec, Math.max(v, (selStart ?? 0) + MIN_SNIPPET));
     if (selStart == null) selStart = Math.max(0, selEnd - 0.3);
     normalizeSel();
-    syncSelInputs(); paintOverlays();
+    refreshWaveSel();
   };
   const canvas = document.getElementById('wave');
   canvas.onpointerdown = onPointerDown;
@@ -3150,8 +3584,7 @@ function wireHandles() {
     } else {
       selEnd = Math.min(durationSec, Math.max(t, selStart + MIN_SNIPPET));
     }
-    syncSelInputs();
-    paintOverlays();
+    refreshWaveSel();
   };
   const up = () => { handleDrag = null; };
   left.onpointermove = move;
@@ -3286,7 +3719,7 @@ function onPointerDown(e) {
   selStart = dragAnchor;
   selEnd = dragAnchor;
   setPlayhead(dragAnchor);
-  syncSelInputs(); paintOverlays();
+  refreshWaveSel();
   e.target.setPointerCapture?.(e.pointerId);
 }
 
@@ -3306,7 +3739,7 @@ function onPointerMove(e) {
   }
   if (!dragging) return;
   selEnd = xToTime(e.clientX);
-  syncSelInputs(); paintOverlays();
+  refreshWaveSel();
 }
 
 function onPointerUp(e) {
@@ -3327,7 +3760,7 @@ function onPointerUp(e) {
     normalizeSel();
     setPlayhead(selStart);
   }
-  syncSelInputs(); paintOverlays();
+  refreshWaveSel();
   updatePlayButton();
 }
 
@@ -3410,8 +3843,42 @@ function drawWaveEmpty() {
   ctx.fillText('Waveform unavailable — you can still mark in/out while playing.', 16, h/2);
 }
 
-function drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h) {
+// Min abs peak (full-scale PCM) before auto-gain; below this we avoid exploding silence/noise.
+const WAVE_SILENCE_PEAK = 0.004;
+
+function peakAbsSamples(data, sampleStart, sampleEnd) {
+  let peak = 0;
+  const lo = Math.max(0, Math.floor(sampleStart));
+  const hi = Math.min(data.length, Math.ceil(sampleEnd));
+  for (let i = lo; i < hi; i++) {
+    const a = Math.abs(data[i]);
+    if (a > peak) peak = a;
+  }
+  return peak;
+}
+
+/** Gain so sample peak ≈ ±1 before the usual 0.92 headroom. No selection → 1 (global scale). */
+function waveAmpScale(data, sampleStart, sampleEnd) {
+  if (!hasSnippet() || !audioBuf) return 1;
+  const sr = audioBuf.sampleRate;
+  const a = Math.min(selStart, selEnd);
+  const b = Math.max(selStart, selEnd);
+  const va = Math.max(a, viewStart);
+  const vb = Math.min(b, viewEnd());
+  if (vb > va) {
+    const selPeak = peakAbsSamples(data, va * sr, vb * sr);
+    if (selPeak >= WAVE_SILENCE_PEAK) return 1 / selPeak;
+  }
+  // Silent / tiny selection: scale to visible view peaks instead of amplifying noise.
+  const viewPeak = peakAbsSamples(data, sampleStart, sampleEnd);
+  if (viewPeak >= WAVE_SILENCE_PEAK) return 1 / viewPeak;
+  return 1;
+}
+
+function drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h, ampScale) {
   const mid = h / 2;
+  const gain = (ampScale > 0) ? ampScale : 1;
+  const yGain = mid * 0.92 * gain;
   const span = Math.max(1, sampleEnd - sampleStart);
   ctx.strokeStyle = cssVar('--wave-ink', '#5c5c5c');
   ctx.lineWidth = 1;
@@ -3428,8 +3895,8 @@ function drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h) {
     if (s1 <= s0 && s0 < data.length) {
       min = max = data[s0];
     }
-    ctx.moveTo(x, mid + min * mid * 0.92);
-    ctx.lineTo(x, mid + max * mid * 0.92);
+    ctx.moveTo(x, mid + min * yGain);
+    ctx.lineTo(x, mid + max * yGain);
   }
   ctx.stroke();
   ctx.strokeStyle = cssVar('--wave-mid', '#ddd5c8');
@@ -3452,7 +3919,8 @@ function drawWave() {
   const sr = audioBuf.sampleRate;
   const sampleStart = Math.floor(viewStart * sr);
   const sampleEnd = Math.min(data.length, Math.ceil(viewEnd() * sr));
-  drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h);
+  const ampScale = waveAmpScale(data, sampleStart, sampleEnd);
+  drawChannelPeaks(ctx, data, sampleStart, sampleEnd, w, h, ampScale);
 
   // Time ticks
   ctx.fillStyle = cssVar('--wave-tick', '#888');
@@ -3650,7 +4118,8 @@ function selectTag(uuid, opts) {
   setPlayhead(selStart);
   syncSelInputs();
   renderTagList();
-  paintOverlays();
+  if (audioBuf) drawWave();
+  else paintOverlays();
   if (opt.play) startBufferPlayback(selStart, selEnd);
 }
 
@@ -3658,6 +4127,11 @@ function renderTagList() {
   const k = current;
   const tagList = document.getElementById('tagList');
   if (!k || !tagList) return;
+
+  // Full DOM rebuild (innerHTML) would otherwise reset .tag-rows scroll on
+  // every select/expand/Play/soft-refresh — preserve position across re-render.
+  const prevRows = tagList.querySelector('.tag-rows');
+  const savedScrollTop = prevRows ? prevRows.scrollTop : 0;
 
   const filterEl = document.getElementById('tagFilter');
   if (filterEl && !filterEl.dataset.wired) {
@@ -3712,6 +4186,9 @@ function renderTagList() {
       </div>` : ''}
     </div>`;
   }).join('')}</div>`;
+
+  const rows = tagList.querySelector('.tag-rows');
+  if (rows) rows.scrollTop = savedScrollTop;
 
   tagList.querySelectorAll('.tag-item').forEach(item => {
     const uuid = item.dataset.uuid;
@@ -3799,14 +4276,38 @@ function renderLists() {
   const k = current;
   renderTagList();
 
-  // Confirmed candidates are promoted into Tags and should disappear from
-  // here; dismissed ones are hidden too. Only still-provisional VAD/ml_v0
-  // candidates await a decision.
-  const anns = (k.annotations||[]).filter(a => a.status !== 'dismissed' && a.status !== 'confirmed');
+  // Confirmed → Tags; dismissed hidden + excluded from clustering; skipped
+  // parked for later (hidden unless "Show skipped", still clusterable).
+  const allAnns = k.annotations || [];
+  const openAnns = allAnns.filter(a => a.status !== 'dismissed' && a.status !== 'confirmed' && a.status !== 'skipped');
+  const skippedAnns = allAnns.filter(a => a.status === 'skipped');
+  const showSkippedEl = document.getElementById('chkShowSkipped');
+  const showSkippedLabel = document.getElementById('showSkippedLabel');
+  const skippedCountEl = document.getElementById('skippedCount');
+  if (showSkippedEl) {
+    showSkippedEl.checked = showSkippedAnns;
+    showSkippedEl.onchange = () => {
+      showSkippedAnns = showSkippedEl.checked;
+      renderLists();
+    };
+  }
+  if (showSkippedLabel) {
+    showSkippedLabel.style.display = skippedAnns.length ? '' : 'none';
+  }
+  if (skippedCountEl) skippedCountEl.textContent = String(skippedAnns.length);
+
+  const anns = showSkippedAnns ? openAnns.concat(skippedAnns) : openAnns;
   const annList = document.getElementById('annList');
-  annList.innerHTML = anns.length ? anns.map(a => `
+  let emptyMsg = '<p class="muted">No ML candidates yet. Click <strong>Find speech segments</strong>, or run <code>vad_segments.py</code> / <code>propose_candidates.py</code>.</p>';
+  if (!anns.length && skippedAnns.length && !showSkippedAnns) {
+    emptyMsg = `<p class="muted">No open ML candidates. ${skippedAnns.length} skipped — enable <strong>Show skipped</strong> to review or Unskip them.</p>`;
+  }
+  annList.innerHTML = anns.length ? anns.map(a => {
+    const isSkipped = a.status === 'skipped';
+    return `
     <div class="row" data-uuid="${esc(a.uuid)}">
       <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}
+        ${isSkipped ? '<span class="sub">skipped</span>' : ''}
         ${fragmentCueHtml(a)}
         ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
@@ -3829,9 +4330,13 @@ function renderLists() {
           <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
           <button data-act="confirm">Confirm</button>
           <button data-act="dismiss">Dismiss</button>
+          ${isSkipped
+            ? '<button data-act="unskip" title="Return to open review list">Unskip</button>'
+            : '<button data-act="skip" title="Park for later — still eligible for clustering">Skip</button>'}
         </div>
       </div>
-    </div>`).join('') : '<p class="muted">No ML candidates yet. Click <strong>Find speech segments</strong>, or run <code>vad_segments.py</code> / <code>propose_candidates.py</code>.</p>';
+    </div>`;
+  }).join('') : emptyMsg;
 
   annList.querySelectorAll('.row').forEach(row => {
     const spInput = row.querySelector('input[id^="ann-spk-"]');
@@ -3850,7 +4355,7 @@ function renderLists() {
         const b = ann.endMs != null ? ann.endMs/1000 : a + 0.3;
         selStart = a; selEnd = b; normalizeSel();
         setPlayhead(selStart);
-        syncSelInputs();
+        refreshWaveSel();
         startBufferPlayback(selStart, selEnd);
         return;
       }
@@ -3897,6 +4402,8 @@ function renderLists() {
         await softRefreshCurrent();
         if (act === 'confirm') flashSaveStatus(`Confirmed → tags.json`);
         if (act === 'dismiss') flashSaveStatus('Dismissed candidate');
+        if (act === 'skip') flashSaveStatus('Skipped — parked for later (still in clustering)');
+        if (act === 'unskip') flashSaveStatus('Unskipped — back in open list');
       } catch (err) {
         flashSaveStatus('Update failed: ' + err.message, false);
       }
@@ -3936,8 +4443,7 @@ async function addTag() {
     syncDetailFields(form || document);
     selStart = selEnd = null;
     setPlayhead(parkAt);
-    syncSelInputs();
-    paintOverlays();
+    refreshWaveSel();
     updatePlayButton();
     await softRefreshCurrent();
     const path = data.tagsPath || current.tagsPath || 'tags.json';
@@ -3960,8 +4466,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     pauseIfPlaying();
     selStart = selEnd = null;
-    syncSelInputs();
-    paintOverlays();
+    refreshWaveSel();
   }
 });
 window.addEventListener('resize', () => {
@@ -4123,12 +4628,93 @@ class Handler(BaseHTTPRequestHandler):
             mel = mel_matrix_for_slice(np.asarray(audio), int(sr), start_ms, end_ms)
             self._send_json(200, {"ok": True, "mel": mel, "startMs": start_ms, "endMs": end_ms})
             return
+        if parsed.path == "/api/vocab/status":
+            try:
+                from vocab_tightness import get_status
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            self._send_json(200, {"ok": True, **get_status()})
+            return
+        if parsed.path == "/api/vocab/tightness":
+            qs = parse_qs(parsed.query)
+            force = (qs.get("force") or ["0"])[0] in ("1", "true", "yes")
+            use_async = (qs.get("async") or ["0"])[0] in ("1", "true", "yes")
+            try:
+                from vocab_tightness import (
+                    ensure_ranking,
+                    get_status,
+                    history_has_today,
+                    start_ensure_async,
+                    OUT_DIR,
+                )
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            st = get_status()
+            if st.get("busy"):
+                self._send_json(200, {"ok": True, "pending": True, "status": st})
+                return
+            last_path = OUT_DIR / "last_ranking.json"
+            can_serve_cache = False
+            if not force and history_has_today() and last_path.exists():
+                try:
+                    from datetime import date as _date
+
+                    from vocab_tightness import library_clusters_fingerprint
+
+                    cached = json.loads(last_path.read_text(encoding="utf-8"))
+                    can_serve_cache = (
+                        cached.get("date") == _date.today().isoformat()
+                        and cached.get("source_fingerprint")
+                        == library_clusters_fingerprint(ROOT)
+                        and cached.get("clusters") is not None
+                    )
+                except Exception:
+                    can_serve_cache = False
+            if use_async and not can_serve_cache:
+                started = start_ensure_async(ROOT, force=force)
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "pending": True,
+                        "started": started.get("started"),
+                        "status": started.get("status") or get_status(),
+                    },
+                )
+                return
+            result = ensure_ranking(ROOT, force=force)
+            code = 200 if result.get("ok") else 500
+            self._send_json(code, result)
+            return
         self._send(404, b"not found", "text/plain")
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/api/sync":
             self._send_json(200, run_iphone_sync("sync"))
+            return
+        if parsed.path == "/api/vocab/refresh":
+            try:
+                from vocab_tightness import get_status, start_ensure_async
+            except ImportError as e:
+                self._send_json(500, {"ok": False, "error": str(e)})
+                return
+            if get_status().get("busy"):
+                self._send_json(200, {"ok": True, "pending": True, "status": get_status()})
+                return
+            # Prefer async so the UI can show progress for a full recompute.
+            started = start_ensure_async(ROOT, force=True)
+            self._send_json(
+                200,
+                {
+                    "ok": True,
+                    "pending": True,
+                    "started": started.get("started"),
+                    "status": started.get("status") or get_status(),
+                },
+            )
             return
 
         try:
@@ -4308,6 +4894,10 @@ class Handler(BaseHTTPRequestHandler):
                     write_tags(kit, tags)
                 elif action == "dismiss":
                     a["status"] = "dismissed"
+                elif action == "skip":
+                    a["status"] = "skipped"
+                elif action == "unskip":
+                    a["status"] = "provisional"
             write_annotations(kit, anns)
             self._send(200, b'{"ok":true}', "application/json")
             return
@@ -4547,6 +5137,7 @@ def main(argv: list[str]) -> int:
     try:
         import sklearn  # noqa: F401
         print("Clustering: ready (scikit-learn). Use the Clustering tab.")
+        print("Vocabulary: ready (curated cluster tightness across kits).")
     except ImportError:
         print(
             "Clustering: install deps first — "

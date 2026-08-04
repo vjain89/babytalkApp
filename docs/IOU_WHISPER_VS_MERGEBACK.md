@@ -48,4 +48,17 @@ Any-overlap stayed flat at 93.9%. **Caveat:** broader “verbal” tags dipped p
 
 ## Recommendation
 
-**Prioritize merge-back in the pipeline** as the primary fix for syllable over-splits. **Do not use Whisper as a replacement** for word-level boxes; at best treat it as an optional weak prior where a single high-confidence token already aligns. Ship a conservative merge policy, watch the verbal-all regression, and only revisit larger ASR / forced-alignment if merge-back plateaus.
+**Shipped:** short-gated DJW merge-back in the production path
+(`resegment.merge_back_pieces` / `vad_segments` after DJW), defaults
+`require_clearly_short=True` + **`short_piece_ms=400`** + **`max_gap_ms=200`**
+(weak valley never sufficient alone). Looser **450/300** remains **not
+accepted** — see `docs/DECISIONS.md`. Review **Find speech segments** emits **word-like**
+candidates, not raw syllable children. Parents remain pipeline-internal via
+`parentSpanId`.
+
+**Do not use Whisper as a replacement** for word-level boxes; at best treat it
+as an optional weak prior where a single high-confidence token already aligns.
+Watch verbal-all regressions on English-leaning kits (looser short/gap recovers
+syllable glue but can dip verbal IoU); only revisit larger ASR / forced-alignment
+if merge-back plateaus. See `tools/analysis/out/merge_back_gap_tune.json` and
+`tools/analysis/out/merge_back_short_gate.md`.

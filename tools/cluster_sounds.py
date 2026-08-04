@@ -1,9 +1,11 @@
 """Acoustic clustering of BabyTalk spans within a session kit (cluster_v0).
 
-Collects confirmed tags + non-dismissed annotations, fingerprints each clip
+Collects confirmed tags + non-dismissed annotations (including skipped), fingerprints each clip
 (log-mel summary), groups similar sounds **per speaker**, and writes
 ``clusters.json``.
 
+Philosophy matches Find speech segments: cluster over **word-like** spans
+(manual tags + non-short ML candidates after DJW + merge-back), same-speaker.
 By default, likely syllable fragments (kit-adaptive ~400–500ms, same cue as
 the review UI SHORT badge) are excluded from seeding clusters and listed under
 ``ignoredShort``. Auto-clusters never mix ``speaker`` / ``speakerCluster``;
@@ -85,7 +87,10 @@ def resolve_audio(kit: Path) -> Path:
 
 
 def collect_spans(kit: Path) -> list[dict]:
-    """Tags + non-dismissed annotations as clusterable spans."""
+    """Tags + non-dismissed annotations as clusterable spans.
+
+    Includes provisional and skipped annotations; only ``dismissed`` is excluded.
+    """
     spans: list[dict] = []
     seen: set[str] = set()
 

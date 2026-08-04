@@ -10,6 +10,20 @@ tools/.venv/bin/pip install -r tools/requirements.txt
 
 Plug in the iPhone, unlock it, and tap **Trust** if asked.
 
+## Snippet explorer lab (band-pass + find knobs)
+
+Local exploration only — **not** the production Review Browser. Band-pass filter
+audio, re-run VAD → DJW → merge-back with overrides, overlay candidates vs human
+tags, and print FoM (any-overlap, IoU≥0.5, durRatio, too-short, Δstart/Δend;
+raw + active-audio). Default kit: `manifest.sessionName=26_07_27__19:53:00`.
+Does **not** write `annotations.json`. Port **8766** (review stays on 8765).
+
+```bash
+tools/.venv/bin/python tools/snippet_explorer_server.py
+open http://127.0.0.1:8766
+# optional: --session <sessionName> --port 8766
+```
+
 ## Review studio
 
 Keep the review UI up (recommended — auto-restarts; survives Cursor agent shells):
@@ -66,7 +80,7 @@ Open **BabyTalk** on the phone after a push — it auto-imports Import folders w
 Bundle id default: `org.reactjs.native.example.babytalkApp`  
 Override: `--bundle-id your.bundle.id`
 
-## ML candidates: VAD → diarization → syllable resegment → candidates
+## ML candidates: VAD → diarization → DJW + merge-back → word-like candidates
 
 Clicking **Find speech segments** (or running `vad_segments.py`) runs:
 
@@ -74,7 +88,7 @@ Clicking **Find speech segments** (or running `vad_segments.py`) runs:
 | --- | --- | --- |
 | 1 · VAD + speech gate | `vad_segments.py`, `speechlike.py` | energy detection of louder-than-the-room regions, then an absolute "does this sound like a voice?" score that drops taps, doors, thumps and running water |
 | 2 · Diarization | `diarize.py` | speaker embeddings + clustering across the session; cuts each region where the speaker changes |
-| 3 · Refine | `vad_segments.py`, `resegment.py` | pause-splits same-speaker spans still over 4s; **de Jong & Wempe syllable-nucleus resegmentation** (Praat intensity peaks + preceding dip + voiced filter) so multi-word blobs become tag-sized proposals; re-scores each child through the speech gate; skips spans already in `tags.json`; writes `annotations.json` |
+| 3 · Refine | `vad_segments.py`, `resegment.py` | pause-splits same-speaker spans still over 4s; **DJW nuclei** then **short-gated merge-back** so Review sees **word-like** (tag-sized) candidates — not raw syllable shards; re-scores each child through the speech gate; skips spans already in `tags.json`; writes `annotations.json` |
 
 ```bash
 tools/.venv/bin/pip install -r tools/requirements.txt
@@ -82,8 +96,10 @@ python3 tools/vad_segments.py ~/Documents/BabyTalk/Library
 # or per kit:
 python3 tools/vad_segments.py ~/Documents/BabyTalk/Library/<kit-folder>
 tools/.venv/bin/python tools/vad_segments.py --list-backends   # what's installed
-# coarser blobs (old behavior without syllable cuts):
+# coarser blobs (skip DJW + merge-back):
 python3 tools/vad_segments.py <kit> --no-resegment
+# raw DJW children without merge-back:
+python3 tools/vad_segments.py <kit> --no-merge-back
 ```
 
 Defaults: merge gaps ≤ **200 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
@@ -151,11 +167,16 @@ tools/.venv/bin/python tools/analysis/ml_delta.py --fresh --segmentation vtc-fir
 
 **Graceful degradation:** if no backend is usable, or the model download fails, the pipeline still returns VAD-only candidates and reports why stage 2 was skipped — in the CLI output, and in the hint text next to the button. The Review Server never fails the request over a missing optional model.
 
-### Stage 3 — refinement + syllable resegmentation
+### Stage 3 — refinement + DJW resegment + short-gated merge-back
 
 Same-speaker spans still longer than **4s** are re-split at their deepest internal relative energy dip (one person, several sentences — a pause is a reasonable utterance boundary). An absolute 15s hard cap is the last resort if no split point is found, flagged `hard_capped`.
 
-Then **`resegment.py`** cuts each remaining span into tag-sized children using a
+**Parents** (longer VAD/diarization regions) stay pipeline-internal via `parentSpanId`.
+**What Review should see** are word-like children after DJW **plus** merge-back —
+not raw syllable shards. Whisper word boxes are **not** used as the word-box
+source (ruled out; see `docs/IOU_WHISPER_VS_MERGEBACK.md`).
+
+Then **`resegment.py`** cuts each remaining span using a
 **de Jong & Wempe (2009)** syllable-nucleus detector (Praat intensity peaks with a
 minimum preceding dip, then discard unvoiced peaks), plus BabyTalk extras:
 
@@ -165,12 +186,22 @@ minimum preceding dip, then discard unvoiced peaks), plus BabyTalk extras:
 4. Cut at intensity minima between nuclei only when the gap looks **word-like**
    (≥300 ms apart or ≥4 dB valley — keeps multi-syllable words together)
 5. Force-split leftovers still over ~**1.6 s**; trim each child to above-threshold intensity
+6. **Merge-back** (default on): glue clearly-short sibling pieces across weak cuts —
+   `require_clearly_short` + **`short_piece_ms=400`** + **`max_gap_ms=200`**
+   (within-word syllable gaps are typically well under the ~0.5s break between
+   separate words; weak valley is secondary only, never sufficient alone).
+   Children keep `parentSpanId`; merged spans may carry `mergedFrom` /
+   `splitBy: merge_back`.
 
-Children carry `parentSpanId`, `resegMethod: dejong_wempe`, and `splitBy: syllable` when cut.
-This still does **not** know dictionary words — run-together phrases may stay one piece.
-Disable with `--no-resegment` / `resegment: false`.
+Disable DJW+merge-back with `--no-resegment` / `resegment: false`.
+Disable only merge-back with `--no-merge-back` / `mergeBack: false`.
 
 Citation: De Jong, N. H., & Wempe, T. (2009). Praat script to detect syllable nuclei and measure speech rate automatically. *Behavior Research Methods, 41*(2), 385–390.
+
+**Clustering tab** uses the same philosophy: groups **word-like** tags + non-short
+ML candidates (SHORT fragments excluded by default), same-speaker. Re-run Find
+speech segments before clustering if you want clusters over the new merge-back
+candidates.
 
 Each resulting candidate then goes back through the **speech gate** one more time. Stage 1 screened whole regions, which often mix a sentence with the clatter right after it; only now is each piece a single turn that can be judged on its own, so this is the pass that does most of the filtering. Measured on two of the reviewer's kits (candidates → junk they had previously dismissed that got re-proposed):
 
@@ -185,7 +216,9 @@ Re-run **Find speech segments** (or `vad_segments.py`) after changing any of thi
 
 **Known limits:** the speech gate still lets through roughly a third to a half of what a reviewer would dismiss, and costs ~14% of real speech at the current threshold — mostly quiet or breathy segments; overlapping speech is assigned to a single speaker; a toddler imitating a caregiver's pitch can land in the wrong cluster; clusters are per-session, so `SPEAKER_00` in one kit is unrelated to `SPEAKER_00` in another. `speakerCluster` groups turns by voice — it is **not** speaker identification and never decides who is the baby.
 
-Diarization is a separate job from the **Clustering tab** — that groups *similar sounds/words* regardless of who said them, and is unaffected by any of this.
+Diarization is a separate job from the **Clustering tab** — that groups *similar
+word-like sounds* (tags + non-short candidates, same-speaker), and benefits from
+re-running Find speech segments so inputs match the merge-back candidates.
 
 ### Local Whisper suggestions (optional)
 

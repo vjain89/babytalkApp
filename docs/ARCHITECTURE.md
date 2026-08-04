@@ -55,7 +55,7 @@ flowchart LR
 - RN app: record / playback / Path B peaks / session naming / category+speaker+word+phonetic tagging
 - Session kits under `~/Documents/BabyTalk/Library/` + USB sync (`tools/iphone_sync.py`)
 - Review Browser (`tools/review_server.py`): waveform tagging, ML candidates, Clustering tab, Sync button
-- ML SoTA path: **energy VAD + speechlike gate → ECAPA diarization → pause-split → DJW syllable resegment → annotations**
+- ML SoTA path: **energy VAD + speechlike gate → ECAPA diarization → pause-split → DJW + short-gated merge-back → word-like annotations**
 - Supporting modules: `vad_segments.py`, `speechlike.py`, `diarize.py`, `resegment.py`, `cluster_sounds.py`, `asr_suggest.py`
 - Benchmark harness (partial): `tools/analysis/ml_delta.py`
 
@@ -133,7 +133,7 @@ flowchart TD
   vad[Stage 1: energy VAD + speechlike gate]
   diar[Stage 2: ECAPA diarization]
   pause[Stage 3a: pause-split >4s]
-  djw[Stage 3b: DJW syllable resegment]
+  djw[Stage 3b: DJW + merge-back → word-like]
   gate[Stage 3c: per-child speech gate]
   skip[Skip spans overlapping tags.json]
   out[annotations.json provisional]
@@ -210,7 +210,12 @@ tools/.venv/bin/python tools/vad_segments.py <kit> --segmentation vtc-first
 
 VTC was trained for LENA-style recorders, not close phone mics in home/hospital rooms. On this library it both **misses baby speech as segments** and **mis-labels roles**. Do not replace ECAPA with VTC for these kits.
 
-### 4.3 Stage 3 — Pause-split + DJW resegment (**main**; knob plumbing **WIP**)
+### 4.3 Stage 3 — Pause-split + DJW + short-gated merge-back (**main**)
+
+**Product decision:** discover **word-like** (tag-sized) segments for Review —
+not raw DJW syllable children. Longer VAD/diarization regions remain parents
+(`parentSpanId`). Whisper word boxes are **not** the word-box source
+(see `docs/IOU_WHISPER_VS_MERGEBACK.md`).
 
 1. Same-speaker spans &gt; **4 s** → deepest relative energy dip; hard cap **15 s** (`hard_capped`)
 2. `resegment.py` — de Jong & Wempe (2009) syllable nuclei (Praat intensity + preceding dip + voicing), then BabyTalk word-like cut knobs:
@@ -222,19 +227,26 @@ VTC was trained for LENA-style recorders, not close phone mics in home/hospital 
 | `RESEG_TARGET_MS` | 1600 | Force-split leftovers still longer |
 | `RESEG_MIN_PART_MS` | 420 | Minimum child duration |
 
-Children carry `parentSpanId`, `resegMethod: dejong_wempe`, `splitBy: syllable`. Disable with `--no-resegment`.
+3. **Merge-back** (same module, default on): glue clearly-short sibling pieces
+   across weak cuts — `require_clearly_short=True`, **`short_piece_ms=400`**,
+   **`max_gap_ms=200`** (production; looser 450/300 remains not accepted;
+   weak valley secondary only). Optional `mergedFrom` /
+   `splitBy: merge_back`. Disable with `--no-merge-back`.
+
+Children carry `parentSpanId`, `resegMethod: dejong_wempe`, `splitBy: syllable`
+or `merge_back`. Disable DJW+merge-back with `--no-resegment`.
 
 **IoU sweep (`tools/analysis/out/iou_sweep.json`, **WIP** tool):** best config **is the baseline** defaults above. Pooled **manual** IoU≥0.5 = **57.2%** (any overlap 95.2%; nManual=152, nCands=645). Tuning knobs did not beat defaults.
 
-**Dominant failure mode:** over-split / too-short children (e.g. multi-syllable words like *tea|cher*), not too-long blobs (`candTooLong2xPct` ≈ 0–1%). **Merge-back** (and/or Whisper word timestamps) is the future lever — not tighter splits.
+**Dominant failure mode was** over-split / too-short children (e.g. *tea|cher*).
+**Merge-back is now in the production path** (short-gated 400 ms, max gap 100 ms).
+Do not replace DJW with Whisper word timestamps.
 
 ### 4.4 Clustering tab (**main**)
 
-`tools/cluster_sounds.py` — log-mel temporal fingerprints + sklearn agglomerative clustering → `clusters.json` (+ optional `cluster_embeddings.npz`). Groups similar *sounds/words* regardless of speaker; labels live on the cluster.
+`tools/cluster_sounds.py` — log-mel temporal fingerprints + sklearn agglomerative clustering → `clusters.json` (+ optional `cluster_embeddings.npz`). Groups similar *word-like* sounds **same-speaker** (manual tags + non-dismissed VAD); **SHORT** fragments (~400–500 ms kit-adaptive) are excluded from seeding by default — same philosophy as Find speech segments after merge-back. Labels live on the cluster.
 
-**Known limitation:** mel summaries still lean on pitch / loudness / duration structure even with light peak normalize — weak for “same word, different prosody.”
-
-**Contemplated (not built):** swap embeddings for HuBERT / wav2vec2; UI workflow **propose clusters → name** (label once, members stay linked for training). Separate from diarization.
+**Known limitation:** mel summaries still lean on pitch / loudness / duration structure even with light peak normalize — weak for “same word, different prosody.” Contemplated (not built): HuBERT / wav2vec2 embeddings + propose-and-name UX.
 
 ---
 
@@ -286,7 +298,7 @@ tools/.venv/bin/python tools/analysis/iou_sweep.py \
 ## 6. Open priorities (ordered)
 
 1. **Worth-tagging signal** — separate from speechlike. speechScore AUC ~0.53 / ~48% FP means the next filter should target “reviewer would tag this,” not another speech-vs-noise retune.
-2. **Word-level merge-back** (and/or Whisper timestamps) — fix over-split (*tea|cher*); IoU sweep says don’t tighten DJW defaults.
+2. **Merge-back shipped** (short-gated 400 ms) — monitor verbal IoU; do not swap in Whisper word boxes.
 3. **Clustering embedding upgrade** — HuBERT/wav2vec2 + propose-and-name UX; keep mel+sklearn until then.
 4. **Not VTC-as-ECAPA-replacement** on these phone-mic kits — optional experiment only; default stays ECAPA.
 
@@ -381,7 +393,7 @@ tools/
 ├── speechlike.py             # Absolute speech gate
 ├── diarize.py                # ECAPA / melstats / pyannote
 ├── vtc.py                    # VTC roles (branch)
-├── resegment.py              # DJW syllable cuts
+├── resegment.py              # DJW nuclei + short-gated merge-back (word-like)
 ├── cluster_sounds.py         # Mel + sklearn clustering
 ├── asr_suggest.py            # Optional Whisper
 ├── propose_candidates.py     # Legacy short-burst onsets

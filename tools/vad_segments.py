@@ -16,22 +16,22 @@ Stages turn a raw session recording into provisional annotations for Review.
      ``SPEAKER_xx`` cluster id. Pass ``--diarization vtc`` to cut on Voice Type
      Classifier roles (KCHI/OCH/FEM/MAL) instead of ECAPA clusters.
   3. **Refine (this module + ``resegment.py``)** — same-speaker spans still
-     over 4s are pause-split; then each span is cut into syllable / short-
-     utterance children (energy peaks + valleys + voicing trim) so multi-word
-     blobs become tag-sized proposals. An absolute duration cap is a last
-     resort. Candidates overlapping ``tags.json`` are dropped. Results write
-     to ``annotations.json`` as provisional candidates.
+     over 4s are pause-split; then each span is cut with de Jong & Wempe
+     nuclei and **short-gated merge-back** into word-like (tag-sized) children
+     — not raw syllable shards. An absolute duration cap is a last resort.
+     Candidates overlapping ``tags.json`` are dropped. Results write to
+     ``annotations.json`` as provisional candidates.
 
 **VTC-first path (``--segmentation vtc-first``):**
 
   Skip energy VAD + ECAPA. Run the LAAC-LSCP Voice Type Classifier on the whole
   file; its role turns become the parent spans (with ``speaker`` prefilled as
-  Baby/Parent/Other). Pause-split, syllable resegment, and the speechlike gate
+  Baby/Parent/Other). Pause-split, DJW + merge-back, and the speechlike gate
   still run. See ``vtc.py``.
 
 Stage 2 degrades gracefully: if no diarization backend is usable (or
 ``--no-diarization`` is passed) the pipeline falls back to VAD + pause /
-syllable splitting only, and says so in the returned stats.
+word-like resegmentation only, and says so in the returned stats.
 
 Requires: numpy, soundfile (stage 1) · see diarize.py / vtc.py for stage-2 deps
   pip install numpy soundfile
@@ -736,6 +736,8 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             ann["splitBy"] = meta["splitBy"]
         if meta.get("parentSpanId"):
             ann["parentSpanId"] = meta["parentSpanId"]
+        if meta.get("mergedFrom"):
+            ann["mergedFrom"] = list(meta["mergedFrom"])
         if meta.get("flags"):
             ann["flags"] = meta["flags"]
         if meta.get("speechScore") is not None:
@@ -834,12 +836,16 @@ def merge_with_existing(
     *,
     replace_provisional: bool = True,
 ) -> list:
-    """Keep confirmed/dismissed (and optionally other provisional) intact."""
+    """Keep confirmed/dismissed/skipped (and optionally other provisional) intact.
+
+    Skipped means the reviewer parked a candidate for later — preserve it on
+    re-run the same way as dismissed (unlike open provisional, which is replaced).
+    """
     kept: list = []
     for a in existing:
         status = a.get("status")
         source = a.get("source")
-        if status in ("confirmed", "dismissed"):
+        if status in ("confirmed", "dismissed", "skipped"):
             kept.append(a)
             continue
         if not replace_provisional:
@@ -876,6 +882,27 @@ def _pieces_from_vtc_turns(turns) -> list[dict]:
     return pieces
 
 
+def _apply_merge_back_stage(
+    pieces: list[dict],
+    audio: np.ndarray,
+    sr: int,
+    *,
+    enabled: bool,
+    params: reseg_mod.MergeBackParams | None = None,
+) -> tuple[list[dict], dict]:
+    """Post-DJW short-gated merge-back → word-like children for Review."""
+    if not enabled:
+        return pieces, {
+            "mergeBackEnabled": False,
+            "mergeBackIn": len(pieces),
+            "mergeBackOut": len(pieces),
+            "mergeBackMerges": 0,
+        }
+    return reseg_mod.merge_back_pieces(
+        pieces, audio, sr, params or reseg_mod.MergeBackParams()
+    )
+
+
 def build_candidates_vtc_first(
     audio: np.ndarray,
     sr: int,
@@ -889,8 +916,10 @@ def build_candidates_vtc_first(
     reseg_min_part_ms: float | None = None,
     word_split_min_sep_ms: float = reseg_mod.WORD_SPLIT_MIN_SEP_MS,
     word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
+    merge_back: bool = True,
+    merge_back_params: reseg_mod.MergeBackParams | None = None,
 ) -> tuple[list[dict], dict]:
-    """VTC-first path: role timeline → pause/syllable refine → speech gate."""
+    """VTC-first path: role timeline → pause/DJW/merge-back → speech gate."""
     times, dbs = frame_rms_db(audio, sr)
     stats: dict = {
         "segmentation": "vtc-first",
@@ -955,6 +984,15 @@ def build_candidates_vtc_first(
         word_split_min_dip_db=word_split_min_dip_db,
     )
     stats.update(reseg_stats)
+
+    pieces, mb_stats = _apply_merge_back_stage(
+        pieces,
+        audio,
+        sr,
+        enabled=bool(resegment and merge_back),
+        params=merge_back_params,
+    )
+    stats.update(mb_stats)
 
     pieces, gate_stats = apply_speech_gate(pieces, audio, sr, reject=reject_non_speech)
     stats.update(gate_stats)
@@ -1037,9 +1075,11 @@ def build_candidates(
     reseg_min_part_ms: float | None = None,
     word_split_min_sep_ms: float = reseg_mod.WORD_SPLIT_MIN_SEP_MS,
     word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
+    merge_back: bool = True,
+    merge_back_params: reseg_mod.MergeBackParams | None = None,
     segmentation: str = "vad",
 ) -> tuple[list[dict], dict]:
-    """Run VAD → diarize → pause/syllable refine → speech gate; return anns + stats.
+    """Run VAD → diarize → pause/DJW/merge-back → speech gate; return anns + stats.
 
     Pass ``segmentation='vtc-first'`` to skip energy VAD/ECAPA and use VTC roles
     as the parent spans instead.
@@ -1057,6 +1097,8 @@ def build_candidates(
             reseg_min_part_ms=reseg_min_part_ms,
             word_split_min_sep_ms=word_split_min_sep_ms,
             word_split_min_dip_db=word_split_min_dip_db,
+            merge_back=merge_back,
+            merge_back_params=merge_back_params,
         )
 
     times, dbs = frame_rms_db(audio, sr)
@@ -1123,6 +1165,15 @@ def build_candidates(
     )
     stats.update(reseg_stats)
 
+    pieces, mb_stats = _apply_merge_back_stage(
+        pieces,
+        audio,
+        sr,
+        enabled=bool(resegment and merge_back),
+        params=merge_back_params,
+    )
+    stats.update(mb_stats)
+
     pieces, gate_stats = apply_speech_gate(pieces, audio, sr, reject=reject_non_speech)
     stats.update(gate_stats)
     stats["split"] = (
@@ -1150,6 +1201,8 @@ def run_vad_on_audio(
     reseg_min_part_ms: float | None = None,
     word_split_min_sep_ms: float = reseg_mod.WORD_SPLIT_MIN_SEP_MS,
     word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
+    merge_back: bool = True,
+    merge_back_params: reseg_mod.MergeBackParams | None = None,
     segmentation: str = "vad",
 ) -> tuple[list[dict], dict]:
     audio, sr = sf.read(str(audio_path), always_2d=False)
@@ -1170,6 +1223,8 @@ def run_vad_on_audio(
         reseg_min_part_ms=reseg_min_part_ms,
         word_split_min_sep_ms=word_split_min_sep_ms,
         word_split_min_dip_db=word_split_min_dip_db,
+        merge_back=merge_back,
+        merge_back_params=merge_back_params,
         segmentation=segmentation,
     )
 
@@ -1187,6 +1242,8 @@ def process_kit(
     speaker_distance: float | None = None,
     resegment: bool = True,
     reseg_target_ms: float = reseg_mod.RESEG_TARGET_MS,
+    merge_back: bool = True,
+    merge_back_params: reseg_mod.MergeBackParams | None = None,
     segmentation: str = "vad",
     write: bool = True,
 ) -> dict:
@@ -1212,6 +1269,8 @@ def process_kit(
         speaker_distance=speaker_distance,
         resegment=resegment,
         reseg_target_ms=reseg_target_ms,
+        merge_back=merge_back,
+        merge_back_params=merge_back_params,
         segmentation=segmentation,
     )
 
@@ -1229,6 +1288,7 @@ def process_kit(
     if write:
         write_json(ann_path, {"annotations": merged})
 
+    mb = merge_back_params or reseg_mod.MergeBackParams()
     return {
         "ok": True,
         "kit": kit.name,
@@ -1248,6 +1308,10 @@ def process_kit(
             "numSpeakers": num_speakers,
             "resegment": resegment,
             "resegTargetMs": reseg_target_ms,
+            "mergeBack": bool(resegment and merge_back),
+            "mergeBackShortPieceMs": mb.short_piece_ms,
+            "mergeBackMaxGapMs": mb.max_gap_ms,
+            "mergeBackRequireClearlyShort": mb.require_clearly_short,
             "segmentation": segmentation,
             "source": SOURCE,
         },
@@ -1303,13 +1367,36 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-resegment",
         action="store_true",
-        help="Skip syllable / short-utterance resegmentation (keep coarser spans)",
+        help="Skip DJW resegmentation + merge-back (keep coarser spans)",
     )
     p.add_argument(
         "--reseg-target-ms",
         type=float,
         default=reseg_mod.RESEG_TARGET_MS,
         help="Prefer children shorter than this after syllable resegmentation",
+    )
+    p.add_argument(
+        "--no-merge-back",
+        action="store_true",
+        help="Keep raw DJW children (skip short-gated merge-back to word-like spans)",
+    )
+    p.add_argument(
+        "--merge-back-short-piece-ms",
+        type=float,
+        default=reseg_mod.MERGE_BACK_SHORT_PIECE_MS,
+        help=(
+            "Merge-back: min sibling duration under this is clearly short "
+            f"(default {reseg_mod.MERGE_BACK_SHORT_PIECE_MS:g})"
+        ),
+    )
+    p.add_argument(
+        "--merge-back-max-gap-ms",
+        type=float,
+        default=reseg_mod.MERGE_BACK_MAX_GAP_MS,
+        help=(
+            "Merge-back: max gap between siblings to consider merging "
+            f"(default {reseg_mod.MERGE_BACK_MAX_GAP_MS:g})"
+        ),
     )
     p.add_argument(
         "--list-backends",
@@ -1355,6 +1442,10 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     diarization = "none" if args.no_diarization else args.diarization
+    mb_params = reseg_mod.MergeBackParams(
+        short_piece_ms=args.merge_back_short_piece_ms,
+        max_gap_ms=args.merge_back_max_gap_ms,
+    )
     total = 0
     for kit in kits:
         result = process_kit(
@@ -1369,6 +1460,8 @@ def main(argv: list[str] | None = None) -> int:
             speaker_distance=args.speaker_distance,
             resegment=not args.no_resegment,
             reseg_target_ms=args.reseg_target_ms,
+            merge_back=not args.no_merge_back,
+            merge_back_params=mb_params,
             segmentation=args.segmentation,
             write=not args.dry_run,
         )
@@ -1389,7 +1482,8 @@ def main(argv: list[str] | None = None) -> int:
             f" (raw {vs.get('rawRuns', 0)} -> regions {vs.get('regions', 0)}"
             f", screened {vs.get('regionsScreened', 0)} non-speech regions"
             f", +{vs.get('pauseSplit', 0)} pause splits"
-            f", +{vs.get('resegSplits', 0)} syllable splits"
+            f", +{vs.get('resegSplits', 0)} DJW splits"
+            f", {vs.get('mergeBackMerges', 0)} merge-back"
             f", speech gate dropped {vs.get('speechGateRejected', 0)}"
             f" / flagged {vs.get('speechGateFlagged', 0)}"
             f", {vs.get('tagOverlapSuppressed', 0)} already-tagged skipped; {diar_txt})"

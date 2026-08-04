@@ -1,0 +1,2727 @@
+{
+  "ok": true,
+  "computed_at": "2026-08-04T06:19:09.465968+00:00",
+  "date": "2026-08-03",
+  "library": "/Users/vijayjain/Documents/BabyTalk/Library",
+  "source_fingerprint": "7e06e5addb3a0eb5",
+  "n_clusters": 40,
+  "clusters": [
+    {
+      "label": "hueschte",
+      "label_key": "hueschte",
+      "tightness": 0.23338138737824765,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "bb83846f-9de7-46fb-80b6-591131b35f30",
+          "label": "hueschte",
+          "members": [
+            {
+              "memberId": "6ba24f9f-60c6-427b-a039-e5459c788319",
+              "startMs": 176390,
+              "endMs": 176960,
+              "durMs": 570,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "8aeca838-1883-48cb-86f4-7b40a7da63d8",
+              "startMs": 429770,
+              "endMs": 430230,
+              "durMs": 460,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "non-vocal vegetative sound",
+      "rank": 1
+    },
+    {
+      "label": "zug",
+      "label_key": "zug",
+      "tightness": 0.3280577376639442,
+      "n_members": 6,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "2c0cb437-dab1-4d4b-aa7b-de5e8d7c35e1",
+          "label": "zug",
+          "members": [
+            {
+              "memberId": "c40d38ed-ccd3-4661-874a-0e787d2721a1",
+              "startMs": 1102910,
+              "endMs": 1103330,
+              "durMs": 420,
+              "speaker": "SPEAKER_00",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "925b653c-1757-4c95-8767-766165cab64b",
+              "startMs": 1104110,
+              "endMs": 1104540,
+              "durMs": 430,
+              "speaker": "SPEAKER_00",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "f38ad2cb-8562-43d7-8c6d-02969b2c152c",
+              "startMs": 1105325,
+              "endMs": 1105730,
+              "durMs": 405,
+              "speaker": "SPEAKER_00",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "ac36d4ed-2f40-4c6a-95c3-d168b6901646",
+              "startMs": 1110440,
+              "endMs": 1110920,
+              "durMs": 480,
+              "speaker": "SPEAKER_00",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "4e4b26b4-a66e-47a2-b085-f8350f162e37",
+              "startMs": 1112230,
+              "endMs": 1112730,
+              "durMs": 500,
+              "speaker": "SPEAKER_00",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "4f64ed53-15d6-47f8-8808-8ea16e8b9e19",
+              "startMs": 1126070,
+              "endMs": 1126490,
+              "durMs": 420,
+              "speaker": "SPEAKER_00",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 2
+    },
+    {
+      "label": "goldfish",
+      "label_key": "goldfish",
+      "tightness": 0.38741805682328145,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "277fc412-e51c-4a3f-a4f8-f1e139921471",
+          "label": "goldfish",
+          "members": [
+            {
+              "memberId": "5c1b500f-c9ac-4747-9c8a-6ae9b1b9e21c",
+              "startMs": 512370,
+              "endMs": 513330,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "4dc0af30-5223-468e-8cc2-dcbdf417e9b0",
+              "startMs": 514130,
+              "endMs": 515200,
+              "durMs": 1070,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "6ff89230-165a-4a63-9003-c622544d7faa",
+              "startMs": 515940,
+              "endMs": 517000,
+              "durMs": 1060,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 3
+    },
+    {
+      "label": "fahre",
+      "label_key": "fahre",
+      "tightness": 0.44323635354820234,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "2613b1cf-3bd4-4ea6-a336-a6f67e098289",
+          "label": "fahre",
+          "members": [
+            {
+              "memberId": "cfc9c34b-cf0c-4b57-9da5-1581e85be8d2",
+              "startMs": 283500,
+              "endMs": 284460,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "e989aa6b-b8ce-45c6-89f2-8e9f3f6c1a6d",
+              "startMs": 348080,
+              "endMs": 349380,
+              "durMs": 1300,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 4
+    },
+    {
+      "label": "z\u00e4ut",
+      "label_key": "z\u00e4ut",
+      "tightness": 0.4994110987766277,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "5fcbf75a-01fa-4cb6-a2f5-68a85c694134",
+          "label": "z\u00e4ut",
+          "members": [
+            {
+              "memberId": "73f42c08-9a80-4374-a95c-393f134e68f9",
+              "startMs": 289450,
+              "endMs": 290290,
+              "durMs": 840,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "a9623f6b-c016-4728-95b9-557709c3f60b",
+              "startMs": 291620,
+              "endMs": 293040,
+              "durMs": 1420,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 5
+    },
+    {
+      "label": "boot",
+      "label_key": "boot",
+      "tightness": 0.5202482773893159,
+      "n_members": 4,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "2e43992a-a537-4197-965c-6b6d5497c341",
+          "label": "boot",
+          "members": [
+            {
+              "memberId": "c7550895-94e1-4f74-af9c-e9b7b353b5dc",
+              "startMs": 164680,
+              "endMs": 165670,
+              "durMs": 990,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "b1c6a363-00a2-4f85-bbc7-437f7b0f676d",
+              "startMs": 170410,
+              "endMs": 171070,
+              "durMs": 660,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "933ca03d-b29d-4656-a154-2cbb2788f6ed",
+              "startMs": 172060,
+              "endMs": 172830,
+              "durMs": 770,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "6ac6c9f5-aa8e-42ae-9dae-3836d49ce650",
+              "startMs": 176560,
+              "endMs": 177570,
+              "durMs": 1010,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 6
+    },
+    {
+      "label": "da",
+      "label_key": "da",
+      "tightness": 0.5231763462274726,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "5c8917fd-4546-4977-91db-fb9e45be6241",
+          "label": "da",
+          "members": [
+            {
+              "memberId": "79ac72c6-869d-4d18-bc5b-96d917b19ca6",
+              "startMs": 226090,
+              "endMs": 226830,
+              "durMs": 740,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "ccb83c40-911c-4dbf-b5b2-7847734b5ac0",
+              "startMs": 227640,
+              "endMs": 228370,
+              "durMs": 730,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "ab3589a1-06e8-4bda-943d-61995821950d",
+              "startMs": 507240,
+              "endMs": 508040,
+              "durMs": 800,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 7
+    },
+    {
+      "label": "children",
+      "label_key": "children",
+      "tightness": 0.5339165328654022,
+      "n_members": 7,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "6cccb639-73f2-4426-a3cf-030b3fa660e6",
+          "label": "children",
+          "members": [
+            {
+              "memberId": "7b2a89a5-8b6e-42ed-8535-fa66cf5d316f",
+              "startMs": 180820,
+              "endMs": 181940,
+              "durMs": 1120,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "2b4faf5e-1c34-40de-978b-48cf588e5e4f",
+              "startMs": 182010,
+              "endMs": 182980,
+              "durMs": 970,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "12f71726-75d7-4886-bda4-cfe1ae5a2b19",
+              "startMs": 185450,
+              "endMs": 186380,
+              "durMs": 930,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "17697c57-3013-4cb4-a65f-313663c3b0d4",
+              "startMs": 186550,
+              "endMs": 187540,
+              "durMs": 990,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "58121928-e830-4f50-86cf-3ee75137cd54",
+              "startMs": 190110,
+              "endMs": 190970,
+              "durMs": 860,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "12a6736b-3c0f-4f50-bce1-7eeb871e3dc9",
+              "startMs": 194300,
+              "endMs": 195470,
+              "durMs": 1170,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "e8a7f04d-fb8b-464a-969b-d45a5f4f9a0b",
+              "startMs": 195480,
+              "endMs": 196410,
+              "durMs": 930,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 8
+    },
+    {
+      "label": "fisch",
+      "label_key": "fisch",
+      "tightness": 0.5522095637430023,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "6bc150a6-4547-449a-9d7d-7e7efbd406bc",
+          "label": "fisch",
+          "members": [
+            {
+              "memberId": "ecf852c4-073a-4346-ba74-90403ada3f40",
+              "startMs": 152480,
+              "endMs": 153020,
+              "durMs": 540,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "baea0b87-cd8c-41f8-b1da-5beb27237fba",
+              "startMs": 187310,
+              "endMs": 187930,
+              "durMs": 620,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": null,
+      "rank": 9
+    },
+    {
+      "label": "vijay",
+      "label_key": "vijay",
+      "tightness": 0.554025006089502,
+      "n_members": 11,
+      "n_kits": 2,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "4d05641b-b4cc-4989-973f-bb4bca02a55c",
+          "label": "vijay",
+          "members": [
+            {
+              "memberId": "03c742cc-9682-4fe0-8427-074b93866400",
+              "startMs": 91950,
+              "endMs": 92610,
+              "durMs": 660,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "45b292e9-387e-44cd-afc0-3b1920e74807",
+              "startMs": 96020,
+              "endMs": 96640,
+              "durMs": 620,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "1a09f23a-3484-4a7d-a9e6-4107448f0ab5",
+              "startMs": 154930,
+              "endMs": 155470,
+              "durMs": 540,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "448df3dd-41f8-4556-88d6-9975d1e92e52",
+              "startMs": 182990,
+              "endMs": 183650,
+              "durMs": 660,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "17c30122-ce14-49ec-89b1-f4faa030a775",
+              "startMs": 185860,
+              "endMs": 186730,
+              "durMs": 870,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "41cfdcc2-f3d6-4c59-8238-19c0d30cbf0f",
+              "startMs": 189680,
+              "endMs": 190320,
+              "durMs": 640,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        },
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "a4c95f0a-7be7-4d66-b21f-445affc5e3f2",
+          "label": "vijay",
+          "members": [
+            {
+              "memberId": "ed61ef50-4826-462b-90bd-66bd382a2229",
+              "startMs": 334590,
+              "endMs": 335060,
+              "durMs": 470,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "aa682a7e-d4dc-4abf-8e3f-feb7f905cb70",
+              "startMs": 339000,
+              "endMs": 339790,
+              "durMs": 790,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "54f87564-e3aa-4857-aac6-23ca8095b247",
+              "startMs": 422540,
+              "endMs": 423250,
+              "durMs": 710,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "fa487ad7-4836-4ba2-a770-d89fb3b2d697",
+              "startMs": 424900,
+              "endMs": 425650,
+              "durMs": 750,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "b7980861-463a-4db1-a798-8480e79105ba",
+              "startMs": 427200,
+              "endMs": 427740,
+              "durMs": 540,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": null,
+      "rank": 10
+    },
+    {
+      "label": "zeichne",
+      "label_key": "zeichne",
+      "tightness": 0.5694326466070231,
+      "n_members": 4,
+      "n_kits": 2,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "ff5e7e60-c652-47e4-8092-874d08f4c62b",
+          "label": "zeichne",
+          "members": [
+            {
+              "memberId": "af98b021-28af-44d4-ae96-987721bce222",
+              "startMs": 210580,
+              "endMs": 211750,
+              "durMs": 1170,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "af5aa83c-1064-44c2-a925-8ead9089b33c",
+              "startMs": 213380,
+              "endMs": 214500,
+              "durMs": 1120,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        },
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "58fd976c-9c99-4d3e-985f-cb088c429682",
+          "label": "zeichne",
+          "members": [
+            {
+              "memberId": "fa0a5d5f-82f7-4247-b6f3-7a31c48f852c",
+              "startMs": 214790,
+              "endMs": 215750,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "a85cc77e-cffd-4ae4-928e-fcb6445c589b",
+              "startMs": 216880,
+              "endMs": 217730,
+              "durMs": 850,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": null,
+      "rank": 11
+    },
+    {
+      "label": "teacher",
+      "label_key": "teacher",
+      "tightness": 0.5857296489081115,
+      "n_members": 6,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "1fa05d9b-0a99-4af2-94f0-24822bafe826",
+          "label": "teacher",
+          "members": [
+            {
+              "memberId": "bfaadb8d-b93f-473a-a096-ffd9ff242841",
+              "startMs": 165510,
+              "endMs": 166450,
+              "durMs": 940,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "684710ce-625a-41d9-b257-e1f96b6df7a2",
+              "startMs": 167150,
+              "endMs": 168220,
+              "durMs": 1070,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "40d7419d-3482-4b17-8e15-a88334fea629",
+              "startMs": 168280,
+              "endMs": 169360,
+              "durMs": 1080,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "a2bca639-df8d-4ecd-a78f-041953a8fa2c",
+              "startMs": 172250,
+              "endMs": 173210,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "c17a36ca-c9a3-46b3-9498-75402628d953",
+              "startMs": 173240,
+              "endMs": 174100,
+              "durMs": 860,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "a13ba870-0560-4225-9ae0-9030da7ee434",
+              "startMs": 506630,
+              "endMs": 507450,
+              "durMs": 820,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 12
+    },
+    {
+      "label": "night night",
+      "label_key": "night night",
+      "tightness": 0.6181816150551098,
+      "n_members": 7,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "3983679b-0bbd-49d9-8e22-d034cd80fc0f",
+          "label": "night night",
+          "members": [
+            {
+              "memberId": "0eac6dce-342a-4a72-84dd-ecfccab2a57a",
+              "startMs": 245310,
+              "endMs": 246550,
+              "durMs": 1240,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "38e9806a-a4bc-4a5a-94ba-503950e694da",
+              "startMs": 353140,
+              "endMs": 353970,
+              "durMs": 830,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "83b0a913-da59-4a5d-b200-2f23d9e78e70",
+              "startMs": 354700,
+              "endMs": 355530,
+              "durMs": 830,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "8047db7a-f6b9-485f-9b62-0fc8a103be4e",
+              "startMs": 356330,
+              "endMs": 357430,
+              "durMs": 1100,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "925c312c-bb4a-4321-9afc-3503e8091de9",
+              "startMs": 359490,
+              "endMs": 360470,
+              "durMs": 980,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "46e820e2-67f7-43e2-addc-2a1b8219b14f",
+              "startMs": 389110,
+              "endMs": 390170,
+              "durMs": 1060,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "70ad20a1-6d87-4ea0-b6f7-aea39137a56e",
+              "startMs": 391190,
+              "endMs": 391890,
+              "durMs": 700,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 13
+    },
+    {
+      "label": "vogu",
+      "label_key": "vogu",
+      "tightness": 0.6455385757200996,
+      "n_members": 5,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "a36dd478-9ed6-4a40-9744-a6154ae721d8",
+          "label": "vogu",
+          "members": [
+            {
+              "memberId": "b4f54d19-efbe-4af5-96fe-e9b3b8106050",
+              "startMs": 78760,
+              "endMs": 79840,
+              "durMs": 1080,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "1190560d-0312-4ca4-ad86-18b5e6c9fd90",
+              "startMs": 184250,
+              "endMs": 185190,
+              "durMs": 940,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "337795a3-ddbc-4027-b628-c53a71f212ce",
+              "startMs": 188130,
+              "endMs": 189090,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "3ec39140-45c9-44f1-a058-c8b5e95e0a45",
+              "startMs": 191400,
+              "endMs": 192360,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "5a947a0b-d449-402b-ae58-3d2412157a0d",
+              "startMs": 403220,
+              "endMs": 404150,
+              "durMs": 930,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 14
+    },
+    {
+      "label": "t\u00fcchli",
+      "label_key": "t\u00fcchli",
+      "tightness": 0.6550670998734227,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+          "kit_display": "26_07_22__00:00:01",
+          "cluster_id": "cbd77634-94e1-4a85-b1e5-b6273a2a0b50",
+          "label": "t\u00fcchli",
+          "members": [
+            {
+              "memberId": "ddd6daa2-44d5-4d06-95e3-cb4d217d71c7",
+              "startMs": 153800,
+              "endMs": 155010,
+              "durMs": 1210,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+            },
+            {
+              "memberId": "23242eaf-8f0c-4298-a8b5-ea2129ce0608",
+              "startMs": 161910,
+              "endMs": 162820,
+              "durMs": 910,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 15
+    },
+    {
+      "label": "see",
+      "label_key": "see",
+      "tightness": 0.6747403469535527,
+      "n_members": 9,
+      "n_kits": 2,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "438f6360-7bcd-4642-9382-8541880e5547",
+          "label": "see",
+          "members": [
+            {
+              "memberId": "d8e46118-1242-45f2-8d31-7bb07eaf4296",
+              "startMs": 45650,
+              "endMs": 46500,
+              "durMs": 850,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "23a2f6d2-ef50-4738-b7e5-d63e887abbf7",
+              "startMs": 443930,
+              "endMs": 444690,
+              "durMs": 760,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        },
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "ea2a6ebe-bfc5-4445-aea7-ffd5af1b6614",
+          "label": "see",
+          "members": [
+            {
+              "memberId": "fa0cd353-8130-4c3f-bdd1-7b1e4e905bbe",
+              "startMs": 32140,
+              "endMs": 32570,
+              "durMs": 430,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "b85f7c81-5941-42db-aea6-7c074e117987",
+              "startMs": 170410,
+              "endMs": 171330,
+              "durMs": 920,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "33811b48-190c-48ad-9a2f-79f4a483ddc7",
+              "startMs": 184190,
+              "endMs": 185120,
+              "durMs": 930,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "a9642d2e-4cb1-4748-a598-eda6ab0ef9a4",
+              "startMs": 188840,
+              "endMs": 189640,
+              "durMs": 800,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "368fe125-f1e3-4e46-8ef5-51f4b91e54f3",
+              "startMs": 197660,
+              "endMs": 198420,
+              "durMs": 760,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "ec706067-d063-4933-9ed1-3b9f0c488af5",
+              "startMs": 198970,
+              "endMs": 200040,
+              "durMs": 1070,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "3ad0d6c1-b672-4fd1-8bc8-a526ca71cd2f",
+              "startMs": 235140,
+              "endMs": 235610,
+              "durMs": 470,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 16
+    },
+    {
+      "label": "cozy",
+      "label_key": "cozy",
+      "tightness": 0.6770991599878854,
+      "n_members": 25,
+      "n_kits": 2,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "dd819930-6d8c-4d5d-8f7c-5b25059ca983",
+          "label": "cozy",
+          "members": [
+            {
+              "memberId": "95c33d09-c8df-464f-ad51-15d2cf769caf",
+              "startMs": 516710,
+              "endMs": 517550,
+              "durMs": 840,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "a0d7e898-6e73-4c1a-85f8-4cd736729895",
+              "startMs": 617860,
+              "endMs": 618780,
+              "durMs": 920,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "303f3ffa-beef-472b-8a88-163c9bb51ed1",
+              "startMs": 619700,
+              "endMs": 620460,
+              "durMs": 760,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "85710fd5-d201-44e3-881a-7487d8e7ea30",
+              "startMs": 622460,
+              "endMs": 623640,
+              "durMs": 1180,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "8d1a10b7-a803-4d29-9882-7fcdbcbc34a6",
+              "startMs": 624300,
+              "endMs": 625350,
+              "durMs": 1050,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "a61a737d-d94a-4403-be72-d72e9b09bacd",
+              "startMs": 627330,
+              "endMs": 627950,
+              "durMs": 620,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "dc6c309f-4d43-4ee4-b976-3c715d80cc46",
+              "startMs": 628560,
+              "endMs": 629580,
+              "durMs": 1020,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "448e873e-f162-45be-97ae-2f09dd012214",
+              "startMs": 638930,
+              "endMs": 640010,
+              "durMs": 1080,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "41967f54-a4b6-4435-b3e7-8c87e70d1582",
+              "startMs": 640260,
+              "endMs": 641590,
+              "durMs": 1330,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "7aaab7a8-d735-48a2-8ea5-f80c81426658",
+              "startMs": 648290,
+              "endMs": 649380,
+              "durMs": 1090,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        },
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "d1506909-0fa8-4626-9544-d4af0062fb9b",
+          "label": "cozy",
+          "members": [
+            {
+              "memberId": "022c13cb-c611-41b4-9869-9b2c194744a1",
+              "startMs": 238280,
+              "endMs": 239230,
+              "durMs": 950,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "0fff7eaa-f9db-48b1-bf2d-a7559729ce7d",
+              "startMs": 239750,
+              "endMs": 240610,
+              "durMs": 860,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "3d708884-7540-4941-8926-c0161482a52f",
+              "startMs": 241040,
+              "endMs": 242200,
+              "durMs": 1160,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "0ba9908f-cd50-4711-ad3f-600943b5bb59",
+              "startMs": 252850,
+              "endMs": 253750,
+              "durMs": 900,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "395a6805-91c2-45ff-bebc-38570a3b14b9",
+              "startMs": 314370,
+              "endMs": 315070,
+              "durMs": 700,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "e55a43f9-b916-49e7-873e-684f10ac6714",
+              "startMs": 329180,
+              "endMs": 330010,
+              "durMs": 830,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "89242c5c-5180-47df-a518-a7db072fc7ea",
+              "startMs": 330630,
+              "endMs": 331470,
+              "durMs": 840,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "ed05e23c-8086-4a51-bbb6-bb9b5d51bbe5",
+              "startMs": 335060,
+              "endMs": 335640,
+              "durMs": 580,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "047a4a82-576b-4dc1-b3f1-b53e05d70380",
+              "startMs": 339780,
+              "endMs": 340430,
+              "durMs": 650,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "b133e86c-e7a8-43ef-a01f-c769d8aebb61",
+              "startMs": 423290,
+              "endMs": 424360,
+              "durMs": 1070,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "8728114d-2457-4724-a4c6-611be10d8d3f",
+              "startMs": 425650,
+              "endMs": 426660,
+              "durMs": 1010,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "84b9f7a3-4740-4416-b92c-2a4d88cf6a73",
+              "startMs": 427720,
+              "endMs": 428720,
+              "durMs": 1000,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "228ae20f-7b94-448e-8e3b-1f3e65e38af7",
+              "startMs": 480410,
+              "endMs": 481100,
+              "durMs": 690,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "cedb7494-386d-4865-9f3f-31ed9b308843",
+              "startMs": 580680,
+              "endMs": 581400,
+              "durMs": 720,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "fe3ceb1e-5212-4954-8ed4-b2a623ed2e7b",
+              "startMs": 584140,
+              "endMs": 585050,
+              "durMs": 910,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 17
+    },
+    {
+      "label": "giraffe",
+      "label_key": "giraffe",
+      "tightness": 0.6817168577092474,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "1681f4e0-13ef-47d2-8491-ce451cb944da",
+          "label": "giraffe",
+          "members": [
+            {
+              "memberId": "8ed900dc-2799-4bb0-9d78-beedf022c7a7",
+              "startMs": 182440,
+              "endMs": 183940,
+              "durMs": 1500,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "e48bf26c-4ce8-4bc4-a1bc-ff781a2106d3",
+              "startMs": 187500,
+              "endMs": 188250,
+              "durMs": 750,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "f022e777-1d30-411f-9f3d-ea62f9b5ff6b",
+              "startMs": 192290,
+              "endMs": 192960,
+              "durMs": 670,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 18
+    },
+    {
+      "label": "nase",
+      "label_key": "nase",
+      "tightness": 0.7114016574856856,
+      "n_members": 7,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "a15821c0-265e-4bda-9073-8dc283c3aed4",
+          "label": "nase",
+          "members": [
+            {
+              "memberId": "0bf023c7-899a-445d-b53e-19eb8cdc7470",
+              "startMs": 151190,
+              "endMs": 152040,
+              "durMs": 850,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "f7ed968e-14e1-40b9-8e35-6b7103974de5",
+              "startMs": 154670,
+              "endMs": 155460,
+              "durMs": 790,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "38aa2711-5ded-4887-ac17-a386200c0750",
+              "startMs": 156400,
+              "endMs": 157250,
+              "durMs": 850,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "6831c573-fe1d-47ba-bf0c-30f94ca1a80d",
+              "startMs": 159070,
+              "endMs": 160010,
+              "durMs": 940,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "a074a570-c176-43bd-af75-c4f207a10700",
+              "startMs": 162180,
+              "endMs": 162840,
+              "durMs": 660,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "64b575dd-ffce-400d-89a1-f1765a44f3c6",
+              "startMs": 164610,
+              "endMs": 165470,
+              "durMs": 860,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "077e73fc-098b-481d-83dc-f602d7e70d0f",
+              "startMs": 168290,
+              "endMs": 169180,
+              "durMs": 890,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 19
+    },
+    {
+      "label": "wasser",
+      "label_key": "wasser",
+      "tightness": 0.7207447802107761,
+      "n_members": 4,
+      "n_kits": 2,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "575ca08f-6bc5-4771-ae54-5c2cdb8d337c",
+          "label": "wasser",
+          "members": [
+            {
+              "memberId": "0d4f3321-d270-4f7d-96b5-3b3c8af767e6",
+              "startMs": 48940,
+              "endMs": 50380,
+              "durMs": 1440,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "89c22716-1e48-471d-b5ab-06ec64514d0d",
+              "startMs": 161400,
+              "endMs": 162210,
+              "durMs": 810,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        },
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "7b19f22c-b1a6-4e2f-b0e9-81e98131faf7",
+          "label": "wasser",
+          "members": [
+            {
+              "memberId": "794cb201-11ea-4981-907a-5ff7ec4fb8aa",
+              "startMs": 114610,
+              "endMs": 115570,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "5f258abd-b67b-46c5-9b07-0555340adb71",
+              "startMs": 120900,
+              "endMs": 121600,
+              "durMs": 700,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 20
+    },
+    {
+      "label": "gorilla",
+      "label_key": "gorilla",
+      "tightness": 0.7207863739143937,
+      "n_members": 4,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "2b32dcf6-df1e-46f9-b51e-2ad395c1671f",
+          "label": "gorilla",
+          "members": [
+            {
+              "memberId": "c2c70865-d664-4cff-8800-88c76392cf6d",
+              "startMs": 338750,
+              "endMs": 339670,
+              "durMs": 920,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "1af9fe31-12d5-4136-8189-c7f1aa22efe6",
+              "startMs": 399180,
+              "endMs": 399900,
+              "durMs": 720,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "0733cdd7-ef33-425c-af73-639061d800f9",
+              "startMs": 499540,
+              "endMs": 500420,
+              "durMs": 880,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "caeac360-64dc-4274-8c23-c5339671240c",
+              "startMs": 502220,
+              "endMs": 503340,
+              "durMs": 1120,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 21
+    },
+    {
+      "label": "cama",
+      "label_key": "cama",
+      "tightness": 0.7302098459465517,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "ad059abd-1b64-4966-937c-ccf560dd6b86",
+          "label": "cama",
+          "members": [
+            {
+              "memberId": "3231d938-e53b-4b27-ba8b-08ac940487c0",
+              "startMs": 271670,
+              "endMs": 272450,
+              "durMs": 780,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "0683dab2-982f-4e2d-ade0-a5ca5abe303c",
+              "startMs": 275370,
+              "endMs": 276140,
+              "durMs": 770,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "02356b1e-8d15-4125-96f5-151f901db897",
+              "startMs": 413200,
+              "endMs": 413970,
+              "durMs": 770,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 22
+    },
+    {
+      "label": "pyjama",
+      "label_key": "pyjama",
+      "tightness": 0.7312924573500172,
+      "n_members": 14,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "d787f0ad-0128-4224-a63d-c52cc7b14aae",
+          "label": "pyjama",
+          "members": [
+            {
+              "memberId": "080330ec-c55e-44ad-a622-eeab14bac235",
+              "startMs": 315890,
+              "endMs": 316790,
+              "durMs": 900,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "32e196b2-ce71-42b4-8e60-4cf4a898c101",
+              "startMs": 788140,
+              "endMs": 789500,
+              "durMs": 1360,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "6c212f73-2995-4124-bfee-8add76fd2a01",
+              "startMs": 790370,
+              "endMs": 791330,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "aefb88bf-d5f4-4353-844e-98b6ff0bede2",
+              "startMs": 843610,
+              "endMs": 844730,
+              "durMs": 1120,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "3220fe75-7bba-49c5-ac4f-3d53df4235be",
+              "startMs": 846480,
+              "endMs": 847330,
+              "durMs": 850,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "55031a00-a80e-49bc-8bfe-27de2b58a307",
+              "startMs": 847700,
+              "endMs": 848680,
+              "durMs": 980,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "f067a318-02f0-4b51-806d-09b8062e20e1",
+              "startMs": 850160,
+              "endMs": 851310,
+              "durMs": 1150,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "8afd05ff-4a91-4a28-ab2b-389a98666fab",
+              "startMs": 852285,
+              "endMs": 853085,
+              "durMs": 800,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "11818f91-543b-435a-bffb-4ec152addbfe",
+              "startMs": 887610,
+              "endMs": 888410,
+              "durMs": 800,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "bdd6cc4a-a8af-45f7-ac9e-aef2b2c056ee",
+              "startMs": 888680,
+              "endMs": 889210,
+              "durMs": 530,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "37ed9ebd-efb8-4c69-b2a2-7d21f41abbd8",
+              "startMs": 890060,
+              "endMs": 891040,
+              "durMs": 980,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "370501c1-7b0d-4370-9e9b-778315a2cc3f",
+              "startMs": 894730,
+              "endMs": 895590,
+              "durMs": 860,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "553776d4-2d96-46be-96f9-da4386b5228a",
+              "startMs": 896550,
+              "endMs": 898200,
+              "durMs": 1650,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "376ca05f-c1e0-40c5-8b04-35e319cc7e14",
+              "startMs": 932590,
+              "endMs": 933390,
+              "durMs": 800,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 23
+    },
+    {
+      "label": "baby",
+      "label_key": "baby",
+      "tightness": 0.7336912525620375,
+      "n_members": 9,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "d9e3e5e9-eba8-4203-a23a-3e8b1c1b2815",
+          "label": "baby",
+          "members": [
+            {
+              "memberId": "963cc54a-5a29-4741-8eeb-167bcc2f2402",
+              "startMs": 118290,
+              "endMs": 119060,
+              "durMs": 770,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "28b33ba5-ea31-4f18-bc3c-9bd42417f674",
+              "startMs": 119000,
+              "endMs": 119920,
+              "durMs": 920,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "dcf994ed-ca3f-433f-9ecd-e17ca93e6806",
+              "startMs": 120370,
+              "endMs": 120960,
+              "durMs": 590,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "5fe8fd42-f212-42cf-9c4a-ba1329617481",
+              "startMs": 122510,
+              "endMs": 123530,
+              "durMs": 1020,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "b7e3ea64-d4b0-4879-9da8-8e5d48b05582",
+              "startMs": 124840,
+              "endMs": 125560,
+              "durMs": 720,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "565c21a6-151f-4906-90d5-e8c1eb57f5a8",
+              "startMs": 126870,
+              "endMs": 127660,
+              "durMs": 790,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "f55cb1e0-c6a2-4884-8e97-809d6e280a51",
+              "startMs": 128540,
+              "endMs": 129270,
+              "durMs": 730,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "a7078cd4-ad8b-4d42-9d0d-ee30b6bbee11",
+              "startMs": 131070,
+              "endMs": 131970,
+              "durMs": 900,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "1f086a7a-24e9-4f3f-bc78-14502a55ddde",
+              "startMs": 501650,
+              "endMs": 502250,
+              "durMs": 600,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 24
+    },
+    {
+      "label": "leu",
+      "label_key": "leu",
+      "tightness": 0.7403908348549666,
+      "n_members": 11,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "ebd1635c-ed82-434a-84f2-c42821d72cc3",
+          "label": "leu",
+          "members": [
+            {
+              "memberId": "a00f8673-fc90-4887-9cf2-77cc163dde10",
+              "startMs": 148200,
+              "endMs": 149440,
+              "durMs": 1240,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "e49f9215-cb82-4249-a92d-8016e0ed1681",
+              "startMs": 150340,
+              "endMs": 151220,
+              "durMs": 880,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "6cb96618-462a-4157-9982-5995810e0aba",
+              "startMs": 154080,
+              "endMs": 154730,
+              "durMs": 650,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "06f53b4e-f8d7-405d-a125-d2b6be2a4c06",
+              "startMs": 155480,
+              "endMs": 156390,
+              "durMs": 910,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "3b43619a-3c4a-43ef-989a-d7f95653bd77",
+              "startMs": 158440,
+              "endMs": 159140,
+              "durMs": 700,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "de1514c2-e7ec-454f-a8b7-51f57a9641d3",
+              "startMs": 163870,
+              "endMs": 164590,
+              "durMs": 720,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "770b5db4-2903-4d1f-b581-3eeaa0ba4b72",
+              "startMs": 167530,
+              "endMs": 168320,
+              "durMs": 790,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "5080496e-38a9-4cfa-941e-93159365f9e2",
+              "startMs": 177910,
+              "endMs": 178890,
+              "durMs": 980,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "1dc60e82-5dcd-46c7-8aae-b7243f444429",
+              "startMs": 180000,
+              "endMs": 181190,
+              "durMs": 1190,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "36713ce4-3718-424a-8f93-f85960a65235",
+              "startMs": 384320,
+              "endMs": 384980,
+              "durMs": 660,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "412b89c8-d3a6-452e-b779-dacdcf3317ea",
+              "startMs": 398560,
+              "endMs": 399200,
+              "durMs": 640,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 25
+    },
+    {
+      "label": "cappuccino",
+      "label_key": "cappuccino",
+      "tightness": 0.7579354283067969,
+      "n_members": 4,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78",
+          "kit_display": "26_07_22__00:00:01",
+          "cluster_id": "73e618bc-7dec-4dda-a632-4b9bc92b147d",
+          "label": "cappuccino",
+          "members": [
+            {
+              "memberId": "b83da96c-321e-43bd-ab64-477585820652",
+              "startMs": 23710,
+              "endMs": 25150,
+              "durMs": 1440,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+            },
+            {
+              "memberId": "83f11e86-4427-4d83-99ff-8edb67ac50ee",
+              "startMs": 44140,
+              "endMs": 45690,
+              "durMs": 1550,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+            },
+            {
+              "memberId": "f90c4125-c3ce-44c1-bf9c-68e48b9e77ad",
+              "startMs": 47120,
+              "endMs": 49560,
+              "durMs": 2440,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+            },
+            {
+              "memberId": "968fc32e-b766-437c-87bb-49dece7a2120",
+              "startMs": 51100,
+              "endMs": 52710,
+              "durMs": 1610,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 26
+    },
+    {
+      "label": "bear",
+      "label_key": "bear",
+      "tightness": 0.7625104833496339,
+      "n_members": 5,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "f9a6a421-03f6-48b9-8a30-8a12e4604bd0",
+          "label": "bear",
+          "members": [
+            {
+              "memberId": "7db85949-5eb5-4368-930e-1f742f1851d4",
+              "startMs": 625,
+              "endMs": 1040,
+              "durMs": 415,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "ff72fa3e-3ef3-49ae-a2ec-7b4fd9f4da95",
+              "startMs": 133100,
+              "endMs": 133500,
+              "durMs": 400,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "d004deb3-a065-4cd4-94ec-4ea57eb5dc78",
+              "startMs": 213925,
+              "endMs": 214345,
+              "durMs": 420,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "93c8fae2-c7e9-4592-9052-28a75b1f00c3",
+              "startMs": 224760,
+              "endMs": 225180,
+              "durMs": 420,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "7f720732-7f7f-4677-9a6c-e3512564c2ab",
+              "startMs": 225540,
+              "endMs": 225960,
+              "durMs": 420,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 27
+    },
+    {
+      "label": "schuhe",
+      "label_key": "schuhe",
+      "tightness": 0.7768332613828238,
+      "n_members": 4,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "03bf9983-4098-43be-bf90-74c42b27f244",
+          "label": "schuhe",
+          "members": [
+            {
+              "memberId": "581efa82-c0c9-458d-b15c-8f25e4ef7bb5",
+              "startMs": 53170,
+              "endMs": 54390,
+              "durMs": 1220,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "6a4866a8-02c8-46f8-8520-5d3a67e8378b",
+              "startMs": 55100,
+              "endMs": 56360,
+              "durMs": 1260,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "123ddb3d-4154-45e8-a9ea-9d5613fc4f4e",
+              "startMs": 297620,
+              "endMs": 298200,
+              "durMs": 580,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "ab1054f5-15d7-45d4-a12c-f1e4455ee56d",
+              "startMs": 300470,
+              "endMs": 302000,
+              "durMs": 1530,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 28
+    },
+    {
+      "label": "ballon",
+      "label_key": "ballon",
+      "tightness": 0.7949413277401579,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "34b9776f-9a17-4975-9fdb-f4ad51ff2859",
+          "label": "ballon",
+          "members": [
+            {
+              "memberId": "23fdddf0-7e99-4639-a77a-97c514e85ad3",
+              "startMs": 10490,
+              "endMs": 11280,
+              "durMs": 790,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "55bcd31f-54d0-4be3-ac7d-3d357e43f147",
+              "startMs": 69580,
+              "endMs": 70200,
+              "durMs": 620,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 29
+    },
+    {
+      "label": "melanie",
+      "label_key": "melanie",
+      "tightness": 0.7980820575036145,
+      "n_members": 6,
+      "n_kits": 2,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "a5f51b58-31fb-4820-9083-142041c4b11e",
+          "label": "melanie",
+          "members": [
+            {
+              "memberId": "6797aa6f-fc9a-45ee-917c-48d6c7556ffc",
+              "startMs": 59350,
+              "endMs": 60280,
+              "durMs": 930,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "0e6c5119-39f9-442b-9874-e27e59305c4f",
+              "startMs": 153680,
+              "endMs": 154810,
+              "durMs": 1130,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        },
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "9c2afb0f-b285-4305-813f-b39db833663d",
+          "label": "melanie",
+          "members": [
+            {
+              "memberId": "e0a9b2b2-38a0-4360-937e-6dc5a3cabb76",
+              "startMs": 38850,
+              "endMs": 39940,
+              "durMs": 1090,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "285b6801-f188-474b-a9ff-5dee5028a9b0",
+              "startMs": 248060,
+              "endMs": 249170,
+              "durMs": 1110,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "93359381-6767-4936-9eaa-1ca451d8ada4",
+              "startMs": 249770,
+              "endMs": 250460,
+              "durMs": 690,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "7cb2d49f-29e8-4886-80b9-76159cbdb970",
+              "startMs": 332910,
+              "endMs": 333440,
+              "durMs": 530,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 30
+    },
+    {
+      "label": "purple cat",
+      "label_key": "purple cat",
+      "tightness": 0.8136814764942465,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "3e9f6624-3395-4b2b-8cfa-c66f453cdf8a",
+          "label": "purple cat",
+          "members": [
+            {
+              "memberId": "097f6d76-174b-47c9-83dc-7809dceefb4f",
+              "startMs": 202470,
+              "endMs": 203130,
+              "durMs": 660,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "d9794a1f-1075-4301-a5f6-14d5896f92c1",
+              "startMs": 494310,
+              "endMs": 495000,
+              "durMs": 690,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "2b5f1052-2d22-4fc4-a785-70883f9ac1a9",
+              "startMs": 495590,
+              "endMs": 496820,
+              "durMs": 1230,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 31
+    },
+    {
+      "label": "l\u00e4se",
+      "label_key": "l\u00e4se",
+      "tightness": 0.8140766809991664,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "17350af3-1aa6-4ef6-9b4a-53cc2028744f",
+          "label": "l\u00e4se",
+          "members": [
+            {
+              "memberId": "73400317-0f9b-4256-8872-a9071245084b",
+              "startMs": 1590,
+              "endMs": 2110,
+              "durMs": 520,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "4648f0fe-e6c4-44e8-b5c5-8dd9fcb36eb4",
+              "startMs": 476510,
+              "endMs": 477090,
+              "durMs": 580,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "057ffb18-94fa-4623-948f-785a963cce5c",
+              "startMs": 870870,
+              "endMs": 871830,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 32
+    },
+    {
+      "label": "all done",
+      "label_key": "all done",
+      "tightness": 0.8273114862616676,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "22059f16-9529-4319-bfbe-d35150d6bc3b",
+          "label": "all done",
+          "members": [
+            {
+              "memberId": "fb60ff08-55ff-40df-98e8-a9d550002b9e",
+              "startMs": 412130,
+              "endMs": 412720,
+              "durMs": 590,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "20f90dfb-47ad-462c-b778-eef5644daee3",
+              "startMs": 543250,
+              "endMs": 544310,
+              "durMs": 1060,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "83872d65-1c5d-49da-a5cf-a2f2a17a30d7",
+              "startMs": 547190,
+              "endMs": 547930,
+              "durMs": 740,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 33
+    },
+    {
+      "label": "armadillo",
+      "label_key": "armadillo",
+      "tightness": 0.8446889649884456,
+      "n_members": 5,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "3f3d8ab9-cdf7-453a-a302-49853fe4d33d",
+          "label": "armadillo",
+          "members": [
+            {
+              "memberId": "8c52c893-ce81-4933-bedc-282a85741c48",
+              "startMs": 221960,
+              "endMs": 222920,
+              "durMs": 960,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "ecadee5b-b0b3-43f7-acab-951e151feaeb",
+              "startMs": 223760,
+              "endMs": 225070,
+              "durMs": 1310,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "e2f013c5-557a-477d-a37f-df90113a021e",
+              "startMs": 230310,
+              "endMs": 231710,
+              "durMs": 1400,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "9513c753-311d-40eb-9a14-548313dc1dd9",
+              "startMs": 272050,
+              "endMs": 273070,
+              "durMs": 1020,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "b8273d43-db90-4e46-8f00-b99bf1363457",
+              "startMs": 274760,
+              "endMs": 276160,
+              "durMs": 1400,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 34
+    },
+    {
+      "label": "bett",
+      "label_key": "bett",
+      "tightness": 0.852679886633421,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73",
+          "kit_display": "26_05_18__00:00:00",
+          "cluster_id": "b148f38a-d593-4f7c-b397-1246a9b7f898",
+          "label": "bett",
+          "members": [
+            {
+              "memberId": "4a3536eb-b5dd-42b9-9805-b46e5cce6b1a",
+              "startMs": 385340,
+              "endMs": 385840,
+              "durMs": 500,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "515ee27a-acd8-4eb1-a581-0dcb00d0ee54",
+              "startMs": 508190,
+              "endMs": 508930,
+              "durMs": 740,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            },
+            {
+              "memberId": "0432fec5-759f-48b1-9309-f4bbd9640f9e",
+              "startMs": 520910,
+              "endMs": 521580,
+              "durMs": 670,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 35
+    },
+    {
+      "label": "green frog",
+      "label_key": "green frog",
+      "tightness": 0.8626170628681409,
+      "n_members": 8,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "28adfb18-47b1-49ab-9dd2-eeca04b1c3b7",
+          "label": "green frog",
+          "members": [
+            {
+              "memberId": "8b5f0fba-fff1-4a8c-85cd-d45180a5ab17",
+              "startMs": 369390,
+              "endMs": 370340,
+              "durMs": 950,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "0576f272-d05c-45ed-8c7f-7eb22c0eb7cf",
+              "startMs": 370740,
+              "endMs": 371600,
+              "durMs": 860,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "56d3f39e-2e71-4a2d-9b58-39cf3eeeda90",
+              "startMs": 378800,
+              "endMs": 379700,
+              "durMs": 900,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "7b047119-3dc4-4e26-9725-d8b243aae805",
+              "startMs": 400400,
+              "endMs": 401530,
+              "durMs": 1130,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "aae3d52f-56d2-4080-a005-ecb330d20889",
+              "startMs": 402180,
+              "endMs": 402920,
+              "durMs": 740,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "2ebdd531-f1f7-4a21-ad8f-27011909d017",
+              "startMs": 406290,
+              "endMs": 407090,
+              "durMs": 800,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "d0bef007-d567-4268-840d-7ea35dfe9020",
+              "startMs": 407940,
+              "endMs": 409090,
+              "durMs": 1150,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "2d02ccb9-7a6f-4cb7-aeaa-65f05ad2b463",
+              "startMs": 409160,
+              "endMs": 410490,
+              "durMs": 1330,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 36
+    },
+    {
+      "label": "fuchs",
+      "label_key": "fuchs",
+      "tightness": 0.912618829422278,
+      "n_members": 5,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-20T20-56-36-042Z_353_Mississippi_St_75",
+          "kit_display": "26_07_05__00:00:00",
+          "cluster_id": "64263bf5-cb8e-459a-87fa-4e20e3026c47",
+          "label": "fuchs",
+          "members": [
+            {
+              "memberId": "2370d268-dc7a-4e07-8387-30168d9e0614",
+              "startMs": 84990,
+              "endMs": 86000,
+              "durMs": 1010,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "8d9db744-b178-4b36-b14a-902bfa43e210",
+              "startMs": 89280,
+              "endMs": 90220,
+              "durMs": 940,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "f2dc1143-3a6f-4be4-8fde-16058e0828f7",
+              "startMs": 90530,
+              "endMs": 91670,
+              "durMs": 1140,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "f7c57764-7322-45b5-92f7-24c01391c93b",
+              "startMs": 92600,
+              "endMs": 93290,
+              "durMs": 690,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            },
+            {
+              "memberId": "31122989-e0df-4b4e-b54c-53684e90f5ca",
+              "startMs": 96840,
+              "endMs": 98010,
+              "durMs": 1170,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-20T20-56-36-042Z_353_Mississippi_St_75"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 37
+    },
+    {
+      "label": "bus",
+      "label_key": "bus",
+      "tightness": 0.9269788129098355,
+      "n_members": 3,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho",
+          "kit_display": "26_07_21__00:00:02",
+          "cluster_id": "e215e6ef-6416-4749-9f09-1c6cf158d321",
+          "label": "bus",
+          "members": [
+            {
+              "memberId": "52ef1a63-7a93-422e-afdc-1909718c788a",
+              "startMs": 3410,
+              "endMs": 4340,
+              "durMs": 930,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho"
+            },
+            {
+              "memberId": "2566bb99-b0db-437e-9c04-3b5c05d7f693",
+              "startMs": 5610,
+              "endMs": 6200,
+              "durMs": 590,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho"
+            },
+            {
+              "memberId": "5ba93661-3535-4d27-a422-09843a8c91c5",
+              "startMs": 25630,
+              "endMs": 26060,
+              "durMs": 430,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 38
+    },
+    {
+      "label": "do",
+      "label_key": "do",
+      "tightness": 0.9298152578842274,
+      "n_members": 2,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "8c18c3df-1323-4fd5-bbda-a1d2400cff3b",
+          "label": "do",
+          "members": [
+            {
+              "memberId": "397b0b3b-a52d-4f20-8da9-de0369ea77a4",
+              "startMs": 183460,
+              "endMs": 183890,
+              "durMs": 430,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "89490524-17a9-464b-a859-3b249e8a334e",
+              "startMs": 188120,
+              "endMs": 188530,
+              "durMs": 410,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 39
+    },
+    {
+      "label": "brown",
+      "label_key": "brown",
+      "tightness": 0.9728415953300699,
+      "n_members": 9,
+      "n_kits": 1,
+      "kits": [
+        "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+      ],
+      "kit_clusters": [
+        {
+          "kit": "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87",
+          "kit_display": "26_07_27__19:53:00",
+          "cluster_id": "9a2f409b-7e07-434a-82ec-0eddc803673d",
+          "label": "brown",
+          "members": [
+            {
+              "memberId": "02851ad3-7523-470d-a5b8-f4a9bfcb9a03",
+              "startMs": 0,
+              "endMs": 540,
+              "durMs": 540,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "b088b74d-057e-4d7e-8f94-12fa45baf0bc",
+              "startMs": 1040,
+              "endMs": 1530,
+              "durMs": 490,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "60d6cfac-7163-4de9-a945-d13b8d77f538",
+              "startMs": 132370,
+              "endMs": 132890,
+              "durMs": 520,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "ecc63190-c2ef-493a-8a1f-b365516ac361",
+              "startMs": 133510,
+              "endMs": 134840,
+              "durMs": 1330,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "777ea8d2-f625-43b2-b6a0-0d7d1436dae6",
+              "startMs": 213040,
+              "endMs": 213750,
+              "durMs": 710,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "f0e7ea22-ab72-44e5-acc3-c303ea888f88",
+              "startMs": 224110,
+              "endMs": 224760,
+              "durMs": 650,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "64518570-f44a-479a-8944-a4ac6bc9d72c",
+              "startMs": 236990,
+              "endMs": 238210,
+              "durMs": 1220,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "4a6aa93a-9aef-4934-9727-a7c75c19069f",
+              "startMs": 526010,
+              "endMs": 527130,
+              "durMs": 1120,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            },
+            {
+              "memberId": "6d93501b-20bc-4ef5-952a-d7653756c43e",
+              "startMs": 533590,
+              "endMs": 534070,
+              "durMs": 480,
+              "speaker": "Baby",
+              "audioUrl": "/audio?kit=2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87"
+            }
+          ]
+        }
+      ],
+      "category": "verbal vocalization",
+      "rank": 40
+    }
+  ],
+  "filters": {
+    "clusters_in": 49,
+    "members_raw": 238,
+    "dropped_short": 13,
+    "dropped_missing_span": 0,
+    "dropped_nonverbal_tag": 2,
+    "dropped_no_audio": 0,
+    "kept": 222,
+    "clusters_kept": 47,
+    "fragment_cutoffs_ms": {
+      "2026-07-20T20-56-36-042Z_353_Mississippi_St_75": 500,
+      "2026-07-21T15-35-25-419Z_1784648090362_353_Mississippi_St_73": 473,
+      "2026-07-24T05-49-13-915Z_1784871954392_353_Mississippi_St_78": 500,
+      "2026-07-24T05-49-15-530Z_1784871954381_UCSF_Benioff_Children_s_Ho": 400,
+      "2026-07-28T04-26-04-490Z_1785211756660_353_Mississippi_St_87": 400
+    }
+  },
+  "embed": {
+    "space": "cluster_sounds.log_mel_embed",
+    "distance": "sklearn cosine_distances (mean pairwise within cluster)",
+    "cache": "/Users/vijayjain/babytalkApp-1/tools/analysis/out/vocab_tightness/embeddings_cache.npz"
+  },
+  "history_path": "/Users/vijayjain/babytalkApp-1/tools/analysis/out/cluster_tightness_history.json"
+}

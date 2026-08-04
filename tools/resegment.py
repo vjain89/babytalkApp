@@ -1,15 +1,20 @@
-"""Syllable-nucleus resegmentation for ML candidate parents (DJW-style).
+"""Syllable-nucleus resegmentation + short-gated merge-back for ML candidates.
 
 Takes a speaker-homogeneous (or VAD) span that may hold several words or
-syllables and cuts it into tag-sized children for Review Browser.
+syllables and cuts it into **word-like** (tag-sized) children for Review.
 
-This is stage 3b of the ML-candidates pipeline:
+This is stage 3b–3c of the ML-candidates pipeline:
 
     stage 1  VAD + speechlike
     stage 2  diarization (optional)
     stage 3a pause-split spans still over ~4s
     stage 3b **this module** — de Jong & Wempe nuclei → children
-    stage 3c per-piece speech gate → annotations.json
+    stage 3c **merge-back** — glue clearly-short over-splits into word-like spans
+    stage 3d per-piece speech gate → annotations.json
+
+Parents (longer VAD/diarization regions) stay pipeline-internal via
+``parentSpanId``. What Review should see are word-like candidates after DJW
+**plus** short-gated merge-back — not raw syllable shards.
 
 Algorithm follows de Jong & Wempe (2009), *Praat script to detect syllable
 nuclei and measure speech rate automatically* (Behavior Research Methods),
@@ -26,8 +31,13 @@ adapted to *segment* (not only count) and tuned for baby/caregiver home audio:
   6. Cut the parent at intensity minima between consecutive kept nuclei.
   7. BabyTalk extras: trim each child to above-threshold intensity; force-split
      leftovers still longer than ``RESEG_TARGET_MS``.
+  8. Merge-back: reunite clearly-short sibling pieces across weak cuts
+     (``require_clearly_short`` + ``short_piece_ms=400``, ``max_gap_ms=200`` —
+     production pair; looser 450/300 remains not accepted; weak valley is
+     secondary only).
 
-Whisper word timestamps are intentionally *not* here — optional later.
+Whisper word timestamps are intentionally *not* used as the word-box source
+(ruled out — see ``docs/IOU_WHISPER_VS_MERGEBACK.md``).
 
 Citation:
   De Jong, N. H., & Wempe, T. (2009). Praat script to detect syllable nuclei
@@ -39,6 +49,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import dataclass
 from typing import Iterable
 
 try:
@@ -73,6 +84,46 @@ FORCE_SPLIT_MIN_DIP_DB = 2.0
 # (e.g. änteli) and should stay in one candidate tag.
 WORD_SPLIT_MIN_SEP_MS = 300.0
 WORD_SPLIT_MIN_DIP_DB = 4.0
+
+# --- Short-gated merge-back (post-DJW) --------------------------------------
+# Production defaults: short_piece_ms=400, max_gap_ms=200 (require_clearly_short).
+# Active-audio dismiss-vs-tag accepted 100→200 (2026-08-03). Looser 450/300
+# from raw oracle gaps remains not accepted. Weak valley alone is never enough.
+# See tools/analysis/out/dismiss_vs_tag_delta_26_07_27_active.md;
+# docs/DECISIONS.md.
+MERGE_BACK_MAX_GAP_MS = 200.0
+MERGE_BACK_MAX_MERGED_MS = 1800.0
+MERGE_BACK_SHORT_PIECE_MS = 400.0
+MERGE_BACK_WEAK_DIP_DB = 5.0
+MERGE_BACK_WEAK_SEP_MS = 280.0
+MERGE_BACK_ENERGY_DROP_DB = 6.0
+MERGE_BACK_CUT_WINDOW_MS = 80.0
+
+
+@dataclass(frozen=True)
+class MergeBackParams:
+    """Post-DJW merge-back policy knobs.
+
+    Short-gated policy (production default, ``require_clearly_short=True``):
+    weak valley alone is **not** enough. Merge only when a piece is clearly
+    short by absolute ms and/or vs session tag-duration median
+    (``dur_ratio_max``), then treat weak-valley as a secondary label only.
+
+    Legacy OR policy (``require_clearly_short=False``): merge when
+    ``short_piece OR weak_valley`` (plus guards) — used by analysis sweeps.
+    """
+
+    max_gap_ms: float = MERGE_BACK_MAX_GAP_MS
+    max_merged_ms: float = MERGE_BACK_MAX_MERGED_MS
+    short_piece_ms: float = MERGE_BACK_SHORT_PIECE_MS
+    weak_dip_db: float = MERGE_BACK_WEAK_DIP_DB
+    weak_sep_ms: float = MERGE_BACK_WEAK_SEP_MS
+    energy_drop_db: float = MERGE_BACK_ENERGY_DROP_DB
+    cut_window_ms: float = MERGE_BACK_CUT_WINDOW_MS
+    require_clearly_short: bool = True
+    # If set, also treat min(left,right)/session_median_tag_ms < this as short.
+    dur_ratio_max: float | None = None
+    session_median_tag_ms: float | None = None
 
 
 def _mono(audio: np.ndarray) -> np.ndarray:
@@ -521,3 +572,366 @@ def resegment_pieces(
 
     stats["resegChildren"] = len(out)
     return out, stats
+
+
+# ---------------------------------------------------------------------------
+# Short-gated merge-back (word-like candidates for Review)
+# ---------------------------------------------------------------------------
+
+
+def _piece_intensity(
+    audio: np.ndarray, sr: int, start_ms: float, end_ms: float
+) -> tuple[np.ndarray, np.ndarray]:
+    s = max(0, int(start_ms / 1000.0 * sr))
+    e = min(len(audio), int(end_ms / 1000.0 * sr))
+    if e <= s:
+        return np.asarray([0.0]), np.asarray([-80.0])
+    times, intensity = _praat_like_intensity(audio[s:e], sr)
+    return times + start_ms, intensity
+
+
+def _region_median(
+    times: np.ndarray, intensity: np.ndarray, lo: float, hi: float
+) -> float:
+    if hi <= lo or times.size == 0:
+        return -80.0
+    mask = (times >= lo) & (times <= hi)
+    if not np.any(mask):
+        mid = 0.5 * (lo + hi)
+        i = int(np.argmin(np.abs(times - mid)))
+        return float(intensity[i])
+    return float(np.median(intensity[mask]))
+
+
+def _cut_features(
+    audio: np.ndarray,
+    sr: int,
+    left_start: float,
+    left_end: float,
+    right_start: float,
+    right_end: float,
+    params: MergeBackParams,
+) -> dict:
+    a0, a1 = float(left_start), float(left_end)
+    b0, b1 = float(right_start), float(right_end)
+    gap = b0 - a1
+    merged_dur = b1 - a0
+
+    times, intensity = _piece_intensity(audio, sr, a0, b1)
+    left_med = _region_median(times, intensity, a0, a1)
+    right_med = _region_median(times, intensity, b0, b1)
+    cut = 0.5 * (a1 + b0)
+    win = params.cut_window_ms
+    gap_lo = min(a1, b0)
+    gap_hi = max(a1, b0)
+    valley = _region_median(times, intensity, cut - win, cut + win)
+    if gap_hi > gap_lo:
+        valley = min(valley, _region_median(times, intensity, gap_lo, gap_hi))
+    flank = min(left_med, right_med)
+    prom = flank - valley
+    energy_ok = (flank - valley) <= params.energy_drop_db
+
+    min_dur = min(a1 - a0, b1 - b0)
+    short_abs = min_dur < params.short_piece_ms
+    short_rel = False
+    dur_ratio_proxy = None
+    if (
+        params.dur_ratio_max is not None
+        and params.session_median_tag_ms is not None
+        and params.session_median_tag_ms > 0
+    ):
+        dur_ratio_proxy = min_dur / params.session_median_tag_ms
+        short_rel = dur_ratio_proxy < params.dur_ratio_max
+    clearly_short = short_abs or short_rel
+
+    return {
+        "gapMs": round(gap, 1),
+        "mergedDurMs": round(merged_dur, 1),
+        "leftDurMs": round(a1 - a0, 1),
+        "rightDurMs": round(b1 - b0, 1),
+        "minDurMs": round(min_dur, 1),
+        "promDb": round(prom, 2),
+        "valleyDb": round(valley, 2),
+        "leftMedDb": round(left_med, 2),
+        "rightMedDb": round(right_med, 2),
+        "energyOk": bool(energy_ok),
+        "shortPiece": short_abs,
+        "shortRel": short_rel,
+        "clearlyShort": clearly_short,
+        "durRatioProxy": None if dur_ratio_proxy is None else round(dur_ratio_proxy, 3),
+        "weakValley": prom < params.weak_dip_db and gap <= params.weak_sep_ms,
+    }
+
+
+def should_merge(
+    left: dict,
+    right: dict,
+    feats: dict,
+    params: MergeBackParams,
+    *,
+    parent_key: str = "parentSpanId",
+    speaker_key: str = "speakerCluster",
+) -> tuple[bool, str]:
+    """Decide keep-cut vs merge for two adjacent sibling spans."""
+    pid_l = left.get(parent_key)
+    pid_r = right.get(parent_key)
+    if pid_l and pid_r:
+        if pid_l != pid_r:
+            return False, "diff_parent"
+    else:
+        return False, "missing_parent"
+
+    sc_l = left.get(speaker_key)
+    sc_r = right.get(speaker_key)
+    if sc_l is not None and sc_r is not None and sc_l != sc_r:
+        return False, "diff_speaker"
+
+    gap = feats["gapMs"]
+    if gap < -20:
+        return False, "overlap"
+    if gap > params.max_gap_ms:
+        return False, "long_pause"
+    if feats["mergedDurMs"] > params.max_merged_ms:
+        return False, "max_merged"
+    if not feats["energyOk"]:
+        return False, "energy_drop"
+
+    if params.require_clearly_short:
+        if not feats["clearlyShort"]:
+            return False, "not_clearly_short"
+        why = []
+        if feats["shortPiece"]:
+            why.append("short_abs")
+        if feats.get("shortRel"):
+            why.append("short_rel")
+        if feats["weakValley"]:
+            why.append("weak_valley")  # secondary signal only
+        return True, "+".join(why) if why else "clearly_short"
+
+    # Legacy OR policy.
+    if feats["shortPiece"] or feats["weakValley"]:
+        why = []
+        if feats["shortPiece"]:
+            why.append("short_piece")
+        if feats["weakValley"]:
+            why.append("weak_valley")
+        return True, "+".join(why)
+    return False, "no_signal"
+
+
+def _merge_piece_pair(left: dict, right: dict) -> dict:
+    """Merge two pipeline pieces (start/end/meta)."""
+    meta_l = dict(left.get("meta") or {})
+    meta_r = dict(right.get("meta") or {})
+    meta = dict(meta_l)
+    flags = list(meta_l.get("flags") or [])
+    for f in meta_r.get("flags") or []:
+        if f not in flags:
+            flags.append(f)
+    if "merge_back" not in flags:
+        flags.append("merge_back")
+    meta["flags"] = flags
+    meta["splitBy"] = "merge_back"
+    meta["resegMethod"] = meta.get("resegMethod") or meta_r.get("resegMethod") or "dejong_wempe"
+    # Preserve parent / speaker from the left sibling.
+    if meta_l.get("parentSpanId"):
+        meta["parentSpanId"] = meta_l["parentSpanId"]
+    merged_from = list(meta_l.get("mergedFrom") or [])
+    if not merged_from:
+        # First merge: invent stable ids for the original children if absent.
+        lid = meta_l.get("pieceId") or str(uuid.uuid4())
+        rid = meta_r.get("pieceId") or str(uuid.uuid4())
+        merged_from = [lid, rid]
+    else:
+        rid = meta_r.get("pieceId") or str(uuid.uuid4())
+        if meta_r.get("mergedFrom"):
+            for mid in meta_r["mergedFrom"]:
+                if mid not in merged_from:
+                    merged_from.append(mid)
+        elif rid not in merged_from:
+            merged_from.append(rid)
+    meta["mergedFrom"] = merged_from
+
+    scores = [left.get("score"), right.get("score")]
+    scores = [s for s in scores if s is not None]
+    speech_scores = [meta_l.get("speechScore"), meta_r.get("speechScore")]
+    speech_scores = [s for s in speech_scores if s is not None]
+    if speech_scores:
+        meta["speechScore"] = max(speech_scores)
+
+    start = float(left["start"])
+    end = float(right["end"])
+    out = {
+        "start": start,
+        "end": end,
+        "dur": end - start,
+        "score": max(scores) if scores else left.get("score", 0.0),
+        "meta": meta,
+    }
+    # Carry left annotation template when operating on annotation-shaped inputs.
+    if "_ann" in left:
+        out["_ann"] = left["_ann"]
+    return out
+
+
+def merge_back_pieces(
+    pieces: list[dict],
+    audio: np.ndarray,
+    sr: int,
+    params: MergeBackParams | None = None,
+) -> tuple[list[dict], dict]:
+    """Greedy left-to-right merge of sibling DJW children (piece format).
+
+    Pieces must carry ``meta.parentSpanId`` (set by ``resegment_pieces``).
+    Same-speaker and energy guards apply. Returns word-like candidates.
+    """
+    params = params or MergeBackParams()
+    audio = _mono(audio)
+    by_parent: dict[str, list[dict]] = {}
+    orphans: list[dict] = []
+    for p in pieces:
+        meta = p.get("meta") or {}
+        pid = meta.get("parentSpanId")
+        if not pid:
+            orphans.append(dict(p))
+            continue
+        by_parent.setdefault(str(pid), []).append(dict(p))
+
+    stats = {
+        "mergeBackIn": len(pieces),
+        "mergeBackParents": len(by_parent),
+        "mergeBackMerges": 0,
+        "mergeBackConsidered": 0,
+        "mergeBackRejectReasons": {},
+        "mergeBackMergeReasons": {},
+        "mergeBackShortPieceMs": params.short_piece_ms,
+        "mergeBackMaxGapMs": params.max_gap_ms,
+        "mergeBackRequireClearlyShort": params.require_clearly_short,
+        "mergeBackEnabled": True,
+    }
+
+    out: list[dict] = list(orphans)
+    for _pid, sibs in by_parent.items():
+        sibs = sorted(sibs, key=lambda x: (float(x["start"]), float(x["end"])))
+        if len(sibs) == 1:
+            out.append(sibs[0])
+            continue
+        acc = sibs[0]
+        for nxt in sibs[1:]:
+            meta_a = acc.get("meta") or {}
+            meta_b = nxt.get("meta") or {}
+            feats = _cut_features(
+                audio,
+                sr,
+                float(acc["start"]),
+                float(acc["end"]),
+                float(nxt["start"]),
+                float(nxt["end"]),
+                params,
+            )
+            stats["mergeBackConsidered"] += 1
+            left_view = {
+                "parentSpanId": meta_a.get("parentSpanId"),
+                "speakerCluster": meta_a.get("speakerCluster"),
+            }
+            right_view = {
+                "parentSpanId": meta_b.get("parentSpanId"),
+                "speakerCluster": meta_b.get("speakerCluster"),
+            }
+            ok, reason = should_merge(left_view, right_view, feats, params)
+            if ok:
+                acc = _merge_piece_pair(acc, nxt)
+                stats["mergeBackMerges"] += 1
+                stats["mergeBackMergeReasons"][reason] = (
+                    stats["mergeBackMergeReasons"].get(reason, 0) + 1
+                )
+            else:
+                stats["mergeBackRejectReasons"][reason] = (
+                    stats["mergeBackRejectReasons"].get(reason, 0) + 1
+                )
+                out.append(acc)
+                acc = nxt
+        out.append(acc)
+
+    out.sort(key=lambda x: (float(x["start"]), float(x["end"])))
+    stats["mergeBackOut"] = len(out)
+    return out, stats
+
+
+def apply_merge_back(
+    cands: list[dict],
+    audio: np.ndarray,
+    sr: int,
+    params: MergeBackParams | None = None,
+) -> tuple[list[dict], dict]:
+    """Merge-back on annotation-shaped dicts (``startMs``/``endMs``).
+
+    Used by offline analysis; production path uses ``merge_back_pieces``.
+    """
+    params = params or MergeBackParams()
+    pieces: list[dict] = []
+    for c in cands:
+        meta = {
+            "parentSpanId": c.get("parentSpanId"),
+            "speakerCluster": c.get("speakerCluster"),
+            "flags": list(c.get("flags") or []),
+            "speechScore": c.get("speechScore"),
+            "pieceId": c.get("uuid"),
+            "splitBy": c.get("splitBy"),
+            "resegMethod": c.get("resegMethod"),
+        }
+        if c.get("mergedFrom"):
+            meta["mergedFrom"] = list(c["mergedFrom"])
+        pieces.append(
+            {
+                "start": float(c["startMs"]),
+                "end": float(c["endMs"]),
+                "dur": float(c["endMs"]) - float(c["startMs"]),
+                "score": c.get("score", c.get("speechScore", 0.0)),
+                "meta": meta,
+                "_ann": c,
+            }
+        )
+
+    merged_pieces, stats = merge_back_pieces(pieces, audio, sr, params)
+
+    # Remap stats keys to the analysis-script names for compatibility.
+    compat = {
+        "nIn": stats["mergeBackIn"],
+        "nParents": stats["mergeBackParents"],
+        "nMerges": stats["mergeBackMerges"],
+        "nConsidered": stats["mergeBackConsidered"],
+        "rejectReasons": stats["mergeBackRejectReasons"],
+        "mergeReasons": stats["mergeBackMergeReasons"],
+        "nOut": stats["mergeBackOut"],
+    }
+
+    out: list[dict] = []
+    for p in merged_pieces:
+        base = p.get("_ann")
+        meta = p.get("meta") or {}
+        if base is not None and not meta.get("mergedFrom"):
+            # Unchanged orphan / singleton — keep original annotation.
+            out.append(dict(base))
+            continue
+        ann = dict(base) if base is not None else {}
+        ann["uuid"] = str(uuid.uuid4())
+        ann["startMs"] = int(round(p["start"]))
+        ann["endMs"] = int(round(p["end"]))
+        ann["tMs"] = ann["startMs"]
+        if p.get("score") is not None:
+            ann["score"] = p["score"]
+        if meta.get("speechScore") is not None:
+            ann["speechScore"] = meta["speechScore"]
+        if meta.get("parentSpanId"):
+            ann["parentSpanId"] = meta["parentSpanId"]
+        if meta.get("flags"):
+            ann["flags"] = list(meta["flags"])
+        if meta.get("splitBy"):
+            ann["splitBy"] = meta["splitBy"]
+        if meta.get("mergedFrom"):
+            ann["mergedFrom"] = list(meta["mergedFrom"])
+        out.append(ann)
+
+    compat["nOut"] = len(out)
+    return out, compat
