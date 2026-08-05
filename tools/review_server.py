@@ -2,15 +2,11 @@
 
 Local browser UI over the Mac BabyTalk library (or an explicit kit/backup path):
   - play audio
-  - drag on the waveform to select a span
-  - add / edit / delete tags with category + optional speaker
-  - verbal: word (required) + optional phonetic + optional language
-  - non-verbal vocalization: optional phonetic (+ optional note) + optional language
-  - vegetative: optional note (no language)
-  - language defaults to Swiss German dialect; also Spanish / English
-  - find speech segments (VAD → speaker diarization) → provisional ML candidates
-  - confirm, skip, or dismiss ML candidates (assign category + speaker / word+phonetic / language)
-  - optional local Whisper suggestion per snippet (never overwrites your labels)
+  - drag on the waveform to select a vocalization span
+  - add / edit / delete tags with developmental **stage** + **speaker** + optional notes
+  - find speech segments (VAD → diarization → pause-split) → provisional vocalizations
+  - confirm / skip / dismiss with stage + speaker (promotes to tags.json)
+  - optional local Whisper suggestion into notes (never overwrites stage)
   - Clustering tab: group similar spans, review confidence, label clusters
   - Vocabulary tab: curated word clusters across kits, ranked by mel tightness
   - Sync with iPhone (USB) to pull kits and push tags.json
@@ -163,7 +159,8 @@ def write_annotations(kit: Path, anns: list) -> None:
     write_json(kit / "annotations.json", {"annotations": anns})
 
 
-# Primary Review Browser taxonomy (human assigns on confirm; VAD does not).
+# Primary Review Browser taxonomy — legacy word-level categories (Clustering
+# cluster labels may still use these). Vocalization Confirm / Tags use STAGE_LABELS.
 CATEGORIES = (
     "verbal vocalization",
     "non-verbal vocalization",
@@ -176,6 +173,19 @@ LANGUAGES = (
     "English",
 )
 DEFAULT_LANGUAGE = "Swiss German dialect"
+
+# Developmental stage labels for vocalization Confirm / Tags (replaces category).
+STAGE_LABELS = (
+    "vegetative",
+    "cry",
+    "laugh",
+    "canonical_babble",
+    "jargon",
+    "protoword",
+    "single_word",
+    "word_combination",
+    "noise",
+)
 
 
 def normalize_category(value) -> str:
@@ -194,6 +204,93 @@ def normalize_language(value) -> str:
     if text in LANGUAGES:
         return text
     return ""
+
+
+def compose_vocalization_label(
+    stage: str = "",
+    speaker: str = "",
+    notes: str = "",
+) -> str:
+    """Display label for stage-based vocalization tags."""
+    parts = [
+        p
+        for p in (
+            (stage or "").strip(),
+            (speaker or "").strip(),
+            (notes or "").strip(),
+        )
+        if p
+    ]
+    return " · ".join(parts) if parts else "untitled"
+
+
+def stage_validation_error(body: dict) -> str | None:
+    """Validate stage + speaker for vocalization Confirm / Add tag."""
+    stage = str(body.get("stage") or "").strip()
+    if not stage:
+        return "stage required"
+    # Parent/adult turns: not part of the child developmental taxonomy.
+    if stage == "adult_speech":
+        return None
+    if stage not in STAGE_LABELS:
+        return f"unknown stage: {stage}"
+    speaker = normalize_speaker(body.get("speaker"))
+    if stage != "noise" and not speaker:
+        return "speaker required (unless stage is noise)"
+    return None
+
+
+def apply_vocalization_fields(item: dict, body: dict) -> None:
+    """Set stage / speaker / notes / label; clear legacy category taxonomy fields."""
+    stage = str(body.get("stage") or "").strip() or None
+    speaker = normalize_speaker(body.get("speaker"))
+    if "notes" in body:
+        notes = "" if body.get("notes") is None else str(body.get("notes"))
+    elif "note" in body:
+        notes = "" if body.get("note") is None else str(body.get("note"))
+    else:
+        notes = item.get("notes") or ""
+
+    kind = str(body.get("segmentKind") or item.get("segmentKind") or "").strip()
+    if stage == "adult_speech" or kind == "adult_speech":
+        item["segmentKind"] = "adult_speech"
+        item["stage"] = "adult_speech"
+        if speaker:
+            item["speaker"] = speaker
+        else:
+            item.setdefault("speaker", "Parent")
+        item["notes"] = notes
+        for key in ("category", "word", "phonetic", "language", "note"):
+            item.pop(key, None)
+        item["unit"] = item.get("unit") or "vocalization"
+        item["label"] = compose_vocalization_label(
+            "adult_speech",
+            item.get("speaker") or "",
+            item.get("notes") or "",
+        )
+        return
+
+    if stage:
+        item["stage"] = stage
+    elif "stage" in body:
+        item["stage"] = None
+
+    if speaker:
+        item["speaker"] = speaker
+    elif "speaker" in body:
+        item.pop("speaker", None)
+
+    item["notes"] = notes
+    item["segmentKind"] = item.get("segmentKind") or "child"
+    # Legacy word-level taxonomy no longer used on this path.
+    for key in ("category", "word", "phonetic", "language", "note"):
+        item.pop(key, None)
+    item["unit"] = item.get("unit") or "vocalization"
+    item["label"] = compose_vocalization_label(
+        item.get("stage") or "",
+        item.get("speaker") or "",
+        item.get("notes") or "",
+    )
 
 
 def compose_label(
@@ -944,6 +1041,77 @@ HTML = r"""<!DOCTYPE html>
   .vocab-member {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
     font-size: 13px; margin: 4px 0;
+  }
+  .stage-key {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 12px;
+    max-width: 920px;
+  }
+  .stage-key summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text);
+    list-style: none;
+  }
+  .stage-key summary::-webkit-details-marker { display: none; }
+  .stage-key summary::before {
+    content: '▸ ';
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .stage-key[open] summary::before { content: '▾ '; }
+  .stage-key dl {
+    display: grid;
+    grid-template-columns: minmax(10.5rem, auto) 1fr;
+    gap: 4px 12px;
+    margin: 10px 0 0;
+  }
+  .stage-key .stage-key-ties {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .stage-key .stage-key-ties strong {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .stage-key .stage-key-ties ul {
+    margin: 0;
+    padding-left: 1.2em;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .row.adult-speech {
+    opacity: 0.92;
+    border-left: 3px solid var(--muted, #8a8070);
+    padding-left: 6px;
+  }
+  .row.adult-speech .pill[title*="Parent/adult"] {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+  }
+  .stage-key dt {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .stage-key dd {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .stage-key .stage-key-note {
+    margin: 10px 0 0;
+    color: var(--muted);
+    line-height: 1.4;
   }
   .cluster-toolbar {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
@@ -2213,10 +2381,10 @@ function renderShell() {
     </div>
     <div id="reviewTab">
     <div class="help">
-      <strong>How to tag:</strong> click to set playhead · drag to select a snippet · pick a <strong>category</strong> · optional <strong>speaker</strong>.
-      For <strong>verbal vocalization</strong>, enter the <strong>word</strong> (required) and optional <strong>phonetic</strong>;
-      for <strong>non-verbal vocalization</strong>, optional <strong>phonetic</strong> (+ optional note);
-      vegetative sounds take an optional note · Add tag.
+      <strong>How to tag:</strong> click to set playhead · drag to select a vocalization snippet ·
+      pick a <strong>stage</strong> · set <strong>speaker</strong> (Baby / Parent / Other) ·
+      optional transcript/context <strong>notes</strong> · Add tag.
+      Or use <strong>Find speech segments</strong> below and Confirm each vocalization the same way.
       Existing tags show as orange bands on the waveform (and overview strip).
       <strong>Play:</strong> with no selection, plays from the playhead; with a selection, loops that snippet only.
       Drag the blue handles to adjust snippet ends (pauses if playing). Scroll to zoom · Shift-drag to pan.
@@ -2263,36 +2431,16 @@ function renderShell() {
     </div>
     <div class="tag-form">
       <div class="tax-block">
-        <select id="categoryInput" class="category-select" data-field="category" title="Category">
-          <option value="">Category…</option>
-          <option value="verbal vocalization">verbal vocalization</option>
-          <option value="non-verbal vocalization">non-verbal vocalization</option>
-          <option value="non-vocal vegetative sound">non-vocal vegetative sound</option>
+        <select id="stageInput" class="stage-select" data-field="stage" title="Developmental stage">
+          ${stageOptionsHtml('')}
         </select>
         <div class="speaker-row" id="addSpeakerRow">
           <button type="button" class="chip" data-speaker="Baby">Baby</button>
           <button type="button" class="chip" data-speaker="Parent">Parent</button>
           <button type="button" class="chip" data-speaker="Other">Other</button>
-          <input id="speakerInput" data-field="speaker" type="text" placeholder="Speaker (optional)" autocomplete="off"/>
+          <input id="speakerInput" data-field="speaker" type="text" placeholder="Speaker (required unless noise)" autocomplete="off"/>
         </div>
-        <div class="detail-fields" id="addDetailFields" data-mode="">
-          <div class="language-field">
-            <select id="languageInput" class="note-input" data-field="language" title="Language">
-              <option value="Swiss German dialect" selected>Swiss German dialect</option>
-              <option value="Spanish">Spanish</option>
-              <option value="English">English</option>
-            </select>
-          </div>
-          <div class="word-field">
-            <input id="wordInput" class="note-input" data-field="word" type="text" placeholder="Word (required) — e.g. Lorenzo" autocomplete="off"/>
-          </div>
-          <div class="phonetic-field">
-            <input id="phoneticInput" class="note-input" data-field="phonetic" type="text" placeholder="Phonetic (optional) — e.g. na nen zo" autocomplete="off"/>
-          </div>
-          <div class="note-field">
-            <input id="noteInput" class="note-input" data-field="note" type="text" placeholder="Optional note (e.g. sneeze, cough)"/>
-          </div>
-        </div>
+        <input id="notesInput" class="note-input" data-field="notes" type="text" placeholder="Transcript / context notes (optional)" style="min-width:200px;flex:1"/>
       </div>
       <input id="startInput" type="number" step="0.01" min="0" placeholder="Start s"/>
       <input id="endInput" type="number" step="0.01" min="0" placeholder="End s"/>
@@ -2308,7 +2456,7 @@ function renderShell() {
       <h3>Tags</h3>
       <div class="tag-toolbar">
         <span class="muted" id="tagCount"></span>
-        <input type="search" id="tagFilter" placeholder="Filter word, speaker, category…" autocomplete="off"/>
+        <input type="search" id="tagFilter" placeholder="Filter stage, speaker, notes…" autocomplete="off"/>
         <span class="muted">Click a row to select it on the waveform and open its editor.</span>
       </div>
       <div id="tagList"></div>
@@ -2316,18 +2464,56 @@ function renderShell() {
     <div class="section">
       <h3>Vocalizations</h3>
       <p class="muted sans" style="margin:0 0 8px">
-        <strong>Find speech segments</strong> now proposes
-        <em>vocalization / turn</em> units (ACLEW-style), not DJW word boxes:
-        energy VAD → speaker diarization → split within a speaker stretch wherever
-        an internal pause exceeds a tunable threshold
-        (<code>VOCALIZATION_PAUSE_MS</code>, placeholder 400&nbsp;ms — calibrate later).
-        DJW still runs <em>inside</em> each window for <strong>syllable count only</strong>;
-        pitch contour features are stored with the segment.
-        Assign a <strong>stage</strong> and optional <strong>notes</strong> to build a
-        labeled training set (no auto-classifier yet).
-        Confirm still promotes to Tags with category/speaker/word as before;
+        <strong>Find speech segments</strong> proposes
+        <em>vocalization / turn</em> units (ACLEW-style):
+        energy VAD → speaker diarization → split on pauses ≥
+        <code>VOCALIZATION_PAUSE_MS</code> (placeholder 400&nbsp;ms).
+        Label each with <strong>stage</strong> + <strong>speaker</strong>
+        (+ optional notes), then Confirm → <code>tags.json</code>.
+        No verbal/non-verbal/vegetative category — that was for word-level tagging.
         Dismiss / Skip work as before. Re-run replaces open provisionals only.
       </p>
+      <details class="stage-key" open>
+        <summary>Stage key (manual classifier labels)</summary>
+        <dl>
+          <dt>vegetative</dt>
+          <dd>Biological, non-communicative (cough, sneeze, breathing, burp, snore, hiccup).</dd>
+          <dt>cry</dt>
+          <dd>Distress/discomfort — sustained or slowly modulated, not rhythmic bursts.</dd>
+          <dt>laugh</dt>
+          <dd>Giggle — rhythmic burst of short repeated voiced pulses, positive affect.</dd>
+          <dt>canonical_babble</dt>
+          <dd>Repeated well-formed CV syllables; no adult-like sentence intonation. Also the interim home for vowel-only vocal play (“uh”/“um” with no clear communicative intent) — add a context note (“vowel-only, no CV structure”) when used that way.</dd>
+          <dt>jargon</dt>
+          <dd>Adult-like sentence-level stress/intonation; no identifiable real word.</dd>
+          <dt>protoword</dt>
+          <dd>Consistent non-adult-form sound used referentially; stable across occurrences. Not restricted to CV structure — a stable vowel-only sound (“uh”) with reaching/pointing/directed attention qualifies here (intent present), not under canonical_babble.</dd>
+          <dt>single_word</dt>
+          <dd>Identifiable single-word attempt; approximate pronunciation OK.</dd>
+          <dt>word_combination</dt>
+          <dd>Two or more distinct known words with a short internal gap.</dd>
+          <dt>noise</dt>
+          <dd>Not a biological vocalization worth tracking (background noise, mic bump, adult speech mis-attributed as child, etc.).</dd>
+        </dl>
+        <div class="stage-key-ties">
+          <strong>Tiebreakers</strong>
+          <ul>
+            <li><em>vegetative vs noise:</em> came from the child’s body → vegetative; didn’t → noise.</li>
+            <li><em>cry vs laugh vs jargon:</em> sustained/strained → cry; rhythmic + positive affect → laugh; sentence-like melody, no burst repetition → jargon.</li>
+            <li><em>protoword vs single_word:</em> only pronunciation form matters (not frequency/confidence). Matches adult form → single_word (even once); never matches adult form despite repetition → protoword.</li>
+            <li><em>vowel-only:</em> communicative intent (pointing/reaching/directed) → protoword; no clear intent (vocal play) → canonical_babble + context note (“vowel-only, no CV structure”).</li>
+          </ul>
+        </div>
+        <p class="stage-key-note">
+          These 9 labels apply to <strong>child</strong> vocalizations only.
+          Parent/adult turns (VTC FEM/MAL or speaker Parent) are tagged
+          <code>adult_speech</code> — notes only, no stage dropdown — and stay
+          interleaved in time for context.
+          Label <em>this</em> child vocalization, not overall developmental progress.
+          Speaker is required on Confirm for child stages (except <code>noise</code>).
+          Notes are optional.
+        </p>
+      </details>
       <div class="meta-actions" style="margin:0 0 10px">
         <button type="button" class="primary" id="btnVad">Find speech segments</button>
         <button type="button" id="btnClearAnns" title="Remove open provisional segments from this list">Clear list</button>
@@ -2464,7 +2650,6 @@ function renderShell() {
   wireClusterTab();
   wireVocabTab();
   wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
-  wireCategoryDetail(document.querySelector('.tag-form'));
   renderLists();
   updateVocabBar();
   void loadClusters();
@@ -2540,6 +2725,10 @@ function wireVad() {
       }
       if (vs.vocalizationSplits) parts.push(`+${vs.vocalizationSplits} voc pauses`);
       if (vs.vocalizationPauseMs != null) parts.push(`pause≥${vs.vocalizationPauseMs}ms`);
+      if (vs.adultSpeech) parts.push(`${vs.adultSpeech} adult_speech`);
+      if (vs.multiSpeakerFlagged) {
+        parts.push(`⚠ ${vs.multiSpeakerFlagged} multi-speaker bugs dropped`);
+      }
       const dropped = (vs.speechGateRejected || 0) + (vs.regionsScreened || 0) + (vs.nonSpeechRejected || 0);
       if (dropped) parts.push(`${dropped} dropped as non-speech`);
       if (vs.speechGateFlagged) parts.push(`${vs.speechGateFlagged} flagged possible non-speech`);
@@ -2557,7 +2746,9 @@ function wireVad() {
 
 const STAGE_OPTIONS = [
   ['', 'Stage…'],
-  ['vegetative_cry', 'vegetative_cry'],
+  ['vegetative', 'vegetative'],
+  ['cry', 'cry'],
+  ['laugh', 'laugh'],
   ['canonical_babble', 'canonical_babble'],
   ['jargon', 'jargon'],
   ['protoword', 'protoword'],
@@ -2567,9 +2758,15 @@ const STAGE_OPTIONS = [
 ];
 
 function stageOptionsHtml(selected) {
-  return STAGE_OPTIONS.map(([v, lab]) =>
-    `<option value="${esc(v)}"${v === (selected || '') ? ' selected' : ''}>${esc(lab)}</option>`
-  ).join('');
+  const sel = selected || '';
+  const opts = STAGE_OPTIONS.map(([v, lab]) =>
+    `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(lab)}</option>`
+  );
+  // Keep a legacy/unknown value visible if already stored (e.g. vegetative_cry).
+  if (sel && !STAGE_OPTIONS.some(([v]) => v === sel)) {
+    opts.push(`<option value="${esc(sel)}" selected>${esc(sel)} (legacy)</option>`);
+  }
+  return opts.join('');
 }
 
 function featurePillHtml(a) {
@@ -4161,21 +4358,66 @@ function tagTimeLabel(t) {
   return b > a ? `${a.toFixed(2)}–${b.toFixed(2)}s` : `${a.toFixed(2)}s`;
 }
 
-/** One-line gist: the word, falling back to phonetic / note / composed label. */
+/** One-line gist: notes, else stage · speaker label. */
 function tagShortLabel(t) {
+  const notes = (t.notes || t.note || '').trim();
+  if (notes) return esc(notes);
+  const stage = (t.stage || '').trim();
+  if (stage) return esc(stage);
   const word = (t.word || '').trim();
-  const phonetic = (t.phonetic || '').trim();
-  const note = (t.note || '').trim();
-  if (word) return esc(word) + (phonetic ? ` <span class="ph">· ${esc(phonetic)}</span>` : '');
-  if (phonetic) return `<span class="ph">${esc(phonetic)}</span>`;
-  if (note) return `<span class="ph">${esc(note)}</span>`;
+  if (word) return esc(word); // legacy word-level tags
   const label = (t.label || '').trim();
-  return label ? esc(label) : '<span class="untitled">(no word)</span>';
+  return label ? esc(label) : '<span class="untitled">(untitled)</span>';
 }
 
 function tagSearchText(t) {
-  return [t.word, t.phonetic, t.note, t.speaker, t.category, t.language, t.label]
+  return [t.stage, t.notes, t.note, t.word, t.phonetic, t.speaker, t.category, t.label]
     .filter(Boolean).join(' ').toLowerCase();
+}
+
+function readVocalizationFrom(scope) {
+  const root = scope || document;
+  const stage = (root.querySelector('[data-field="stage"]')?.value || '').trim();
+  const speaker = (root.querySelector('[data-field="speaker"]')?.value || '').trim();
+  const notes = (root.querySelector('[data-field="notes"]')?.value || '').trim();
+  return { stage, speaker, notes };
+}
+
+function isAdultSpeechAnn(a) {
+  if (!a) return false;
+  if (a.segmentKind === 'adult_speech' || a.stage === 'adult_speech') return true;
+  const role = String(a.vtcRole || '').toUpperCase();
+  if (role === 'FEM' || role === 'MAL') return true;
+  return (a.speaker || '') === 'Parent';
+}
+
+function validateVocalization(fields, opts) {
+  const opt = opts || {};
+  const stage = (fields.stage || '').trim();
+  if (opt.adult || stage === 'adult_speech') return '';
+  if (!stage) return 'Pick a stage';
+  if (stage !== 'noise' && !(fields.speaker || '').trim()) {
+    return 'Pick a speaker (or use stage noise)';
+  }
+  return '';
+}
+
+function vocalizationPayload(fields, opts) {
+  const opt = opts || {};
+  if (opt.adult) {
+    return {
+      stage: 'adult_speech',
+      segmentKind: 'adult_speech',
+      speaker: fields.speaker || 'Parent',
+      notes: fields.notes || '',
+    };
+  }
+  return {
+    stage: fields.stage || '',
+    speaker: fields.speaker || '',
+    notes: fields.notes || '',
+    segmentKind: 'child',
+  };
 }
 
 /** Pan without changing zoom so a span picked from the list is on screen. */
@@ -4261,18 +4503,18 @@ function renderTagList() {
         <span class="tag-badge ${ml ? 'ml' : 'user'}">${ml ? 'ML' : 'Manual'}</span>
         <span class="tag-who">${esc(t.speaker || '—')}</span>
         <span class="tag-label">${tagShortLabel(t)}</span>
-        <span class="tag-cat">${esc(TAG_CATEGORY_SHORT[t.category] || t.category || '')}</span>
+        <span class="tag-cat">${esc(t.stage || TAG_CATEGORY_SHORT[t.category] || t.category || '')}</span>
       </button>
       ${open ? `<div class="tag-detail">
         <div class="row-fields">
-          <select class="category-select" data-field="category">${categoryOptionsHtml(t.category || '')}</select>
+          <select class="stage-select" data-field="stage" title="Developmental stage">${stageOptionsHtml(t.stage || '')}</select>
           ${speakerChipsHtml(t.speaker || '', 'spk-' + t.uuid)}
-          ${detailFieldsHtml(t, 'tag-' + t.uuid)}
+          <input class="note-input" data-field="notes" type="text" placeholder="Transcript / context notes (optional)" value="${esc(t.notes || t.note || '')}" style="min-width:160px;flex:1"/>
           ${asrSummaryHtml(t)}
           <div class="controls">
             <button data-act="play">Play</button>
             <button data-act="asr">Suggest</button>
-            <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
+            <button data-act="copyAsr" title="Copy model text into notes">Copy→notes</button>
             <button data-act="save">Save</button>
             <button data-act="delete">Delete</button>
           </div>
@@ -4296,7 +4538,6 @@ function renderTagList() {
       spInput.dataset.field = 'speaker';
       wireSpeakerChips(detail.querySelector('.speaker-row'), spInput);
     }
-    wireCategoryDetail(detail);
     detail.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
       const tag = all.find(t => t.uuid === uuid);
       const act = btn.dataset.act;
@@ -4308,12 +4549,9 @@ function renderTagList() {
       if (act === 'copyAsr' && tag) {
         const text = (tag.asr && tag.asr.text || '').trim();
         if (!text) { flashSaveStatus('No model suggestion yet — click Suggest first', false); return; }
-        const wordEl = detail.querySelector('[data-field="word"]');
-        const catEl = detail.querySelector('[data-field="category"]');
-        if (catEl && !catEl.value) catEl.value = 'verbal vocalization';
-        syncDetailFields(detail);
-        if (wordEl) wordEl.value = text;
-        flashSaveStatus('Copied model text into Word (not saved yet)');
+        const notesEl = detail.querySelector('[data-field="notes"]');
+        if (notesEl) notesEl.value = text;
+        flashSaveStatus('Copied model text into notes (not saved yet)');
         return;
       }
       if (act === 'asr') {
@@ -4321,9 +4559,8 @@ function renderTagList() {
         const prev = btn.textContent;
         btn.textContent = '…';
         try {
-          const tax = readTaxonomyFrom(detail);
           const data = await postJson('/api/asr/run', {
-            kit: k.folder, uuid, language: tax.language || '',
+            kit: k.folder, uuid, language: '',
           });
           if (data.asr) flashSaveStatus(`Model: “${data.asr.text || '(empty)'}”`);
           await softRefreshCurrent();
@@ -4336,6 +4573,7 @@ function renderTagList() {
         return;
       }
       if (act === 'delete') {
+        if (!confirm('Delete this tag?')) return;
         try {
           const data = await postJson('/api/tag/delete', { kit: k.folder, uuid });
           selectedTagUuid = null;
@@ -4347,13 +4585,13 @@ function renderTagList() {
         return;
       }
       if (act === 'save') {
-        const tax = readTaxonomyFrom(detail);
-        const errMsg = validateTaxonomy(tax);
+        const fields = readVocalizationFrom(detail);
+        const errMsg = validateVocalization(fields);
         if (errMsg) { alert(errMsg); return; }
         try {
           const data = await postJson('/api/tag/update', {
             kit: k.folder, uuid,
-            ...taxonomyPayload(tax),
+            ...vocalizationPayload(fields),
             startMs: tag.startMs, endMs: tag.endMs
           });
           await softRefreshCurrent();
@@ -4390,7 +4628,9 @@ function renderLists() {
   }
   if (skippedCountEl) skippedCountEl.textContent = String(skippedAnns.length);
 
-  const anns = showSkippedAnns ? openAnns.concat(skippedAnns) : openAnns;
+  const anns = (showSkippedAnns ? openAnns.concat(skippedAnns) : openAnns)
+    .slice()
+    .sort((x, y) => (x.startMs || x.tMs || 0) - (y.startMs || y.tMs || 0));
   const annList = document.getElementById('annList');
   let emptyMsg = '<p class="muted">No vocalizations yet. Click <strong>Find speech segments</strong>.</p>';
   if (!anns.length && skippedAnns.length && !showSkippedAnns) {
@@ -4398,39 +4638,41 @@ function renderLists() {
   }
   annList.innerHTML = anns.length ? anns.map(a => {
     const isSkipped = a.status === 'skipped';
+    const adult = isAdultSpeechAnn(a);
     const splitLabel = a.splitBy === 'speaker_change' ? 'speaker change'
       : a.splitBy === 'vocalization_pause' ? 'voc pause'
       : a.splitBy;
+    const stageField = adult
+      ? `<span class="pill" title="Parent/adult turn — child stage taxonomy does not apply">adult_speech</span>
+         <input type="hidden" data-field="stage" value="adult_speech"/>`
+      : `<select class="stage-select" data-field="stage" title="Developmental stage (child only)">${stageOptionsHtml(a.stage || '')}</select>`;
     return `
-    <div class="row" data-uuid="${esc(a.uuid)}">
+    <div class="row${adult ? ' adult-speech' : ''}" data-uuid="${esc(a.uuid)}" data-kind="${adult ? 'adult_speech' : 'child'}">
       <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}
-        ${a.unit ? `<span class="sub">${esc(a.unit)}</span>` : ''}
+        ${adult ? '<span class="sub">adult</span>' : (a.unit ? `<span class="sub">${esc(a.unit)}</span>` : '')}
         ${isSkipped ? '<span class="sub">skipped</span>' : ''}
         ${fragmentCueHtml(a)}
-        ${a.stage ? `<span class="sub">stage · ${esc(a.stage)}</span>` : ''}
-        ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
+        ${!adult && a.stage ? `<span class="sub">stage · ${esc(a.stage)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
-        ${a.language ? `<span class="sub">${esc(a.language)}</span>` : ''}
-        ${a.speakerCluster ? `<span class="sub" title="Diarization cluster — a guess, not a named person">${esc(a.speakerCluster)}</span>` : ''}
+        ${a.vtcRole ? `<span class="sub" title="VTC role">${esc(a.vtcRole)}</span>` : ''}
+        ${a.speakerCluster && !a.vtcRole ? `<span class="sub" title="Diarization cluster — a guess, not a named person">${esc(a.speakerCluster)}</span>` : ''}
         ${splitLabel ? `<span class="sub">split · ${esc(splitLabel)}</span>` : ''}
         ${featurePillHtml(a)}
         ${a.speechScore != null ? `<span class="sub" title="Speech-likeness 0–1">speech ${a.speechScore.toFixed(2)}</span>` : ''}
         ${(a.flags||[]).includes('possible_non_speech') ? `<span class="sub" title="${esc(a.nonSpeechReason || 'scored low on the speech gate')}">possible non-speech${a.nonSpeechReason ? ' · ' + esc(a.nonSpeechReason) : ''}</span>` : ''}
         ${(a.flags||[]).includes('hard_capped') ? '<span class="sub">cap: long span, no clean split found</span>' : ''}
-        ${detailSummaryHtml(a)}
+        ${a.notes ? `<span class="sub">${esc(a.notes)}</span>` : ''}
         ${asrSummaryHtml(a)}
       </span>
       <div class="row-fields">
-          <select class="stage-select" data-field="stage" title="Developmental stage (manual)">${stageOptionsHtml(a.stage || '')}</select>
-        <input class="note-input" data-field="notes" type="text" placeholder="Transcript / context notes" value="${esc(a.notes || '')}" style="min-width:160px;flex:1"/>
-        <select class="category-select" data-field="category">${categoryOptionsHtml(a.category || '')}</select>
-        ${speakerChipsHtml(a.speaker || '', 'ann-spk-' + a.uuid)}
-        ${detailFieldsHtml(a, 'ann-' + a.uuid)}
+        ${stageField}
+        ${speakerChipsHtml(a.speaker || (adult ? 'Parent' : ''), 'ann-spk-' + a.uuid)}
+        <input class="note-input" data-field="notes" type="text" placeholder="${adult ? 'Parent transcript / context (optional)' : 'Transcript / context notes (optional)'}" value="${esc(a.notes || '')}" style="min-width:160px;flex:1"/>
         <div class="controls">
           <button data-act="seek">Seek</button>
           <button data-act="asr">Suggest</button>
-          <button data-act="copyAsr" title="Copy model text into Word">Copy→word</button>
-          <button data-act="confirm">Confirm</button>
+          <button data-act="copyAsr" title="Copy model text into notes">Copy→notes</button>
+          <button data-act="confirm">${adult ? 'Keep notes' : 'Confirm'}</button>
           <button data-act="dismiss">Dismiss</button>
           ${isSkipped
             ? '<button data-act="unskip" title="Return to open review list">Unskip</button>'
@@ -4441,39 +4683,45 @@ function renderLists() {
   }).join('') : emptyMsg;
 
   annList.querySelectorAll('.row').forEach(row => {
+    const uuid = row.dataset.uuid;
+    const ann0 = anns.find(a => a.uuid === uuid);
+    const adult = isAdultSpeechAnn(ann0) || row.dataset.kind === 'adult_speech';
     const spInput = row.querySelector('input[id^="ann-spk-"]');
     if (spInput) {
       spInput.dataset.field = 'speaker';
       wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
     }
-    wireCategoryDetail(row);
 
     const saveStageNotes = async () => {
-      const uuid = row.dataset.uuid;
-      const stageEl = row.querySelector('[data-field="stage"]');
-      const notesEl = row.querySelector('[data-field="notes"]');
+      const fields = readVocalizationFrom(row);
       try {
         await postJson('/api/annotation/update', {
           kit: k.folder,
           uuid,
           action: 'save_fields',
-          stage: stageEl ? stageEl.value : '',
-          notes: notesEl ? notesEl.value : '',
+          ...vocalizationPayload(fields, { adult }),
         });
-        flashSaveStatus('Saved stage / notes');
-        // Soft-update local object so pill reflects stage without full reload flicker.
+        flashSaveStatus(adult ? 'Saved adult notes' : 'Saved stage / speaker / notes');
         const ann = anns.find(a => a.uuid === uuid);
         if (ann) {
-          ann.stage = stageEl && stageEl.value ? stageEl.value : null;
-          ann.notes = notesEl ? notesEl.value : '';
+          ann.stage = adult ? 'adult_speech' : (fields.stage || null);
+          ann.notes = fields.notes || '';
+          ann.speaker = fields.speaker || null;
+          if (adult) ann.segmentKind = 'adult_speech';
         }
       } catch (err) {
         flashSaveStatus('Save failed: ' + err.message, false);
       }
     };
-    const stageEl = row.querySelector('[data-field="stage"]');
+    const stageEl = row.querySelector('select[data-field="stage"]');
     const notesEl = row.querySelector('[data-field="notes"]');
     if (stageEl) stageEl.onchange = () => void saveStageNotes();
+    if (spInput) {
+      spInput.onchange = () => void saveStageNotes();
+      row.querySelectorAll('.speaker-row .chip').forEach(chip => {
+        chip.addEventListener('click', () => setTimeout(() => void saveStageNotes(), 0));
+      });
+    }
     if (notesEl) {
       let t = null;
       notesEl.oninput = () => {
@@ -4484,7 +4732,6 @@ function renderLists() {
     }
 
     row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
-      const uuid = row.dataset.uuid;
       const ann = anns.find(a => a.uuid === uuid);
       const act = btn.dataset.act;
       if (act === 'seek' && ann) {
@@ -4500,12 +4747,10 @@ function renderLists() {
       if (act === 'copyAsr' && ann) {
         const text = (ann.asr && ann.asr.text || '').trim();
         if (!text) { flashSaveStatus('No model suggestion yet — click Suggest first', false); return; }
-        const wordEl = row.querySelector('[data-field="word"]');
-        const catEl = row.querySelector('[data-field="category"]');
-        if (catEl && !catEl.value) catEl.value = 'verbal vocalization';
-        syncDetailFields(row);
-        if (wordEl) wordEl.value = text;
-        flashSaveStatus('Copied model text into Word (not saved yet)');
+        const notesField = row.querySelector('[data-field="notes"]');
+        if (notesField) notesField.value = text;
+        void saveStageNotes();
+        flashSaveStatus('Copied model text into notes');
         return;
       }
       if (act === 'asr') {
@@ -4513,9 +4758,8 @@ function renderLists() {
         const prev = btn.textContent;
         btn.textContent = '…';
         try {
-          const tax = readTaxonomyFrom(row);
           const data = await postJson('/api/asr/run', {
-            kit: k.folder, uuid, language: tax.language || '',
+            kit: k.folder, uuid, language: '',
           });
           if (data.asr) flashSaveStatus(`Model: “${data.asr.text || '(empty)'}”`);
           await softRefreshCurrent();
@@ -4527,22 +4771,18 @@ function renderLists() {
         }
         return;
       }
-      const tax = readTaxonomyFrom(row);
+      const fields = readVocalizationFrom(row);
       if (act === 'confirm') {
-        const errMsg = validateTaxonomy(tax);
+        const errMsg = validateVocalization(fields, { adult });
         if (errMsg) { alert(errMsg); return; }
       }
       try {
-        const stageEl2 = row.querySelector('[data-field="stage"]');
-        const notesEl2 = row.querySelector('[data-field="notes"]');
         await postJson('/api/annotation/update', {
           kit: k.folder, uuid, action: act,
-          ...taxonomyPayload(tax),
-          stage: stageEl2 ? stageEl2.value : undefined,
-          notes: notesEl2 ? notesEl2.value : undefined,
+          ...vocalizationPayload(fields, { adult }),
         });
         await softRefreshCurrent();
-        if (act === 'confirm') flashSaveStatus(`Confirmed → tags.json`);
+        if (act === 'confirm') flashSaveStatus(adult ? 'Adult context kept → tags.json' : 'Confirmed → tags.json');
         if (act === 'dismiss') flashSaveStatus('Dismissed candidate');
         if (act === 'skip') flashSaveStatus('Skipped — parked for later (still in clustering)');
         if (act === 'unskip') flashSaveStatus('Unskipped — back in open list');
@@ -4555,34 +4795,30 @@ function renderLists() {
 
 async function addTag() {
   const form = document.querySelector('.tag-form');
-  const tax = readTaxonomyFrom(form || document);
+  const fields = readVocalizationFrom(form || document);
   let start = parseFloat(document.getElementById('startInput').value);
   let end = parseFloat(document.getElementById('endInput').value);
-  const errMsg = validateTaxonomy(tax);
+  const errMsg = validateVocalization(fields);
   if (errMsg) { alert(errMsg); return; }
   if (Number.isNaN(start)) start = playheadSec;
   if (Number.isNaN(end)) end = start;
   if (end < start) { const t = start; start = end; end = t; }
   pauseIfPlaying();
-  // Park cursor at the snippet start (or current playhead) so Play continues from here.
   const parkAt = Number.isFinite(start) ? start : playheadSec;
   try {
     const data = await postJson('/api/tag/add', {
       kit: current.folder,
-      ...taxonomyPayload(tax),
+      ...vocalizationPayload(fields),
       startMs: Math.round(start * 1000),
       endMs: Math.round(end * 1000),
     });
-    document.getElementById('categoryInput').value = '';
-    document.getElementById('speakerInput').value = '';
-    const wordEl = document.getElementById('wordInput');
-    const phoneticEl = document.getElementById('phoneticInput');
-    const noteEl = document.getElementById('noteInput');
-    if (wordEl) wordEl.value = '';
-    if (phoneticEl) phoneticEl.value = '';
-    if (noteEl) noteEl.value = '';
+    const stageEl = document.getElementById('stageInput');
+    const speakerEl = document.getElementById('speakerInput');
+    const notesEl = document.getElementById('notesInput');
+    if (stageEl) stageEl.value = '';
+    if (speakerEl) speakerEl.value = '';
+    if (notesEl) notesEl.value = '';
     wireSpeakerChips(document.getElementById('addSpeakerRow'), document.getElementById('speakerInput'));
-    syncDetailFields(form || document);
     selStart = selEnd = null;
     setPlayhead(parkAt);
     refreshWaveSel();
@@ -4925,15 +5161,9 @@ class Handler(BaseHTTPRequestHandler):
             start_ms = int(body.get("startMs") or 0)
             end_ms = body.get("endMs")
             end_ms = int(end_ms) if end_ms is not None else start_ms
-            if any(k in body for k in ("category", "speaker", "note", "word", "phonetic")):
-                err = taxonomy_validation_error(body)
-                if err:
-                    self._send_json(400, {"ok": False, "error": err})
-                    return
-            elif not (body.get("label") or "").strip():
-                self._send_json(
-                    400, {"ok": False, "error": "category (or legacy label) required"}
-                )
+            err = stage_validation_error(body)
+            if err:
+                self._send_json(400, {"ok": False, "error": err})
                 return
             tag = {
                 "uuid": str(uuid.uuid4()),
@@ -4943,8 +5173,9 @@ class Handler(BaseHTTPRequestHandler):
                 "tMs": start_ms,
                 "source": "user",
                 "status": "confirmed",
+                "unit": "vocalization",
             }
-            apply_taxonomy_fields(tag, body)
+            apply_vocalization_fields(tag, body)
             tags.append(tag)
             write_tags(kit, tags)
             path = str((kit / "tags.json").resolve())
@@ -4962,12 +5193,11 @@ class Handler(BaseHTTPRequestHandler):
             for t in tags:
                 if t.get("uuid") != body.get("uuid"):
                     continue
-                if any(k in body for k in ("category", "speaker", "note", "word", "phonetic")):
-                    err = taxonomy_validation_error(body)
-                    if err:
-                        self._send_json(400, {"ok": False, "error": err})
-                        return
-                apply_taxonomy_fields(t, body)
+                err = stage_validation_error(body)
+                if err:
+                    self._send_json(400, {"ok": False, "error": err})
+                    return
+                apply_vocalization_fields(t, body)
                 if body.get("startMs") is not None:
                     t["startMs"] = int(body["startMs"])
                     t["tMs"] = t["startMs"]
@@ -5018,34 +5248,61 @@ class Handler(BaseHTTPRequestHandler):
                     continue
                 action = body.get("action")
                 if action == "save_fields":
-                    # Persist stage + notes without changing status (training labels).
-                    if "stage" in body:
-                        stage = (body.get("stage") or "").strip() or None
-                        a["stage"] = stage
-                    if "notes" in body:
-                        a["notes"] = body.get("notes") if body.get("notes") is not None else ""
-                elif action == "confirm":
-                    if any(
-                        k in body
-                        for k in ("category", "speaker", "note", "word", "phonetic")
-                    ):
-                        err = taxonomy_validation_error(body)
-                        if err:
-                            self._send_json(
-                                400,
-                                {"ok": False, "error": err},
+                    # Persist stage / notes / speaker without changing status.
+                    if body.get("segmentKind") == "adult_speech" or (
+                        body.get("stage") == "adult_speech"
+                    ) or a.get("segmentKind") == "adult_speech":
+                        apply_vocalization_fields(
+                            a,
+                            {
+                                "stage": "adult_speech",
+                                "segmentKind": "adult_speech",
+                                "speaker": body.get("speaker", a.get("speaker")),
+                                "notes": body.get("notes", a.get("notes")),
+                            },
+                        )
+                    else:
+                        if "stage" in body:
+                            stage = (body.get("stage") or "").strip() or None
+                            a["stage"] = stage
+                        if "notes" in body:
+                            a["notes"] = (
+                                body.get("notes")
+                                if body.get("notes") is not None
+                                else ""
                             )
-                            return
-                    apply_taxonomy_fields(a, body)
-                    if "stage" in body:
-                        a["stage"] = (body.get("stage") or "").strip() or a.get("stage")
-                    if "notes" in body and body.get("notes") is not None:
-                        a["notes"] = body.get("notes")
-                    if not (a.get("label") or "").strip():
-                        a["label"] = "confirmed"
+                        if "speaker" in body:
+                            speaker = normalize_speaker(body.get("speaker"))
+                            if speaker:
+                                a["speaker"] = speaker
+                            else:
+                                a.pop("speaker", None)
+                        a["segmentKind"] = a.get("segmentKind") or "child"
+                elif action == "confirm":
+                    # Merge request over existing annotation fields for validation.
+                    effective = {
+                        "stage": body.get("stage", a.get("stage")),
+                        "speaker": body.get("speaker", a.get("speaker")),
+                        "notes": body.get("notes", a.get("notes")),
+                        "segmentKind": body.get(
+                            "segmentKind", a.get("segmentKind")
+                        ),
+                    }
+                    if (
+                        effective.get("segmentKind") == "adult_speech"
+                        or a.get("segmentKind") == "adult_speech"
+                        or effective.get("stage") == "adult_speech"
+                    ):
+                        effective["stage"] = "adult_speech"
+                        effective["segmentKind"] = "adult_speech"
+                    err = stage_validation_error(effective)
+                    if err:
+                        self._send_json(400, {"ok": False, "error": err})
+                        return
+                    apply_vocalization_fields(a, effective)
                     a["status"] = "confirmed"
                     a["source"] = "ml_confirmed"
-                    # Also promote into tags.json so phone import of tags sees it.
+                    # Promote into tags.json (stage-based vocalization record).
                     tags = read_tags(kit)
                     existing = next(
                         (t for t in tags if t.get("uuid") == a["uuid"]), None
@@ -5058,21 +5315,28 @@ class Handler(BaseHTTPRequestHandler):
                         "tMs": a.get("startMs", a.get("tMs", 0)),
                         "source": "ml_confirmed",
                         "status": "confirmed",
+                        "unit": a.get("unit") or "vocalization",
                     }
-                    for key in ("category", "speaker", "word", "phonetic", "note"):
-                        if a.get(key):
-                            payload[key] = a[key]
-                        elif existing and key in existing:
-                            existing.pop(key, None)
-                    # Carry stage / notes / features onto the tag for training continuity.
-                    for key in ("stage", "notes", "features", "syllableCount", "unit"):
+                    for key in (
+                        "stage",
+                        "speaker",
+                        "notes",
+                        "features",
+                        "syllableCount",
+                        "segmentKind",
+                        "vtcRole",
+                    ):
                         if a.get(key) not in (None, ""):
                             payload[key] = a[key]
                     if existing:
-                        # Drop stale detail fields when category flips.
-                        for key in ("word", "phonetic", "note"):
-                            if key not in payload:
-                                existing.pop(key, None)
+                        for key in (
+                            "category",
+                            "word",
+                            "phonetic",
+                            "language",
+                            "note",
+                        ):
+                            existing.pop(key, None)
                         existing.update(payload)
                     else:
                         tags.append(payload)

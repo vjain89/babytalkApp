@@ -791,6 +791,129 @@ def enrich_vocalization_features(
     return out
 
 
+# VTC roles that are adult (not child developmental taxonomy).
+_ADULT_VTC_ROLES = frozenset({"FEM", "MAL"})
+_CHILD_VTC_ROLES = frozenset({"KCHI", "OCH"})
+# Minimum overlap with a diarized turn before it counts toward the speaker set.
+_SPEAKER_OVERLAP_MS = 40.0
+
+
+def _speaker_identity(meta: dict | None) -> str | None:
+    """Stable id for invariant checks (prefer role/cluster over display name)."""
+    if not meta:
+        return None
+    for key in ("vtcRole", "speakerCluster", "speaker"):
+        val = meta.get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    return None
+
+
+def is_adult_speech_meta(meta: dict | None) -> bool:
+    """True when diarization says this turn is parent/adult (not key/other child)."""
+    if not meta:
+        return False
+    role = str(meta.get("vtcRole") or "").strip().upper()
+    if role in _ADULT_VTC_ROLES:
+        return True
+    if role in _CHILD_VTC_ROLES:
+        return False
+    speaker = str(meta.get("speaker") or "").strip()
+    if speaker == "Parent":
+        return True
+    if speaker == "Baby":
+        return False
+    return False
+
+
+def enforce_single_speaker_invariant(
+    pieces: list[dict],
+    diar_spans: list[dict],
+) -> tuple[list[dict], list[dict], dict]:
+    """Drop vocalizations that overlap more than one diarized speaker.
+
+    Pause-split runs within one speaker stretch, so multi-speaker overlap is a
+    bug signal (diarization/merge error). Flagged pieces are not emitted as
+    normal candidates.
+    """
+    stats = {
+        "singleSpeakerOk": 0,
+        "multiSpeakerFlagged": 0,
+        "multiSpeakerExamples": [],
+    }
+    if not pieces:
+        return [], [], stats
+
+    # Spans with no speaker label (diarization off) cannot violate the invariant.
+    labeled = [
+        s
+        for s in diar_spans
+        if _speaker_identity(s.get("meta")) is not None
+    ]
+    if not labeled:
+        stats["singleSpeakerOk"] = len(pieces)
+        return pieces, [], stats
+
+    kept: list[dict] = []
+    flagged: list[dict] = []
+    for piece in pieces:
+        s = float(piece["start"])
+        e = float(piece["end"])
+        speakers: set[str] = set()
+        for span in labeled:
+            ss = float(span["start"])
+            se = float(span["end"])
+            overlap = min(e, se) - max(s, ss)
+            if overlap >= _SPEAKER_OVERLAP_MS:
+                sid = _speaker_identity(span.get("meta"))
+                if sid:
+                    speakers.add(sid)
+        # Also trust the piece's own inherited label when no overlap found.
+        own = _speaker_identity(piece.get("meta"))
+        if own:
+            speakers.add(own)
+        if len(speakers) > 1:
+            meta = dict(piece.get("meta") or {})
+            meta["flags"] = list(meta.get("flags") or []) + ["multi_speaker_bug"]
+            meta["multiSpeakerIds"] = sorted(speakers)
+            flagged_piece = {**piece, "meta": meta}
+            flagged.append(flagged_piece)
+            stats["multiSpeakerFlagged"] += 1
+            if len(stats["multiSpeakerExamples"]) < 8:
+                stats["multiSpeakerExamples"].append(
+                    {
+                        "startMs": int(round(s)),
+                        "endMs": int(round(e)),
+                        "speakers": sorted(speakers),
+                    }
+                )
+            print(
+                f"  ! multi-speaker vocalization bug "
+                f"{s:.0f}-{e:.0f}ms speakers={sorted(speakers)} — not emitting",
+                file=sys.stderr,
+            )
+            continue
+        stats["singleSpeakerOk"] += 1
+        kept.append(piece)
+    return kept, flagged, stats
+
+
+def tag_adult_speech_pieces(pieces: list[dict]) -> list[dict]:
+    """Mark parent/adult turns as segmentKind=adult_speech (not child stages)."""
+    out: list[dict] = []
+    for piece in pieces:
+        meta = dict(piece.get("meta") or {})
+        if is_adult_speech_meta(meta):
+            meta["segmentKind"] = "adult_speech"
+            meta["stage"] = "adult_speech"
+            if not meta.get("speaker"):
+                meta["speaker"] = "Parent"
+        else:
+            meta.setdefault("segmentKind", "child")
+        out.append({**piece, "meta": meta})
+    return out
+
+
 def apply_speech_gate(
     pieces: list[dict],
     audio: np.ndarray,
@@ -874,9 +997,15 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             ann["syllableCount"] = int(meta["syllableCount"])
         if meta.get("features"):
             ann["features"] = meta["features"]
-        # Manual stage labeling fields (filled in Review; empty at emit).
-        ann.setdefault("stage", None)
-        ann.setdefault("notes", "")
+        # Manual stage labeling fields (filled in Review; empty at emit for child).
+        kind = meta.get("segmentKind") or "child"
+        ann["segmentKind"] = kind
+        if kind == "adult_speech":
+            ann["stage"] = "adult_speech"
+            ann.setdefault("notes", "")
+        else:
+            ann.setdefault("stage", None)
+            ann.setdefault("notes", "")
         # Anonymous ECAPA clusters stay off the reviewer-facing `speaker`
         # field (Confirm still asks). VTC roles *are* meaningful — prefill
         # Baby/Parent/Other so Confirm can accept with one click.
@@ -888,6 +1017,8 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             ann["speaker"] = meta["speaker"]
         if meta.get("vtcRole"):
             ann["vtcRole"] = meta["vtcRole"]
+        if meta.get("multiSpeakerIds"):
+            ann["multiSpeakerIds"] = list(meta["multiSpeakerIds"])
         anns.append(ann)
     return anns
 
@@ -1100,6 +1231,7 @@ def build_candidates_vtc_first(
     stats["diarization"]["speakerSplits"] = max(0, len(turns) - 1)
 
     if unit_norm == "vocalization":
+        diar_spans = [dict(p, meta=dict(p.get("meta") or {})) for p in pieces]
         pieces, voc_stats = split_into_vocalizations(
             pieces,
             times,
@@ -1109,16 +1241,35 @@ def build_candidates_vtc_first(
             speech_delta_db=speech_delta_db,
         )
         stats.update(voc_stats)
+        pieces, flagged, inv_stats = enforce_single_speaker_invariant(
+            pieces, diar_spans
+        )
+        stats.update(inv_stats)
+        if flagged:
+            stats["flaggedMultiSpeaker"] = [
+                {
+                    "startMs": int(round(p["start"])),
+                    "endMs": int(round(p["end"])),
+                    "speakers": (p.get("meta") or {}).get("multiSpeakerIds") or [],
+                }
+                for p in flagged[:12]
+            ]
         pieces, gate_stats = apply_speech_gate(
             pieces, audio, sr, reject=reject_non_speech
         )
         stats.update(gate_stats)
         pieces = enrich_vocalization_features(pieces, audio, sr)
+        pieces = tag_adult_speech_pieces(pieces)
         stats["split"] = (
             int(stats["diarization"].get("speakerSplits", 0))
             + voc_stats.get("vocalizationSplits", 0)
         )
         stats["candidates"] = len(pieces)
+        stats["adultSpeech"] = sum(
+            1
+            for p in pieces
+            if (p.get("meta") or {}).get("segmentKind") == "adult_speech"
+        )
         return segments_to_annotations(pieces), stats
 
     pieces, refine_stats = refine_long_spans(
@@ -1313,6 +1464,8 @@ def build_candidates(
         )
         stats["diarization"] = diar_info
 
+    diar_spans = [dict(p, meta=dict(p.get("meta") or {})) for p in pieces]
+
     if unit_norm == "vocalization":
         pieces, voc_stats = split_into_vocalizations(
             pieces,
@@ -1323,16 +1476,35 @@ def build_candidates(
             speech_delta_db=speech_delta_db,
         )
         stats.update(voc_stats)
+        pieces, flagged, inv_stats = enforce_single_speaker_invariant(
+            pieces, diar_spans
+        )
+        stats.update(inv_stats)
+        if flagged:
+            stats["flaggedMultiSpeaker"] = [
+                {
+                    "startMs": int(round(p["start"])),
+                    "endMs": int(round(p["end"])),
+                    "speakers": (p.get("meta") or {}).get("multiSpeakerIds") or [],
+                }
+                for p in flagged[:12]
+            ]
         pieces, gate_stats = apply_speech_gate(
             pieces, audio, sr, reject=reject_non_speech
         )
         stats.update(gate_stats)
         pieces = enrich_vocalization_features(pieces, audio, sr)
+        pieces = tag_adult_speech_pieces(pieces)
         stats["split"] = (
             int(stats["diarization"].get("speakerSplits", 0))
             + voc_stats.get("vocalizationSplits", 0)
         )
         stats["candidates"] = len(pieces)
+        stats["adultSpeech"] = sum(
+            1
+            for p in pieces
+            if (p.get("meta") or {}).get("segmentKind") == "adult_speech"
+        )
         return segments_to_annotations(pieces), stats
 
     # --- Legacy word-like path ---

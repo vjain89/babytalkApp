@@ -24,18 +24,30 @@ Word-level clustering and segmentation work continues, but as a pipeline that *e
 
 ## 2. Developmental stage taxonomy
 
-Per current developmental speech/language literature, these stages **overlap and coexist** rather than forming a strict ladder a child climbs and leaves behind. In particular, jargon commonly continues well after first words appear — a vocalization should never be scored against "has this child already moved past babble," only "what is this specific vocalization."
+Label at the **vocalization** level (see §3), not the word level. A vocalization
+carries one primary label. Stages **overlap and coexist** in development — score
+*this* vocalization, not “how far the child has progressed overall.”
 
-| Label | Description | Typical acoustic signature |
-|---|---|---|
-| `vegetative_cry` | Cries, grunts, vegetative sounds (not communicative attempts) | Low structure, no clear pitch contour, often longer/sustained |
-| `canonical_babble` | Repeated well-formed CV syllables ("bababa", "dadada") | Regular syllable repetition, flat/simple pitch contour |
-| `jargon` | Babble with adult-like sentence-level stress and intonation, no identifiable real words | Adult-like pitch contour and rhythm, but no cluster match |
-| `protoword` | Consistent, non-adult-form sound used referentially/functionally (child's own "word" for something, stable across occurrences) | Matches an existing low-confidence cluster; stable but non-standard form |
-| `single_word` | Identifiable single word attempt (approximate is fine) | Matches an existing labeled cluster; single unit |
-| `word_combination` | Two or more distinct known clusters produced with a short internal gap | Two-plus cluster matches within one vocalization, short gap between them |
+| Label | Description |
+|---|---|
+| `vegetative` | Biological, non-communicative (cough, sneeze, breathing, burp, snore, hiccup) |
+| `cry` | Distress/discomfort — sustained or slowly modulated, not rhythmic bursts |
+| `laugh` | Giggle — rhythmic burst of short repeated voiced pulses, positive affect |
+| `canonical_babble` | Repeated well-formed CV syllables; no adult-like sentence intonation. Also interim home for vowel-only vocal play (“uh”/“um” with no clear communicative intent) — add a context note (“vowel-only, no CV structure”) when used that way |
+| `jargon` | Adult-like sentence-level stress/intonation; no identifiable real word |
+| `protoword` | Consistent non-adult-form sound used referentially; stable across occurrences. Not restricted to CV — a stable vowel-only sound (“uh”) with reaching/pointing/directed attention qualifies here (intent present) |
+| `single_word` | Identifiable single-word attempt; approximate pronunciation OK |
+| `word_combination` | Two or more distinct known words with a short internal gap |
+| `noise` | Not a biological vocalization worth tracking (background noise, mic bump, adult speech mis-attributed as child, etc.) |
 
-Label at the **vocalization** level (see §3), not the word level. A vocalization can only carry one primary label, but the underlying cluster-match evidence supporting that label should be stored, since it feeds word discovery and combination detection.
+**Tiebreakers**
+
+- **vegetative vs noise:** came from the child’s body → `vegetative`; didn’t → `noise`
+- **cry vs laugh vs jargon:** sustained/strained → `cry`; rhythmic + positive affect → `laugh`; sentence-like melody, no burst repetition → `jargon`
+- **protoword vs single_word:** only pronunciation form matters (not frequency/confidence). Matches adult form → `single_word` (even once); never matches adult form despite repetition → `protoword`
+- **vowel-only:** communicative intent (pointing/reaching/directed) → `protoword`; no clear intent (vocal play) → `canonical_babble` + context note (“vowel-only, no CV structure”)
+
+Underlying cluster-match evidence (when available) should still be stored — it feeds word discovery and combination detection.
 
 ---
 
