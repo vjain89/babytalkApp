@@ -80,15 +80,19 @@ Open **BabyTalk** on the phone after a push — it auto-imports Import folders w
 Bundle id default: `org.reactjs.native.example.babytalkApp`  
 Override: `--bundle-id your.bundle.id`
 
-## ML candidates: VAD → diarization → DJW + merge-back → word-like candidates
+## ML candidates: VAD → diarization → vocalization pause-split (Review default)
 
-Clicking **Find speech segments** (or running `vad_segments.py`) runs:
+Clicking **Find speech segments** (or running `vad_segments.py`) defaults to
+**vocalization / turn** units (ACLEW-style), not DJW word boxes:
 
 | Stage | Where | What it does |
 | --- | --- | --- |
 | 1 · VAD + speech gate | `vad_segments.py`, `speechlike.py` | energy detection of louder-than-the-room regions, then an absolute "does this sound like a voice?" score that drops taps, doors, thumps and running water |
 | 2 · Diarization | `diarize.py` | speaker embeddings + clustering across the session; cuts each region where the speaker changes |
-| 3 · Refine | `vad_segments.py`, `resegment.py` | pause-splits same-speaker spans still over 4s; **DJW nuclei** then **short-gated merge-back** so Review sees **word-like** (tag-sized) candidates — not raw syllable shards; re-scores each child through the speech gate; skips spans already in `tags.json`; writes `annotations.json` |
+| 3 · Vocalization pause-split | `vad_segments.py` | within each speaker stretch, split wherever an internal low-energy pause exceeds **`VOCALIZATION_PAUSE_MS`** (placeholder **400 ms** — calibrate empirically; independent of DJW syllable gaps). Writes `{speaker, startMs, endMs}` vocalizations to `annotations.json` |
+| 4 · Features | `vocalization_features.py` | per vocalization: **duration**, **DJW syllable count** (count only — DJW does **not** set boundaries), **pitch contour** stats. Review assigns manual **stage** + **notes** for training |
+
+Legacy word-like path (DJW + short-gated merge-back) remains as `--unit word` for clustering experiments; Review Browser always requests `unit: vocalization`.
 
 ```bash
 tools/.venv/bin/pip install -r tools/requirements.txt
@@ -96,13 +100,13 @@ python3 tools/vad_segments.py ~/Documents/BabyTalk/Library
 # or per kit:
 python3 tools/vad_segments.py ~/Documents/BabyTalk/Library/<kit-folder>
 tools/.venv/bin/python tools/vad_segments.py --list-backends   # what's installed
-# coarser blobs (skip DJW + merge-back):
-python3 tools/vad_segments.py <kit> --no-resegment
-# raw DJW children without merge-back:
-python3 tools/vad_segments.py <kit> --no-merge-back
+# tune vocalization pause (ms):
+python3 tools/vad_segments.py <kit> --vocalization-pause-ms 400
+# legacy word-like candidates (DJW + merge-back):
+python3 tools/vad_segments.py <kit> --unit word
 ```
 
-Defaults: merge gaps ≤ **200 ms**, drop segments **&lt; 300 ms**, source `vad_v0` → `annotations.json` as provisional candidates.
+Defaults: vocalization unit; pause ≥ **400 ms**; merge gaps ≤ **200 ms** (VAD region merge); drop segments **&lt; 250–300 ms**; source `vad_v0` → `annotations.json` as provisional candidates with empty `stage` / `notes`.
 
 Each run gets a flat **80ms** pad on both edges so soft onsets/offsets aren't clipped by the threshold crossing. On top of that, edges are extended through neighboring frames that clear a second, lower threshold (half the speech delta, capped at **120ms**) before the flat pad is added — a gradual attack/decay often sits above the noise floor for a while before it's "confidently" loud, and a single fixed threshold would otherwise cut into it. This is still level-based (not a derivative/onset detector), just two thresholds instead of one, and the reach is clamped so it can never cross into a neighboring run.
 
@@ -167,18 +171,23 @@ tools/.venv/bin/python tools/analysis/ml_delta.py --fresh --segmentation vtc-fir
 
 **Graceful degradation:** if no backend is usable, or the model download fails, the pipeline still returns VAD-only candidates and reports why stage 2 was skipped — in the CLI output, and in the hint text next to the button. The Review Server never fails the request over a missing optional model.
 
-### Stage 3 — refinement + DJW resegment + short-gated merge-back
+### Stage 3 — vocalization pause-split (Review default) vs word refine
 
-Same-speaker spans still longer than **4s** are re-split at their deepest internal relative energy dip (one person, several sentences — a pause is a reasonable utterance boundary). An absolute 15s hard cap is the last resort if no split point is found, flagged `hard_capped`.
+**Default (`unit=vocalization`):** after diarization, each speaker stretch is
+split wherever an internal low-energy pause exceeds **`VOCALIZATION_PAUSE_MS`**
+(placeholder **400 ms** — calibrate empirically). This threshold is independent
+of DJW syllable-gap / merge-back knobs. Review sees turn-level vocalizations
+with stored features (duration, DJW syllable *count*, pitch contour). Manual
+**stage** + **notes** fields on each annotation are the training labels (no
+auto-classifier yet). Clear list removes open provisionals so you can re-run.
 
-**Parents** (longer VAD/diarization regions) stay pipeline-internal via `parentSpanId`.
-**What Review should see** are word-like children after DJW **plus** merge-back —
-not raw syllable shards. Whisper word boxes are **not** used as the word-box
-source (ruled out; see `docs/IOU_WHISPER_VS_MERGEBACK.md`).
+**Legacy (`unit=word`):** same-speaker spans still longer than **4s** are
+re-split at energy dips; then **`resegment.py`** applies DJW nuclei +
+short-gated merge-back so Clustering experiments see word-like children.
+Parents stay pipeline-internal via `parentSpanId`. Whisper word boxes are
+**not** used (see `docs/IOU_WHISPER_VS_MERGEBACK.md`).
 
-Then **`resegment.py`** cuts each remaining span using a
-**de Jong & Wempe (2009)** syllable-nucleus detector (Praat intensity peaks with a
-minimum preceding dip, then discard unvoiced peaks), plus BabyTalk extras:
+Word-path DJW details:
 
 1. Praat-like intensity (`To Intensity… 50` ≈ 64 ms smooth)
 2. Peaks above median intensity (ignorance level **0 dB**, unfiltered default)
@@ -186,22 +195,17 @@ minimum preceding dip, then discard unvoiced peaks), plus BabyTalk extras:
 4. Cut at intensity minima between nuclei only when the gap looks **word-like**
    (≥300 ms apart or ≥4 dB valley — keeps multi-syllable words together)
 5. Force-split leftovers still over ~**1.6 s**; trim each child to above-threshold intensity
-6. **Merge-back** (default on): glue clearly-short sibling pieces across weak cuts —
-   `require_clearly_short` + **`short_piece_ms=400`** + **`max_gap_ms=200`**
-   (within-word syllable gaps are typically well under the ~0.5s break between
-   separate words; weak valley is secondary only, never sufficient alone).
-   Children keep `parentSpanId`; merged spans may carry `mergedFrom` /
-   `splitBy: merge_back`.
+6. **Merge-back** (default on for `--unit word`): glue clearly-short sibling pieces across weak cuts —
+   `require_clearly_short` + **`short_piece_ms=400`** + **`max_gap_ms=200`**.
 
-Disable DJW+merge-back with `--no-resegment` / `resegment: false`.
+Disable DJW+merge-back on the word path with `--no-resegment` / `resegment: false`.
 Disable only merge-back with `--no-merge-back` / `mergeBack: false`.
 
 Citation: De Jong, N. H., & Wempe, T. (2009). Praat script to detect syllable nuclei and measure speech rate automatically. *Behavior Research Methods, 41*(2), 385–390.
 
-**Clustering tab** uses the same philosophy: groups **word-like** tags + non-short
-ML candidates (SHORT fragments excluded by default), same-speaker. Re-run Find
-speech segments before clustering if you want clusters over the new merge-back
-candidates.
+**Clustering tab** still groups **word-like** tags + non-short ML candidates
+(SHORT fragments excluded by default). Prefer `--unit word` before clustering
+experiments if you want merge-back-shaped candidates.
 
 Each resulting candidate then goes back through the **speech gate** one more time. Stage 1 screened whole regions, which often mix a sentence with the clatter right after it; only now is each piece a single turn that can be judged on its own, so this is the pass that does most of the filtering. Measured on two of the reviewer's kits (candidates → junk they had previously dismissed that got re-proposed):
 

@@ -55,8 +55,8 @@ flowchart LR
 - RN app: record / playback / Path B peaks / session naming / category+speaker+word+phonetic tagging
 - Session kits under `~/Documents/BabyTalk/Library/` + USB sync (`tools/iphone_sync.py`)
 - Review Browser (`tools/review_server.py`): waveform tagging, ML candidates, Clustering tab, Sync button
-- ML SoTA path: **energy VAD + speechlike gate → ECAPA diarization → pause-split → DJW + short-gated merge-back → word-like annotations**
-- Supporting modules: `vad_segments.py`, `speechlike.py`, `diarize.py`, `resegment.py`, `cluster_sounds.py`, `asr_suggest.py`
+- ML SoTA path (Review default): **energy VAD + speechlike gate → ECAPA diarization → vocalization pause-split (`VOCALIZATION_PAUSE_MS`) → features (duration / DJW syllable count / pitch) → annotations**. Legacy `--unit word` keeps DJW + merge-back for clustering experiments.
+- Supporting modules: `vad_segments.py`, `speechlike.py`, `diarize.py`, `resegment.py`, `vocalization_features.py`, `cluster_sounds.py`, `asr_suggest.py`
 - Benchmark harness (partial): `tools/analysis/ml_delta.py`
 
 ### On branch `cursor/iou-improvements` (committed)
@@ -125,31 +125,33 @@ flowchart TB
 
 ## 4. ML candidate pipeline (SoTA path)
 
-Default path (**main**):
+Default path (Review **Find speech**):
 
 ```mermaid
 flowchart TD
   audio[kit audio.wav]
   vad[Stage 1: energy VAD + speechlike gate]
   diar[Stage 2: ECAPA diarization]
-  pause[Stage 3a: pause-split >4s]
-  djw[Stage 3b: DJW + merge-back → word-like]
-  gate[Stage 3c: per-child speech gate]
+  voc[Stage 3: vocalization pause-split]
+  feats[Stage 4: duration + DJW syllable count + pitch]
+  gate[per-child speech gate]
   skip[Skip spans overlapping tags.json]
-  out[annotations.json provisional]
+  out[annotations.json provisional + stage/notes]
 
-  audio --> vad --> diar --> pause --> djw --> gate --> skip --> out
+  audio --> vad --> diar --> voc --> feats --> gate --> skip --> out
 ```
+
+Legacy `--unit word` still runs pause-split → DJW + merge-back → word-like children (Clustering experiments).
 
 CLI:
 
 ```bash
 tools/.venv/bin/python tools/vad_segments.py ~/Documents/BabyTalk/Library
 tools/.venv/bin/python tools/vad_segments.py <kit> --list-backends
-tools/.venv/bin/python tools/vad_segments.py <kit> --no-resegment   # coarser blobs
+tools/.venv/bin/python tools/vad_segments.py <kit> --unit word   # legacy word-like
 ```
 
-Defaults: merge gaps ≤ 200 ms, drop &lt; 300 ms, dual-threshold edge pad (flat 80 ms + lower-threshold reach ≤ 120 ms). Source `vad_v0`. Re-runs replace still-provisional VAD candidates only; confirmed/dismissed + existing tags are preserved.
+Defaults: `unit=vocalization`, pause ≥ **400 ms** (`VOCALIZATION_PAUSE_MS`, tunable), VAD merge gaps ≤ 200 ms, dual-threshold edge pad. Source `vad_v0`. Re-runs replace still-provisional VAD candidates only; confirmed/dismissed/skipped + existing tags are preserved.
 
 ### 4.1 Stage 1 — VAD + speechlike gate (**main**)
 
@@ -210,10 +212,16 @@ tools/.venv/bin/python tools/vad_segments.py <kit> --segmentation vtc-first
 
 VTC was trained for LENA-style recorders, not close phone mics in home/hospital rooms. On this library it both **misses baby speech as segments** and **mis-labels roles**. Do not replace ECAPA with VTC for these kits.
 
-### 4.3 Stage 3 — Pause-split + DJW + short-gated merge-back (**main**)
+### 4.3 Stage 3 — Vocalization pause-split (Review default) + legacy word path
 
-**Product decision:** discover **word-like** (tag-sized) segments for Review —
-not raw DJW syllable children. Longer VAD/diarization regions remain parents
+**Product decision (Review):** discover **vocalization / turn** segments —
+diarization + `VOCALIZATION_PAUSE_MS` (placeholder 400 ms) — not DJW word boxes.
+DJW runs only for **syllable count** inside each window (`vocalization_features.py`).
+Each annotation stores features + empty `stage` / `notes` for manual labeling
+(see `docs/DEVELOPMENTAL_TIMELINE.md`).
+
+**Legacy (`--unit word`):** discover **word-like** (tag-sized) segments via
+pause-split + DJW + merge-back. Longer VAD/diarization regions remain parents
 (`parentSpanId`). Whisper word boxes are **not** the word-box source
 (see `docs/IOU_WHISPER_VS_MERGEBACK.md`).
 

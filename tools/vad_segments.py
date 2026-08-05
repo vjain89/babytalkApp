@@ -2,46 +2,36 @@
 
 Stages turn a raw session recording into provisional annotations for Review.
 
-**Default path (VAD-first):**
+**Default path (vocalization unit):**
 
-  1. **VAD (this module)** — energy detection of louder-than-the-room regions,
-     then a *speech-likeness* gate (``speechlike.py``) that asks whether each
-     region actually sounds like a vocal tract — voicing, voice-band energy,
-     low-frequency rumble — rather than a tap, a door or a chair scrape.
-     Silence is dropped, obvious non-speech is dropped before diarization, and
-     each final candidate is re-judged individually.
-  2. **Speaker diarization (``diarize.py``)** — speaker embeddings over sliding
-     windows inside those regions, clustered across the whole recording, then
-     each region is cut wherever the speaker changes. Tags each piece with a
-     ``SPEAKER_xx`` cluster id. Pass ``--diarization vtc`` to cut on Voice Type
-     Classifier roles (KCHI/OCH/FEM/MAL) instead of ECAPA clusters.
-  3. **Refine (this module + ``resegment.py``)** — same-speaker spans still
-     over 4s are pause-split; then each span is cut with de Jong & Wempe
-     nuclei and **short-gated merge-back** into word-like (tag-sized) children
-     — not raw syllable shards. An absolute duration cap is a last resort.
-     Candidates overlapping ``tags.json`` are dropped. Results write to
-     ``annotations.json`` as provisional candidates.
+  1. **VAD** — energy detection + speechlike gate (``speechlike.py``).
+  2. **Speaker diarization** — ECAPA (or VTC) cuts where the speaker changes.
+  3. **Vocalization pause-split** — within each speaker stretch, split wherever
+     an internal low-energy pause exceeds ``VOCALIZATION_PAUSE_MS`` (tunable;
+     separate from DJW syllable-gap logic). Output is ACLEW-style turns.
+  4. **Features** — duration, DJW syllable *count* inside each window (DJW does
+     **not** set boundaries), and pitch-contour stats. Written onto each
+     annotation for manual stage labeling in Review.
+
+**Legacy word-like path (``--unit word``):**
+
+  After diarization, same-speaker spans over 4s are pause-split; then DJW +
+  short-gated merge-back produce word-like (tag-sized) children for clustering
+  experiments. Not the Review default.
 
 **VTC-first path (``--segmentation vtc-first``):**
 
-  Skip energy VAD + ECAPA. Run the LAAC-LSCP Voice Type Classifier on the whole
-  file; its role turns become the parent spans (with ``speaker`` prefilled as
-  Baby/Parent/Other). Pause-split, DJW + merge-back, and the speechlike gate
-  still run. See ``vtc.py``.
-
-Stage 2 degrades gracefully: if no diarization backend is usable (or
-``--no-diarization`` is passed) the pipeline falls back to VAD + pause /
-word-like resegmentation only, and says so in the returned stats.
+  Skip energy VAD + ECAPA; VTC role turns become parents, then the same
+  unit-specific refine path runs.
 
 Requires: numpy, soundfile (stage 1) · see diarize.py / vtc.py for stage-2 deps
   pip install numpy soundfile
 
 Usage:
   python3 tools/vad_segments.py /path/to/kit_or_library
-  python3 tools/vad_segments.py /path/to/kit --diarization ecapa --num-speakers 2
+  python3 tools/vad_segments.py /path/to/kit --unit vocalization
+  python3 tools/vad_segments.py /path/to/kit --unit word --diarization ecapa
   python3 tools/vad_segments.py /path/to/kit --segmentation vtc-first --dry-run
-  python3 tools/vad_segments.py /path/to/kit --no-diarization --dry-run
-  python3 tools/vad_segments.py /path/to/kit --no-resegment
 """
 
 from __future__ import annotations
@@ -107,6 +97,14 @@ SPLIT_MIN_PROMINENCE_DB = 5.0
 # Absolute last resort if nothing above could split a long stretch (e.g. one
 # continuous monologue with no clean pause) — keep first N ms only.
 HARD_MAX_DUR_MS = 15_000
+# --- Vocalization unit (ACLEW-style; Review default) -------------------------
+# Within a single speaker's continuous activity, a low-energy gap longer than
+# this splits into separate vocalizations. Tunable — calibrate empirically;
+# placeholder only. Deliberately independent of DJW syllable-gap / merge-back
+# knobs in resegment.py.
+VOCALIZATION_PAUSE_MS = 400.0
+MIN_VOCALIZATION_MS = 250.0
+DEFAULT_UNIT = "vocalization"  # or "word" for legacy DJW + merge-back path
 # --- Non-speech rejection --------------------------------------------------
 # Two independent checks, because they catch different things:
 #
@@ -669,6 +667,130 @@ def refine_long_spans(
     return out, stats
 
 
+def split_into_vocalizations(
+    pieces: list[dict],
+    times: np.ndarray,
+    dbs: np.ndarray,
+    *,
+    pause_ms: float = VOCALIZATION_PAUSE_MS,
+    min_dur_ms: float = MIN_VOCALIZATION_MS,
+    speech_delta_db: float = SPEECH_DELTA_DB,
+    max_dur_ms: float = HARD_MAX_DUR_MS,
+) -> tuple[list[dict], dict]:
+    """Split each speaker stretch into pause-delimited vocalizations.
+
+    Contiguous frames above the session noise floor + ``speech_delta_db`` form
+    activity runs. Runs separated by a low-energy gap ≥ ``pause_ms`` become
+    separate vocalizations. Gaps shorter than ``pause_ms`` stay merged
+    (within-utterance continuity). DJW is not used here.
+    """
+    stats = {
+        "vocalizationSplits": 0,
+        "vocalizations": 0,
+        "vocalizationPauseMs": pause_ms,
+        "hardCapped": 0,
+    }
+    if len(dbs) == 0 or len(times) == 0:
+        return [], stats
+
+    floor = noise_floor_db(dbs)
+    thresh = floor + speech_delta_db
+    out: list[dict] = []
+
+    for piece in pieces:
+        lo, hi = _idx_range(times, piece["start"], piece["end"])
+        if hi - lo < 2:
+            continue
+        active = dbs[lo:hi] >= thresh
+        # Collect active runs as [rel_start, rel_end) indices into active.
+        runs: list[list[int]] = []
+        i = 0
+        n = len(active)
+        while i < n:
+            if not active[i]:
+                i += 1
+                continue
+            j = i + 1
+            while j < n and active[j]:
+                j += 1
+            runs.append([i, j])
+            i = j
+
+        if not runs:
+            continue
+
+        merged: list[list[int]] = [runs[0][:]]
+        for run in runs[1:]:
+            prev = merged[-1]
+            # Gap from end of prev active run to start of this run.
+            gap_start_abs = lo + prev[1]
+            gap_end_abs = lo + run[0]
+            if gap_end_abs > gap_start_abs and gap_start_abs < len(times):
+                t0 = float(times[min(gap_start_abs, len(times) - 1)])
+                t1 = float(times[min(gap_end_abs, len(times) - 1)])
+                gap_ms = max(0.0, t1 - t0)
+            else:
+                gap_ms = 0.0
+            if gap_ms < pause_ms:
+                prev[1] = run[1]
+            else:
+                merged.append(run[:])
+                stats["vocalizationSplits"] += 1
+
+        for mi, (r0, r1) in enumerate(merged):
+            abs0 = lo + r0
+            abs1 = lo + r1 - 1
+            if abs1 < abs0:
+                continue
+            s = float(times[abs0])
+            e = float(times[abs1]) + HOP_MS
+            s = max(s, float(piece["start"]))
+            e = min(e, float(piece["end"]))
+            if e - s < min_dur_ms:
+                continue
+            meta = dict(piece.get("meta") or {})
+            if meta.get("flags"):
+                meta["flags"] = list(meta["flags"])
+            meta["unit"] = "vocalization"
+            if mi > 0 or len(merged) > 1:
+                meta["splitBy"] = "vocalization_pause"
+            if e - s > max_dur_ms:
+                e = s + max_dur_ms
+                meta["flags"] = meta.get("flags", []) + ["hard_capped"]
+                stats["hardCapped"] += 1
+            out.append(
+                {
+                    "start": s,
+                    "end": e,
+                    "dur": e - s,
+                    "score": piece.get("score", 0.0),
+                    "meta": meta,
+                }
+            )
+            stats["vocalizations"] += 1
+
+    return out, stats
+
+
+def enrich_vocalization_features(
+    pieces: list[dict], audio: np.ndarray, sr: int
+) -> list[dict]:
+    """Attach duration / syllable count / pitch features to each piece meta."""
+    from vocalization_features import extract_span_features
+
+    out: list[dict] = []
+    for piece in pieces:
+        meta = dict(piece.get("meta") or {})
+        feats = extract_span_features(audio, sr, piece["start"], piece["end"])
+        meta["features"] = feats
+        meta["syllableCount"] = feats.get("syllableCount")
+        # Keep f0Med at top level for older UI pills.
+        if feats.get("f0Med"):
+            meta["f0Med"] = feats["f0Med"]
+        out.append({**piece, "meta": meta})
+    return out
+
+
 def apply_speech_gate(
     pieces: list[dict],
     audio: np.ndarray,
@@ -732,6 +854,8 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             "status": "provisional",
             "score": round(float(piece.get("score", 0.0)), 3),
         }
+        if meta.get("unit"):
+            ann["unit"] = meta["unit"]
         if meta.get("splitBy"):
             ann["splitBy"] = meta["splitBy"]
         if meta.get("parentSpanId"):
@@ -746,6 +870,13 @@ def segments_to_annotations(pieces: list[dict]) -> list[dict]:
             ann["nonSpeechReason"] = meta["nonSpeechReason"]
         if meta.get("f0Med"):
             ann["f0Med"] = meta["f0Med"]
+        if meta.get("syllableCount") is not None:
+            ann["syllableCount"] = int(meta["syllableCount"])
+        if meta.get("features"):
+            ann["features"] = meta["features"]
+        # Manual stage labeling fields (filled in Review; empty at emit).
+        ann.setdefault("stage", None)
+        ann.setdefault("notes", "")
         # Anonymous ECAPA clusters stay off the reviewer-facing `speaker`
         # field (Confirm still asks). VTC roles *are* meaningful — prefill
         # Baby/Parent/Other so Confirm can accept with one click.
@@ -918,11 +1049,20 @@ def build_candidates_vtc_first(
     word_split_min_dip_db: float = reseg_mod.WORD_SPLIT_MIN_DIP_DB,
     merge_back: bool = True,
     merge_back_params: reseg_mod.MergeBackParams | None = None,
+    unit: str = DEFAULT_UNIT,
+    vocalization_pause_ms: float = VOCALIZATION_PAUSE_MS,
+    speech_delta_db: float = SPEECH_DELTA_DB,
 ) -> tuple[list[dict], dict]:
-    """VTC-first path: role timeline → pause/DJW/merge-back → speech gate."""
+    """VTC-first path: role timeline → unit refine → speech gate."""
     times, dbs = frame_rms_db(audio, sr)
+    unit_norm = (unit or DEFAULT_UNIT).lower().strip()
+    if unit_norm in ("voc", "vocalisation", "vocalizations", "vocalisations"):
+        unit_norm = "vocalization"
+    if unit_norm not in ("vocalization", "word"):
+        unit_norm = DEFAULT_UNIT
     stats: dict = {
         "segmentation": "vtc-first",
+        "unit": unit_norm,
         "regions": 0,
         "diarization": {
             "ok": False,
@@ -958,6 +1098,28 @@ def build_candidates_vtc_first(
     stats["regions"] = len(pieces)
     stats["diarization"]["numSpeakers"] = len({t.role for t in turns})
     stats["diarization"]["speakerSplits"] = max(0, len(turns) - 1)
+
+    if unit_norm == "vocalization":
+        pieces, voc_stats = split_into_vocalizations(
+            pieces,
+            times,
+            dbs,
+            pause_ms=vocalization_pause_ms,
+            min_dur_ms=min(min_dur_ms, MIN_VOCALIZATION_MS),
+            speech_delta_db=speech_delta_db,
+        )
+        stats.update(voc_stats)
+        pieces, gate_stats = apply_speech_gate(
+            pieces, audio, sr, reject=reject_non_speech
+        )
+        stats.update(gate_stats)
+        pieces = enrich_vocalization_features(pieces, audio, sr)
+        stats["split"] = (
+            int(stats["diarization"].get("speakerSplits", 0))
+            + voc_stats.get("vocalizationSplits", 0)
+        )
+        stats["candidates"] = len(pieces)
+        return segments_to_annotations(pieces), stats
 
     pieces, refine_stats = refine_long_spans(
         pieces,
@@ -1078,12 +1240,20 @@ def build_candidates(
     merge_back: bool = True,
     merge_back_params: reseg_mod.MergeBackParams | None = None,
     segmentation: str = "vad",
+    unit: str = DEFAULT_UNIT,
+    vocalization_pause_ms: float = VOCALIZATION_PAUSE_MS,
 ) -> tuple[list[dict], dict]:
-    """Run VAD → diarize → pause/DJW/merge-back → speech gate; return anns + stats.
+    """Run VAD → diarize → unit refine → speech gate; return anns + stats.
 
-    Pass ``segmentation='vtc-first'`` to skip energy VAD/ECAPA and use VTC roles
-    as the parent spans instead.
+    ``unit='vocalization'`` (default): pause-split speaker turns; DJW count only.
+    ``unit='word'``: legacy DJW + merge-back word-like candidates.
     """
+    unit_norm = (unit or DEFAULT_UNIT).lower().strip()
+    if unit_norm in ("voc", "vocalisation", "vocalizations", "vocalisations"):
+        unit_norm = "vocalization"
+    if unit_norm not in ("vocalization", "word"):
+        unit_norm = DEFAULT_UNIT
+
     if (segmentation or "vad").lower() in ("vtc-first", "vtc", "vtc_first"):
         return build_candidates_vtc_first(
             audio,
@@ -1099,6 +1269,9 @@ def build_candidates(
             word_split_min_dip_db=word_split_min_dip_db,
             merge_back=merge_back,
             merge_back_params=merge_back_params,
+            unit=unit_norm,
+            vocalization_pause_ms=vocalization_pause_ms,
+            speech_delta_db=speech_delta_db,
         )
 
     times, dbs = frame_rms_db(audio, sr)
@@ -1113,6 +1286,7 @@ def build_candidates(
         reject_non_speech=reject_non_speech,
     )
     stats["segmentation"] = "vad"
+    stats["unit"] = unit_norm
     stats["regions"] = len(regions)
 
     if diarization in (None, "", "none", "off"):
@@ -1139,6 +1313,29 @@ def build_candidates(
         )
         stats["diarization"] = diar_info
 
+    if unit_norm == "vocalization":
+        pieces, voc_stats = split_into_vocalizations(
+            pieces,
+            times,
+            dbs,
+            pause_ms=vocalization_pause_ms,
+            min_dur_ms=min(min_dur_ms, MIN_VOCALIZATION_MS),
+            speech_delta_db=speech_delta_db,
+        )
+        stats.update(voc_stats)
+        pieces, gate_stats = apply_speech_gate(
+            pieces, audio, sr, reject=reject_non_speech
+        )
+        stats.update(gate_stats)
+        pieces = enrich_vocalization_features(pieces, audio, sr)
+        stats["split"] = (
+            int(stats["diarization"].get("speakerSplits", 0))
+            + voc_stats.get("vocalizationSplits", 0)
+        )
+        stats["candidates"] = len(pieces)
+        return segments_to_annotations(pieces), stats
+
+    # --- Legacy word-like path ---
     pieces, refine_stats = refine_long_spans(
         pieces,
         times,
@@ -1204,6 +1401,8 @@ def run_vad_on_audio(
     merge_back: bool = True,
     merge_back_params: reseg_mod.MergeBackParams | None = None,
     segmentation: str = "vad",
+    unit: str = DEFAULT_UNIT,
+    vocalization_pause_ms: float = VOCALIZATION_PAUSE_MS,
 ) -> tuple[list[dict], dict]:
     audio, sr = sf.read(str(audio_path), always_2d=False)
     audio = np.asarray(audio, dtype=np.float64)
@@ -1226,6 +1425,8 @@ def run_vad_on_audio(
         merge_back=merge_back,
         merge_back_params=merge_back_params,
         segmentation=segmentation,
+        unit=unit,
+        vocalization_pause_ms=vocalization_pause_ms,
     )
 
 
@@ -1245,6 +1446,8 @@ def process_kit(
     merge_back: bool = True,
     merge_back_params: reseg_mod.MergeBackParams | None = None,
     segmentation: str = "vad",
+    unit: str = DEFAULT_UNIT,
+    vocalization_pause_ms: float = VOCALIZATION_PAUSE_MS,
     write: bool = True,
 ) -> dict:
     manifest_path = kit / "manifest.json"
@@ -1272,6 +1475,8 @@ def process_kit(
         merge_back=merge_back,
         merge_back_params=merge_back_params,
         segmentation=segmentation,
+        unit=unit,
+        vocalization_pause_ms=vocalization_pause_ms,
     )
 
     tags = load_tags(kit)
@@ -1306,13 +1511,17 @@ def process_kit(
             "rejectNonSpeech": reject_non_speech,
             "diarization": diarization,
             "numSpeakers": num_speakers,
-            "resegment": resegment,
+            "resegment": resegment if (unit or DEFAULT_UNIT) == "word" else False,
             "resegTargetMs": reseg_target_ms,
-            "mergeBack": bool(resegment and merge_back),
+            "mergeBack": bool(resegment and merge_back)
+            if (unit or DEFAULT_UNIT) == "word"
+            else False,
             "mergeBackShortPieceMs": mb.short_piece_ms,
             "mergeBackMaxGapMs": mb.max_gap_ms,
             "mergeBackRequireClearlyShort": mb.require_clearly_short,
             "segmentation": segmentation,
+            "unit": unit or DEFAULT_UNIT,
+            "vocalizationPauseMs": vocalization_pause_ms,
             "source": SOURCE,
         },
     }
@@ -1399,6 +1608,24 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p.add_argument(
+        "--unit",
+        default=DEFAULT_UNIT,
+        choices=["vocalization", "word"],
+        help=(
+            "Candidate unit: vocalization = diarization + pause-split (default Review); "
+            "word = legacy DJW + merge-back word-like boxes"
+        ),
+    )
+    p.add_argument(
+        "--vocalization-pause-ms",
+        type=float,
+        default=VOCALIZATION_PAUSE_MS,
+        help=(
+            "Within a speaker turn, low-energy gaps ≥ this ms split vocalizations "
+            f"(default {VOCALIZATION_PAUSE_MS:g}; tunable — calibrate empirically)"
+        ),
+    )
+    p.add_argument(
         "--list-backends",
         action="store_true",
         help="Print diarization backend availability and exit",
@@ -1463,6 +1690,8 @@ def main(argv: list[str] | None = None) -> int:
             merge_back=not args.no_merge_back,
             merge_back_params=mb_params,
             segmentation=args.segmentation,
+            unit=args.unit,
+            vocalization_pause_ms=args.vocalization_pause_ms,
             write=not args.dry_run,
         )
         if not result.get("ok"):
@@ -1478,16 +1707,27 @@ def main(argv: list[str] | None = None) -> int:
             if di.get("ok")
             else f"diarization off ({di.get('error', 'unavailable')})"
         )
-        extra = (
-            f" (raw {vs.get('rawRuns', 0)} -> regions {vs.get('regions', 0)}"
-            f", screened {vs.get('regionsScreened', 0)} non-speech regions"
-            f", +{vs.get('pauseSplit', 0)} pause splits"
-            f", +{vs.get('resegSplits', 0)} DJW splits"
-            f", {vs.get('mergeBackMerges', 0)} merge-back"
-            f", speech gate dropped {vs.get('speechGateRejected', 0)}"
-            f" / flagged {vs.get('speechGateFlagged', 0)}"
-            f", {vs.get('tagOverlapSuppressed', 0)} already-tagged skipped; {diar_txt})"
-        )
+        unit = (result.get("params") or {}).get("unit") or args.unit
+        if unit == "vocalization":
+            extra = (
+                f" (unit=vocalization; regions {vs.get('regions', 0)}"
+                f", +{vs.get('vocalizationSplits', 0)} voc pauses"
+                f" @{vs.get('vocalizationPauseMs', args.vocalization_pause_ms)}ms"
+                f", speech gate dropped {vs.get('speechGateRejected', 0)}"
+                f" / flagged {vs.get('speechGateFlagged', 0)}"
+                f", {vs.get('tagOverlapSuppressed', 0)} already-tagged skipped; {diar_txt})"
+            )
+        else:
+            extra = (
+                f" (unit=word; raw {vs.get('rawRuns', 0)} -> regions {vs.get('regions', 0)}"
+                f", screened {vs.get('regionsScreened', 0)} non-speech regions"
+                f", +{vs.get('pauseSplit', 0)} pause splits"
+                f", +{vs.get('resegSplits', 0)} DJW splits"
+                f", {vs.get('mergeBackMerges', 0)} merge-back"
+                f", speech gate dropped {vs.get('speechGateRejected', 0)}"
+                f" / flagged {vs.get('speechGateFlagged', 0)}"
+                f", {vs.get('tagOverlapSuppressed', 0)} already-tagged skipped; {diar_txt})"
+            )
         print(f"{kit.name}: {verb} {result['added']} speech segments{extra}")
     print(f"Done. {total} segments across {len(kits)} kit(s).")
     return 0

@@ -83,6 +83,41 @@ def resolve_kit(name: str) -> Path:
     raise FileNotFoundError(name)
 
 
+def wav_clip_bytes(kit: Path, start_ms: int, end_ms: int) -> bytes:
+    """Extract ``[start_ms, end_ms)`` from the kit audio as a small WAV.
+
+    Vocabulary Play cannot reliably seek inside multi-hundred-MB session files
+    over ``/audio`` (no Range support; HTMLMediaElement seek races). Serving a
+    trimmed clip avoids seeking entirely.
+    """
+    import io
+
+    import numpy as np
+    import soundfile as sf
+
+    manifest = load_json(kit / "manifest.json")
+    audio_path = kit / manifest.get("audioFile", "audio.wav")
+    if not audio_path.exists():
+        raise FileNotFoundError(f"Audio not found: {audio_path}")
+
+    info = sf.info(str(audio_path))
+    sr = int(info.samplerate)
+    start = max(0, int(round(start_ms * sr / 1000.0)))
+    stop = int(round(end_ms * sr / 1000.0))
+    if stop <= start:
+        stop = start + max(1, int(0.05 * sr))
+    stop = min(int(info.frames), stop)
+    if stop <= start:
+        raise ValueError("empty clip")
+
+    data, _ = sf.read(str(audio_path), start=start, stop=stop, always_2d=False)
+    data = np.asarray(data)
+    buf = io.BytesIO()
+    # PCM_16 keeps responses small and universally playable in <audio>.
+    sf.write(buf, data, sr, format="WAV", subtype="PCM_16")
+    return buf.getvalue()
+
+
 def kit_payload(kit: Path) -> dict:
     manifest = load_json(kit / "manifest.json")
     tags = []
@@ -270,20 +305,20 @@ def taxonomy_validation_error(body: dict) -> str | None:
 
 
 def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
-    """Run the ML-candidate pipeline (VAD → diarization → candidates) and
-    merge the results into annotations.json.
+    """Run the ML-candidate pipeline and merge into annotations.json.
 
-    Diarization is best-effort: if no backend is installed the pipeline still
-    returns VAD-only candidates and reports why stage 2 was skipped, so the
-    button never fails outright over a missing optional model.
+    Default unit is vocalization (diarization + pause-split). Pass
+    ``unit: "word"`` for legacy DJW + merge-back word-like candidates.
     """
     body = body or {}
     try:
         from vad_segments import (
+            DEFAULT_UNIT,
             MERGE_GAP_MS,
             MIN_DUR_MS,
             SPEECH_DELTA_DB,
             SPLIT_TARGET_MS,
+            VOCALIZATION_PAUSE_MS,
             process_kit,
         )
         from resegment import (
@@ -312,6 +347,7 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
     if body.get("diarize") is False:
         diarization = "none"
     segmentation = (body.get("segmentation") or "vad").strip() or "vad"
+    unit = (body.get("unit") or DEFAULT_UNIT).strip() or DEFAULT_UNIT
     num_speakers = body.get("numSpeakers")
     try:
         num_speakers = int(num_speakers) if num_speakers not in (None, "", 0, "0") else None
@@ -337,6 +373,8 @@ def run_vad_for_kit(kit: Path, body: dict | None = None) -> dict:
             merge_back=bool(body.get("mergeBack", True)),
             merge_back_params=mb_params,
             segmentation=segmentation,
+            unit=unit,
+            vocalization_pause_ms=_num("vocalizationPauseMs", VOCALIZATION_PAUSE_MS),
             write=True,
         )
     except Exception as e:  # noqa: BLE001 — surface to UI
@@ -2276,39 +2314,23 @@ function renderShell() {
       <div id="tagList"></div>
     </div>
     <div class="section">
-      <h3>ML candidates</h3>
+      <h3>Vocalizations</h3>
       <p class="muted sans" style="margin:0 0 8px">
-        Two stages. <strong>1 · VAD</strong> finds louder-than-the-room spans (merge gaps ≤0.2s,
-        drop &lt;0.3s), then a <strong>speech gate</strong> scores each one on whether it
-        actually sounds like a voice — periodic/voiced, energy in the 300–3400 Hz voice
-        band, not sub-250 Hz rumble — and drops taps, door closes, thumps and running
-        water. Borderline spans are kept but marked
-        <span class="sub">possible non-speech</span>. It's a signal-processing gate, not a
-        trained classifier, so it both misses junk and occasionally drops a very quiet or
-        whispered utterance.
-        <strong>2 · Diarization</strong> takes speaker embeddings across the whole session,
-        clusters them, and cuts each span wherever the speaker changes, so a parent/baby/parent
-        stretch becomes separate candidates tagged <span class="sub">SPEAKER_00</span> etc.
-        Same-speaker spans still over 4s are then split at their deepest internal pause.
-        Each remaining span is cut with de Jong &amp; Wempe nuclei, then
-        <strong>short-gated merge-back</strong> (clearly-short pieces under ~400&nbsp;ms,
-        gaps up to ~200&nbsp;ms)
-        so Review sees <strong>word-like</strong> tag-sized candidates — not raw syllable
-        shards. Speaker ids are a <em>guess and unnamed</em> — they group turns,
-        they don't know who's the baby — so on confirm you still assign a <strong>category</strong> and
-        <strong>speaker</strong> (verbal: <strong>word</strong> + optional <strong>phonetic</strong>;
-        non-verbal: optional <strong>phonetic</strong>).
-        <span class="sub">Limits</span> overlapping speech goes to one speaker only, and a
-        toddler imitating a parent can land in the wrong cluster. Cuts are acoustic
-        (not dictionary words) — run-together phrases may stay one piece.
-        Use <strong>Suggest</strong> for a local Whisper draft (comparison only; never auto-fills your labels).
-        Confirm removes it from this list and adds it to Tags; dismiss hides it here and
-        excludes it from clustering; <strong>Skip</strong> parks it for later (hidden from
-        the open list, still eligible for clustering, preserved on re-run).
-        Re-run replaces provisional VAD/ml_v0 suggestions only, and skips spans already tagged.
+        <strong>Find speech segments</strong> now proposes
+        <em>vocalization / turn</em> units (ACLEW-style), not DJW word boxes:
+        energy VAD → speaker diarization → split within a speaker stretch wherever
+        an internal pause exceeds a tunable threshold
+        (<code>VOCALIZATION_PAUSE_MS</code>, placeholder 400&nbsp;ms — calibrate later).
+        DJW still runs <em>inside</em> each window for <strong>syllable count only</strong>;
+        pitch contour features are stored with the segment.
+        Assign a <strong>stage</strong> and optional <strong>notes</strong> to build a
+        labeled training set (no auto-classifier yet).
+        Confirm still promotes to Tags with category/speaker/word as before;
+        Dismiss / Skip work as before. Re-run replaces open provisionals only.
       </p>
       <div class="meta-actions" style="margin:0 0 10px">
         <button type="button" class="primary" id="btnVad">Find speech segments</button>
+        <button type="button" id="btnClearAnns" title="Remove open provisional segments from this list">Clear list</button>
         <label class="muted"><input type="checkbox" id="chkDiarize" checked/> Split by speaker</label>
         <label class="muted">Speakers
           <select id="vadNumSpeakers">
@@ -2450,17 +2472,36 @@ function renderShell() {
 
 function wireVad() {
   const btn = document.getElementById('btnVad');
+  const clearBtn = document.getElementById('btnClearAnns');
   const hint = document.getElementById('vadHint');
   const chk = document.getElementById('chkDiarize');
   const numSel = document.getElementById('vadNumSpeakers');
   if (!btn) return;
+
+  if (clearBtn) {
+    clearBtn.onclick = async () => {
+      if (!current) return;
+      if (!confirm('Clear open provisional vocalizations from this session? Confirmed / dismissed / skipped are kept.')) return;
+      clearBtn.disabled = true;
+      try {
+        const data = await postJson('/api/annotation/clear-provisional', { kit: current.folder });
+        if (!data.ok) throw new Error(data.error || 'clear failed');
+        await softRefreshCurrent();
+        flashSaveStatus(`Cleared ${data.removed || 0} provisional segment(s)`);
+      } catch (err) {
+        flashSaveStatus('Clear failed: ' + err.message, false);
+      } finally {
+        clearBtn.disabled = false;
+      }
+    };
+  }
 
   void (async () => {
     try {
       const st = await (await fetch('/api/diarization/status')).json();
       if (!hint) return;
       hint.textContent = st.available
-        ? `speaker model: ${st.active}`
+        ? `speaker model: ${st.active} · unit: vocalization`
         : 'speaker model not installed — VAD only (see tools/README.md)';
       if (!st.available && chk) { chk.checked = false; chk.disabled = true; }
     } catch (_) { /* status is advisory only */ }
@@ -2472,13 +2513,14 @@ function wireVad() {
     btn.disabled = true;
     btn.textContent = 'Finding…';
     if (hint) hint.textContent = diarize
-      ? 'Running VAD + speaker diarization… (first run downloads the model)'
-      : 'Running local VAD…';
+      ? 'Running VAD + diarization + vocalization pause-split…'
+      : 'Running VAD + vocalization pause-split…';
     try {
       const data = await postJson('/api/vad/run', {
         kit: current.folder,
         diarize,
-        numSpeakers: numSel && numSel.value ? Number(numSel.value) : null
+        numSpeakers: numSel && numSel.value ? Number(numSel.value) : null,
+        unit: 'vocalization',
       });
       if (!data.ok) {
         flashSaveStatus('VAD failed: ' + (data.error || 'unknown'), false);
@@ -2487,7 +2529,7 @@ function wireVad() {
       }
       await softRefreshCurrent();
       const n = data.added != null ? data.added : 0;
-      flashSaveStatus(`Found ${n} speech segment(s) → annotations.json`);
+      flashSaveStatus(`Found ${n} vocalization(s) → annotations.json`);
       const vs = data.vadStats || {};
       const di = data.diarization || {};
       const parts = [`${n} new · ${data.total || n} total on disk`];
@@ -2496,8 +2538,8 @@ function wireVad() {
       } else if (diarize) {
         parts.push(`no diarization (${di.error || 'unavailable'}) — VAD only`);
       }
-      if (vs.pauseSplit) parts.push(`+${vs.pauseSplit} pause splits`);
-      if (vs.resegSplits) parts.push(`+${vs.resegSplits} syllable splits`);
+      if (vs.vocalizationSplits) parts.push(`+${vs.vocalizationSplits} voc pauses`);
+      if (vs.vocalizationPauseMs != null) parts.push(`pause≥${vs.vocalizationPauseMs}ms`);
       const dropped = (vs.speechGateRejected || 0) + (vs.regionsScreened || 0) + (vs.nonSpeechRejected || 0);
       if (dropped) parts.push(`${dropped} dropped as non-speech`);
       if (vs.speechGateFlagged) parts.push(`${vs.speechGateFlagged} flagged possible non-speech`);
@@ -2511,6 +2553,36 @@ function wireVad() {
       btn.textContent = 'Find speech segments';
     }
   };
+}
+
+const STAGE_OPTIONS = [
+  ['', 'Stage…'],
+  ['vegetative_cry', 'vegetative_cry'],
+  ['canonical_babble', 'canonical_babble'],
+  ['jargon', 'jargon'],
+  ['protoword', 'protoword'],
+  ['single_word', 'single_word'],
+  ['word_combination', 'word_combination'],
+  ['noise', 'noise'],
+];
+
+function stageOptionsHtml(selected) {
+  return STAGE_OPTIONS.map(([v, lab]) =>
+    `<option value="${esc(v)}"${v === (selected || '') ? ' selected' : ''}>${esc(lab)}</option>`
+  ).join('');
+}
+
+function featurePillHtml(a) {
+  const f = a.features || {};
+  const parts = [];
+  const dur = f.durationMs != null ? f.durationMs : (a.endMs != null && a.startMs != null ? (a.endMs - a.startMs) : null);
+  if (dur != null) parts.push(`${Math.round(dur)}ms`);
+  const syll = f.syllableCount != null ? f.syllableCount : a.syllableCount;
+  if (syll != null) parts.push(`${syll} syll`);
+  const pv = f.pitchVariability;
+  if (pv != null) parts.push(`pitchVar ${Number(pv).toFixed(2)}`);
+  if (!parts.length) return '';
+  return `<span class="sub" title="Stored features for stage classifier training">${esc(parts.join(' · '))}</span>`;
 }
 
 function wireMainTabs() {
@@ -2818,39 +2890,63 @@ function stopVocabAudio() {
   }
   if (a) {
     try { a.pause(); } catch (_) {}
+    a.onloadeddata = null;
+    a.onended = null;
+    a.onerror = null;
+    a.onseeked = null;
   }
 }
 
+let vocabPlayGen = 0;
+
+/** Play a Vocabulary member via a server-trimmed clip (no HTMLMediaElement seek).
+ *  Full kit WAVs are often 100–300+ MB; seeking /audio in <audio> is unreliable. */
 function playVocabMember(m) {
   const a = document.getElementById('vocabAudio');
   if (!a || !m) return;
   stopVocabAudio();
-  const url = m.audioUrl || ('/audio?kit=' + encodeURIComponent(m.kit || ''));
-  const start = (m.startMs || 0) / 1000;
-  const end = (m.endMs || 0) / 1000;
-  const dur = Math.max(0.05, end - start);
-  const needLoad = vocabAudioKit !== url || !a.src || a.src.indexOf(url) < 0;
-  const startPlay = () => {
-    try {
-      a.currentTime = start;
-    } catch (_) {}
-    const p = a.play();
-    if (p && p.catch) p.catch(() => {});
-    vocabAudioStopTimer = setTimeout(() => {
-      try { a.pause(); } catch (_) {}
-    }, dur * 1000 + 40);
-  };
-  if (needLoad) {
-    vocabAudioKit = url;
-    a.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
-    a.onloadeddata = () => {
-      a.onloadeddata = null;
-      startPlay();
-    };
-    a.load();
-  } else {
-    startPlay();
+  const kit = m.kit || '';
+  if (!kit) {
+    flashSaveStatus('Play failed: missing kit', false);
+    return;
   }
+  const startMs = Math.round(Number(m.startMs) || 0);
+  const endMs = Math.round(Number(m.endMs) || 0);
+  if (!(endMs > startMs)) {
+    flashSaveStatus('Play failed: bad span', false);
+    return;
+  }
+  const gen = ++vocabPlayGen;
+  const clipUrl =
+    '/audio/clip?kit=' + encodeURIComponent(kit) +
+    '&startMs=' + startMs +
+    '&endMs=' + endMs +
+    '&t=' + Date.now();
+  vocabAudioKit = clipUrl;
+
+  a.onerror = () => {
+    if (gen !== vocabPlayGen) return;
+    flashSaveStatus('Play failed: could not load clip', false);
+  };
+  a.onended = () => {
+    if (gen !== vocabPlayGen) return;
+  };
+  a.onloadeddata = () => {
+    if (gen !== vocabPlayGen) return;
+    a.onloadeddata = null;
+    const p = a.play();
+    if (p && p.catch) {
+      p.catch(err => flashSaveStatus('Play failed: ' + (err && err.message || err), false));
+    }
+    // Safety stop in case duration metadata is wrong.
+    const durMs = Math.max(50, endMs - startMs);
+    vocabAudioStopTimer = setTimeout(() => {
+      if (gen !== vocabPlayGen) return;
+      try { a.pause(); } catch (_) {}
+    }, durMs + 200);
+  };
+  a.src = clipUrl;
+  a.load();
 }
 
 function renderVocabDetail(labelKey) {
@@ -2870,7 +2966,10 @@ function renderVocabDetail(labelKey) {
         <span>${((m.startMs || 0) / 1000).toFixed(2)}s–${((m.endMs || 0) / 1000).toFixed(2)}s</span>
         <span class="muted" style="font-variant-numeric:tabular-nums">${m.durMs != null ? m.durMs + 'ms' : ''}</span>
         <span class="pill">${esc(m.speaker || '?')}</span>
-        <button type="button" data-act="play">Play</button>
+        <button type="button" data-act="play"
+          data-kit="${esc(kc.kit || m.kit || '')}"
+          data-start="${m.startMs || 0}"
+          data-end="${m.endMs || 0}">Play</button>
       </div>`).join('');
     return `<div class="vocab-kit-block" data-kit="${esc(kc.kit)}">
       <h4>${esc(kc.kit_display || kc.kit)} · ${esc(kc.label || c.label)} · ${(kc.members || []).length} clips</h4>
@@ -2880,23 +2979,18 @@ function renderVocabDetail(labelKey) {
   }).join('');
   el.innerHTML = `
     <h3>${esc(c.label)} <span class="muted" style="font-weight:400;font-size:13px">rank ${c.rank} · tightness ${tight} · ${c.n_members} members · ${c.n_kits} kit(s)</span></h3>
-    <p class="muted" style="margin:0 0 4px;font-size:12px">Play uses each kit’s audio (does not switch the Review session).</p>
+    <p class="muted" style="margin:0 0 4px;font-size:12px">Play streams a trimmed clip from each kit (does not switch the Review session).</p>
     ${kitsHtml || '<p class="muted">No kit detail</p>'}
   `;
-  el.querySelectorAll('.vocab-kit-block').forEach(block => {
-    const kitName = block.dataset.kit;
-    const kc = (c.kit_clusters || []).find(x => x.kit === kitName);
-    if (!kc) return;
-    block.querySelectorAll('.vocab-member').forEach((row, idx) => {
-      const m = (kc.members || [])[idx];
-      const btn = row.querySelector('button[data-act="play"]');
-      if (btn && m) {
-        btn.onclick = (ev) => {
-          ev.stopPropagation();
-          playVocabMember(m);
-        };
-      }
-    });
+  el.querySelectorAll('button[data-act="play"]').forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      playVocabMember({
+        kit: btn.dataset.kit,
+        startMs: Number(btn.dataset.start),
+        endMs: Number(btn.dataset.end),
+      });
+    };
   });
 }
 
@@ -4298,29 +4392,37 @@ function renderLists() {
 
   const anns = showSkippedAnns ? openAnns.concat(skippedAnns) : openAnns;
   const annList = document.getElementById('annList');
-  let emptyMsg = '<p class="muted">No ML candidates yet. Click <strong>Find speech segments</strong>, or run <code>vad_segments.py</code> / <code>propose_candidates.py</code>.</p>';
+  let emptyMsg = '<p class="muted">No vocalizations yet. Click <strong>Find speech segments</strong>.</p>';
   if (!anns.length && skippedAnns.length && !showSkippedAnns) {
-    emptyMsg = `<p class="muted">No open ML candidates. ${skippedAnns.length} skipped — enable <strong>Show skipped</strong> to review or Unskip them.</p>`;
+    emptyMsg = `<p class="muted">No open vocalizations. ${skippedAnns.length} skipped — enable <strong>Show skipped</strong> to review or Unskip them.</p>`;
   }
   annList.innerHTML = anns.length ? anns.map(a => {
     const isSkipped = a.status === 'skipped';
+    const splitLabel = a.splitBy === 'speaker_change' ? 'speaker change'
+      : a.splitBy === 'vocalization_pause' ? 'voc pause'
+      : a.splitBy;
     return `
     <div class="row" data-uuid="${esc(a.uuid)}">
       <span class="pill ml">${((a.startMs||a.tMs||0)/1000).toFixed(2)}s${a.endMs!=null?('–'+(a.endMs/1000).toFixed(2)+'s'):''}${a.source?(' · '+esc(a.source)):''}
+        ${a.unit ? `<span class="sub">${esc(a.unit)}</span>` : ''}
         ${isSkipped ? '<span class="sub">skipped</span>' : ''}
         ${fragmentCueHtml(a)}
+        ${a.stage ? `<span class="sub">stage · ${esc(a.stage)}</span>` : ''}
         ${a.category ? `<span class="sub">${esc(a.category)}</span>` : ''}
         ${a.speaker ? `<span class="sub">${esc(a.speaker)}</span>` : ''}
         ${a.language ? `<span class="sub">${esc(a.language)}</span>` : ''}
         ${a.speakerCluster ? `<span class="sub" title="Diarization cluster — a guess, not a named person">${esc(a.speakerCluster)}</span>` : ''}
-        ${a.splitBy ? `<span class="sub">split · ${esc(a.splitBy === 'speaker_change' ? 'speaker change' : a.splitBy)}</span>` : ''}
-        ${a.speechScore != null ? `<span class="sub" title="Speech-likeness 0–1: voicing + voice-band energy − low-frequency rumble. Below 0.55 is dropped.">speech ${a.speechScore.toFixed(2)}</span>` : ''}
+        ${splitLabel ? `<span class="sub">split · ${esc(splitLabel)}</span>` : ''}
+        ${featurePillHtml(a)}
+        ${a.speechScore != null ? `<span class="sub" title="Speech-likeness 0–1">speech ${a.speechScore.toFixed(2)}</span>` : ''}
         ${(a.flags||[]).includes('possible_non_speech') ? `<span class="sub" title="${esc(a.nonSpeechReason || 'scored low on the speech gate')}">possible non-speech${a.nonSpeechReason ? ' · ' + esc(a.nonSpeechReason) : ''}</span>` : ''}
         ${(a.flags||[]).includes('hard_capped') ? '<span class="sub">cap: long span, no clean split found</span>' : ''}
         ${detailSummaryHtml(a)}
         ${asrSummaryHtml(a)}
       </span>
       <div class="row-fields">
+          <select class="stage-select" data-field="stage" title="Developmental stage (manual)">${stageOptionsHtml(a.stage || '')}</select>
+        <input class="note-input" data-field="notes" type="text" placeholder="Transcript / context notes" value="${esc(a.notes || '')}" style="min-width:160px;flex:1"/>
         <select class="category-select" data-field="category">${categoryOptionsHtml(a.category || '')}</select>
         ${speakerChipsHtml(a.speaker || '', 'ann-spk-' + a.uuid)}
         ${detailFieldsHtml(a, 'ann-' + a.uuid)}
@@ -4345,6 +4447,42 @@ function renderLists() {
       wireSpeakerChips(row.querySelector('.speaker-row'), spInput);
     }
     wireCategoryDetail(row);
+
+    const saveStageNotes = async () => {
+      const uuid = row.dataset.uuid;
+      const stageEl = row.querySelector('[data-field="stage"]');
+      const notesEl = row.querySelector('[data-field="notes"]');
+      try {
+        await postJson('/api/annotation/update', {
+          kit: k.folder,
+          uuid,
+          action: 'save_fields',
+          stage: stageEl ? stageEl.value : '',
+          notes: notesEl ? notesEl.value : '',
+        });
+        flashSaveStatus('Saved stage / notes');
+        // Soft-update local object so pill reflects stage without full reload flicker.
+        const ann = anns.find(a => a.uuid === uuid);
+        if (ann) {
+          ann.stage = stageEl && stageEl.value ? stageEl.value : null;
+          ann.notes = notesEl ? notesEl.value : '';
+        }
+      } catch (err) {
+        flashSaveStatus('Save failed: ' + err.message, false);
+      }
+    };
+    const stageEl = row.querySelector('[data-field="stage"]');
+    const notesEl = row.querySelector('[data-field="notes"]');
+    if (stageEl) stageEl.onchange = () => void saveStageNotes();
+    if (notesEl) {
+      let t = null;
+      notesEl.oninput = () => {
+        if (t) clearTimeout(t);
+        t = setTimeout(() => void saveStageNotes(), 600);
+      };
+      notesEl.onblur = () => void saveStageNotes();
+    }
+
     row.querySelectorAll('button[data-act]').forEach(btn => btn.onclick = async () => {
       const uuid = row.dataset.uuid;
       const ann = anns.find(a => a.uuid === uuid);
@@ -4395,9 +4533,13 @@ function renderLists() {
         if (errMsg) { alert(errMsg); return; }
       }
       try {
+        const stageEl2 = row.querySelector('[data-field="stage"]');
+        const notesEl2 = row.querySelector('[data-field="notes"]');
         await postJson('/api/annotation/update', {
           kit: k.folder, uuid, action: act,
           ...taxonomyPayload(tax),
+          stage: stageEl2 ? stageEl2.value : undefined,
+          notes: notesEl2 ? notesEl2.value : undefined,
         });
         await softRefreshCurrent();
         if (act === 'confirm') flashSaveStatus(`Confirmed → tags.json`);
@@ -4580,6 +4722,22 @@ class Handler(BaseHTTPRequestHandler):
             data = audio.read_bytes()
             ctype = mimetypes.guess_type(str(audio))[0] or "audio/wav"
             self._send(200, data, ctype)
+            return
+        if parsed.path == "/audio/clip":
+            qs = parse_qs(parsed.query)
+            name = (qs.get("kit") or [""])[0]
+            try:
+                start_ms = int(float((qs.get("startMs") or ["0"])[0]))
+                end_ms = int(float((qs.get("endMs") or ["0"])[0]))
+                kit = resolve_kit(name)
+                data = wav_clip_bytes(kit, start_ms, end_ms)
+            except FileNotFoundError:
+                self._send(404, b"kit not found", "text/plain")
+                return
+            except Exception as e:  # noqa: BLE001 — surface to client
+                self._send(400, str(e).encode("utf-8"), "text/plain")
+                return
+            self._send(200, data, "audio/wav")
             return
         if parsed.path == "/api/cluster/list":
             qs = parse_qs(parsed.query)
@@ -4841,13 +4999,32 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
+        if parsed.path == "/api/annotation/clear-provisional":
+            anns = read_annotations(kit)
+            kept = [
+                a
+                for a in anns
+                if a.get("status") in ("confirmed", "dismissed", "skipped")
+            ]
+            removed = len(anns) - len(kept)
+            write_annotations(kit, kept)
+            self._send_json(200, {"ok": True, "removed": removed, "remaining": len(kept)})
+            return
+
         if parsed.path == "/api/annotation/update":
             anns = read_annotations(kit)
             for a in anns:
                 if a.get("uuid") != body.get("uuid"):
                     continue
                 action = body.get("action")
-                if action == "confirm":
+                if action == "save_fields":
+                    # Persist stage + notes without changing status (training labels).
+                    if "stage" in body:
+                        stage = (body.get("stage") or "").strip() or None
+                        a["stage"] = stage
+                    if "notes" in body:
+                        a["notes"] = body.get("notes") if body.get("notes") is not None else ""
+                elif action == "confirm":
                     if any(
                         k in body
                         for k in ("category", "speaker", "note", "word", "phonetic")
@@ -4860,6 +5037,10 @@ class Handler(BaseHTTPRequestHandler):
                             )
                             return
                     apply_taxonomy_fields(a, body)
+                    if "stage" in body:
+                        a["stage"] = (body.get("stage") or "").strip() or a.get("stage")
+                    if "notes" in body and body.get("notes") is not None:
+                        a["notes"] = body.get("notes")
                     if not (a.get("label") or "").strip():
                         a["label"] = "confirmed"
                     a["status"] = "confirmed"
@@ -4883,6 +5064,10 @@ class Handler(BaseHTTPRequestHandler):
                             payload[key] = a[key]
                         elif existing and key in existing:
                             existing.pop(key, None)
+                    # Carry stage / notes / features onto the tag for training continuity.
+                    for key in ("stage", "notes", "features", "syllableCount", "unit"):
+                        if a.get(key) not in (None, ""):
+                            payload[key] = a[key]
                     if existing:
                         # Drop stale detail fields when category flips.
                         for key in ("word", "phonetic", "note"):
